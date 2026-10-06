@@ -47,21 +47,5 @@ export const notificationsApi = {
       body: JSON.stringify({ preferences })
     })
     if (!res.ok) throw new Error(await readErrorMessage(res))
-  },
-
-  getEmailPreference: async (token: string): Promise<boolean> => {
-    const res = await fetch(`${API_BASE}/v2/notifications/email`, { headers: { Authorization: token } })
-    if (res.status === 404) return false
-    if (!res.ok) throw new Error(await readErrorMessage(res))
-    const data = (await res.json()) as { enabled: boolean }
-    return data.enabled
-  },
-
-  setEmailPreference: async (token: string, enabled: boolean): Promise<void> => {
-    const res = await fetch(`${API_BASE}/v2/notifications/email`, {
-      method: enabled ? 'PUT' : 'DELETE',
-      headers: { Authorization: token }
-    })
-    if (!res.ok) throw new Error(await readErrorMessage(res))
   }
 }

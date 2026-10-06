@@ -1,6 +1,9 @@
 import { Switch } from '@renderer/components/ui/switch'
 import type { SettingsCategories } from '@shared/settings'
 
+// Server settings the app doesn't support yet.
+const HIDDEN_SETTINGS = new Set(['custom_background'])
+
 interface CategorySettingsListProps {
   settings: SettingsCategories | null
   loading: boolean
@@ -25,7 +28,7 @@ export function CategorySettingsList({
         .filter((category) => categoryFilter(category.name))
         .map((category) => ({
           ...category,
-          settings: category.settings.filter((s) => !excludeSettings?.has(s.name))
+          settings: category.settings.filter((s) => !HIDDEN_SETTINGS.has(s.name) && !excludeSettings?.has(s.name))
         }))
         .filter((category) => category.settings.length > 0)
         .sort((a, b) => a.index - b.index)

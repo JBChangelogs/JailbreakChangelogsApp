@@ -45,7 +45,7 @@ Releases are served from `https://updates.jailbreakchangelogs.com`, a Cloudflare
 
 - **Windows** is packaged with [Velopack](https://velopack.io) (`vpk`). Installs and updates go through Velopack's `UpdateManager`.
 - **Linux** is an AppImage. Updates go through `electron-updater` using `latest-linux.yml`.
-- **macOS** can be built with `npm run build:mac`, but it is not uploaded and does not auto-update.
+- **macOS** is a universal DMG built by the **Release macOS** GitHub Action. It is ad-hoc signed (no Apple Developer account), so it does not auto-update and users must allow it once under System Settings → Privacy & Security → Open Anyway.
 
 ### One-time setup
 
@@ -109,9 +109,12 @@ Releases are served from `https://updates.jailbreakchangelogs.com`, a Cloudflare
 
    That's Git Bash syntax. In PowerShell, use `-v "${PWD}:/project"` and drop the `MSYS_NO_PATHCONV=1` prefix.
 
-4. **Commit** the version bump and changelog entry.
+4. **Commit and push** the version bump and changelog entry.
+
+5. **macOS:** on GitHub, open Actions → **Release macOS** → Run workflow. It builds from `main` and uploads `JBCLSetup.dmg`. It needs the four `R2_*` values as repository secrets (Settings → Secrets and variables → Actions).
 
 Download links stay the same between releases:
 
 - Windows: https://updates.jailbreakchangelogs.com/JBCLSetup.exe
 - Linux: https://updates.jailbreakchangelogs.com/JBCLSetup.AppImage
+- macOS: https://updates.jailbreakchangelogs.com/JBCLSetup.dmg

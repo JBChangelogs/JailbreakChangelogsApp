@@ -7,6 +7,7 @@ type UpdaterStatus =
   | { state: 'downloading'; percent?: number }
   | { state: 'not-available' }
   | { state: 'downloaded'; version: string }
+  | { state: 'manual'; version: string; url: string }
   | { state: 'error'; message: string }
 
 function RestartIcon({ className }: { className?: string }): React.JSX.Element {
@@ -62,6 +63,25 @@ export function UpdateBanner(): React.JSX.Element | null {
             <div className="animate-update-indeterminate h-full w-1/4 bg-status-info" />
           )}
         </div>
+      </div>
+    )
+  }
+
+  if (status.state === 'manual') {
+    return (
+      <div className="flex h-9 shrink-0 items-center justify-center gap-2.5 border-b border-border-primary bg-secondary-bg text-xs text-secondary-text">
+        <DownloadIcon className="h-3.5 w-3.5 text-status-info" />
+        <span>Version {status.version} is available</span>
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          className="h-6! gap-1! px-2!"
+          onClick={() => void window.api.openExternal(status.url)}
+        >
+          <DownloadIcon className="h-3 w-3" />
+          Download
+        </Button>
       </div>
     )
   }

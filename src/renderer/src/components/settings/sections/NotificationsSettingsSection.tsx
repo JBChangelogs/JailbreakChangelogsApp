@@ -12,8 +12,7 @@ import { NOTIFICATION_PREFERENCE_CATEGORIES } from '@shared/notification'
 export function NotificationsSettingsSection(): React.JSX.Element {
   const [desktopEnabled, setDesktopEnabled] = useState(getDesktopNotificationsEnabled)
   const [inAppEnabled, setInAppEnabled] = useState(getInAppNotificationsEnabled)
-  const { isEnabled, toggleCategory, emailEnabled, toggleEmail, loading, error, emailError, pending } =
-    useNotificationPreferences()
+  const { isEnabled, toggleCategory, loading, error, pending } = useNotificationPreferences()
 
   const toggleDesktop = (next: boolean): void => {
     setDesktopEnabled(next)
@@ -81,20 +80,6 @@ export function NotificationsSettingsSection(): React.JSX.Element {
             </label>
           ))}
 
-          <label className="flex cursor-pointer items-center justify-between gap-3 rounded-md px-3 py-2 transition-colors hover:bg-quaternary-bg">
-            <div className="min-w-0">
-              <span className="text-sm text-primary-text">Email Notifications</span>
-              <p className="mt-0.5 text-xs text-tertiary-text">
-                Also send an email for the categories above. Requires a linked email on your account.
-              </p>
-              {emailError && <p className="mt-0.5 text-xs text-form-error">{emailError}</p>}
-            </div>
-            <Switch
-              checked={emailEnabled}
-              disabled={pending.has('__email')}
-              onCheckedChange={(checked) => void toggleEmail(checked)}
-            />
-          </label>
         </div>
       )}
     </div>

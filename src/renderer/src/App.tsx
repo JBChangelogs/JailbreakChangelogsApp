@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { TitleBar } from '@renderer/components/TitleBar'
 import { LoginGate } from '@renderer/components/LoginGate'
+import { AppAccessGate, useAppAccess } from '@renderer/components/AppAccessGate'
 import { TransitionSplash } from '@renderer/components/TransitionSplash'
 import { UpdateBanner } from '@renderer/components/UpdateBanner'
 import { HomeScreen } from '@renderer/components/HomeScreen'
@@ -17,9 +18,11 @@ const TRANSITION_SPLASH_MS = 550
 const TRANSITION_FADE_MS = 450
 
 function App(): React.JSX.Element {
-  const { status } = useAuth()
+  const { status, token } = useAuth()
   const { isOpen: settingsOpen } = useSettingsPage()
   const isAuthenticated = status === 'authenticated'
+  const { access, retry: retryAccess } = useAppAccess(isAuthenticated ? token : null)
+  const hasAccess = isAuthenticated && access === 'granted'
   const isChecking = status === 'checking'
   useRealtimePreferences()
   useNotificationToasts()
@@ -69,9 +72,15 @@ function App(): React.JSX.Element {
       <TitleBar />
 
       <div className="relative flex flex-1 overflow-hidden">
-        {isChecking ? null : !isAuthenticated ? <LoginGate /> : !settingsOpen ? <HomeScreen /> : null}
+        {isChecking ? null : !isAuthenticated ? (
+          <LoginGate />
+        ) : !hasAccess ? (
+          <AppAccessGate access={access} onRetry={retryAccess} />
+        ) : !settingsOpen ? (
+          <HomeScreen />
+        ) : null}
         {showTransitionSplash && <TransitionSplash visible={transitionSplashVisible} />}
-        {isAuthenticated && <SettingsPage />}
+        {hasAccess && <SettingsPage />}
       </div>
       <ToastViewport />
     </div>

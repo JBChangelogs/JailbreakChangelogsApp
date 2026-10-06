@@ -9,6 +9,18 @@ export interface AppChangelogEntry {
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.5.9',
+    date: '2026-10-05',
+    changed: [
+      'Moved the app onto the new v2 Jailbreak Changelogs API',
+      'The value list now loads items page by page as you scroll, with search, filters and sorting handled by the server, so it opens faster',
+      'Similar items on an item\'s page now come from the server'
+    ],
+    fixed: [
+      'Fixed the value list failing to load'
+    ]
+  },
+  {
     version: '0.5.8',
     date: '2026-09-27',
     added: [

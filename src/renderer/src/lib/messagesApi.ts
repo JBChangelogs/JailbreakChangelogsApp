@@ -1,10 +1,5 @@
 import type { ConversationsResponse, ConversationPage } from '@shared/messages'
 
-// Dev-only fake conversations for preview screenshots. Flip to false when done.
-// Loaded via dynamic import so production builds drop the mock data entirely.
-export const MOCK_MESSAGES_ENABLED = import.meta.env.DEV && true
-const mocks = (): Promise<typeof import('./mockMessages')> => import('./mockMessages')
-
 export type { MessageItem, ConversationSummary, ConversationPage } from '@shared/messages'
 
 const API_BASE = 'https://api.jailbreakchangelogs.com'
@@ -61,20 +56,12 @@ export type OutgoingMessageMetadata =
   | { type: 'vip_server_invite'; server_id: number }
 
 export const messagesApi = {
-  listConversations: (token: string) =>
-    MOCK_MESSAGES_ENABLED
-      ? mocks().then((m) => m.mockConversations)
-      : request<ConversationsResponse>(token, '/v2/conversations'),
+  listConversations: (token: string) => request<ConversationsResponse>(token, '/v2/conversations'),
 
-  unreadCount: (token: string) =>
-    MOCK_MESSAGES_ENABLED
-      ? mocks().then((m) => ({ unread: m.mockConversations.conversations.reduce((n, c) => n + c.unread_count, 0) }))
-      : request<{ unread: number }>(token, '/v2/conversations/unread-count'),
+  unreadCount: (token: string) => request<{ unread: number }>(token, '/v2/conversations/unread-count'),
 
   getConversation: (token: string, recipientId: string, page = 1) =>
-    MOCK_MESSAGES_ENABLED
-      ? mocks().then((m) => m.mockConversationPage(recipientId))
-      : request<ConversationPage>(token, `/v2/conversations/${recipientId}/messages?page=${page}`),
+    request<ConversationPage>(token, `/v2/conversations/${recipientId}/messages?page=${page}`),
 
   sendMessage: async (
     token: string,

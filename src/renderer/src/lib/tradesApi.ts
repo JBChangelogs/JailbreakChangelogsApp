@@ -1,5 +1,4 @@
 import type { TradeAd, TradeAdsPage, TradeItemWire, TradeOffer } from '@shared/trading'
-import { MOCK_MESSAGES_ENABLED } from './messagesApi'
 
 const API_BASE = 'https://api.jailbreakchangelogs.com'
 
@@ -79,9 +78,7 @@ export const tradesApi = {
     request<TradeOffer[]>(token, `/v2/trades/${tradeId}/offers`),
 
   getOffer: (token: string, tradeId: number, offerId: number) =>
-    MOCK_MESSAGES_ENABLED
-      ? import('./mockMessages').then((m) => m.mockAcceptedOffer)
-      : request<TradeOffer>(token, `/v2/trades/${tradeId}/offers/${offerId}`),
+    request<TradeOffer>(token, `/v2/trades/${tradeId}/offers/${offerId}`),
 
   createOffer: (token: string, tradeId: number, payload?: CreateOfferPayload) =>
     request<TradeOffer>(token, `/v2/trades/${tradeId}/offers`, {

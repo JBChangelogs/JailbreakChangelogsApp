@@ -51,7 +51,7 @@ export function CreateTradeAdSidebar(): React.JSX.Element {
           title="Offering"
           side="offering"
           items={createOffering}
-          onRemove={(key) => removeCreateItem('offering', key)}
+          onRemove={(key, amount) => removeCreateItem('offering', key, amount)}
           onSetCondition={(key, next) => setCreateItemCondition('offering', key, next)}
           onMove={(key) => moveCreateItem('offering', key)}
         />
@@ -59,7 +59,7 @@ export function CreateTradeAdSidebar(): React.JSX.Element {
           title="Requesting"
           side="requesting"
           items={createRequesting}
-          onRemove={(key) => removeCreateItem('requesting', key)}
+          onRemove={(key, amount) => removeCreateItem('requesting', key, amount)}
           onSetCondition={(key, next) => setCreateItemCondition('requesting', key, next)}
           onMove={(key) => moveCreateItem('requesting', key)}
         />

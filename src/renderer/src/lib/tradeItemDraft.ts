@@ -60,12 +60,12 @@ export function addCustomTypeToSide(items: TradeItemDraft[], customId: string): 
   return [...items, { id: customId, name: label, type: 'Custom', duped: false, og: false, amount: 1 }]
 }
 
-export function removeOneFromSide(items: TradeItemDraft[], key: TradeItemDraftKey): TradeItemDraft[] {
+export function removeAmountFromSide(items: TradeItemDraft[], key: TradeItemDraftKey, amount: number): TradeItemDraft[] {
   const index = items.findIndex((i) => draftKey(i.id, i.duped, i.og) === draftKey(key.id, key.duped, key.og))
   if (index < 0) return items
   const current = items[index]
-  if (current.amount <= 1) return items.filter((_, idx) => idx !== index)
-  return items.map((i, idx) => (idx === index ? { ...i, amount: i.amount - 1 } : i))
+  if (current.amount <= amount) return items.filter((_, idx) => idx !== index)
+  return items.map((i, idx) => (idx === index ? { ...i, amount: i.amount - amount } : i))
 }
 
 export function removeRowFromSide(items: TradeItemDraft[], key: TradeItemDraftKey): TradeItemDraft[] {

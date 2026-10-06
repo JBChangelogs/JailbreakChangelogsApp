@@ -6,7 +6,7 @@ import { NOTIFICATION_PREFERENCE_DEFAULT } from '@shared/notification'
 
 export function useNotificationPreferences(): {
   isEnabled: (category: string) => boolean
-  toggleCategory: (category: string, next: boolean) => Promise<void>
+  setCategories: (categories: string[], next: boolean) => Promise<void>
   loading: boolean
   error: string | null
   pending: Set<string>
@@ -33,30 +33,36 @@ export function useNotificationPreferences(): {
 
   const isEnabled = (category: string): boolean => overrides.get(category) ?? NOTIFICATION_PREFERENCE_DEFAULT
 
-  const toggleCategory = async (category: string, next: boolean): Promise<void> => {
-    if (!token) return
-    const previous = overrides.get(category)
-    setOverrides((prev) => new Map(prev).set(category, next))
-    setPending((prev) => new Set(prev).add(category))
+  const setCategories = async (categories: string[], next: boolean): Promise<void> => {
+    if (!token || categories.length === 0) return
+    const previous = new Map(categories.map((c) => [c, overrides.get(c)]))
+    setOverrides((prev) => {
+      const updated = new Map(prev)
+      categories.forEach((c) => updated.set(c, next))
+      return updated
+    })
+    setPending((prev) => new Set([...prev, ...categories]))
     setError(null)
     try {
-      await notificationsApi.updatePreferences(token, [{ title: category, enabled: next }])
+      await notificationsApi.updatePreferences(
+        token,
+        categories.map((title) => ({ title, enabled: next }))
+      )
     } catch (err) {
       setOverrides((prev) => {
         const reverted = new Map(prev)
-        if (previous === undefined) reverted.delete(category)
-        else reverted.set(category, previous)
+        previous.forEach((value, c) => (value === undefined ? reverted.delete(c) : reverted.set(c, value)))
         return reverted
       })
       setError(err instanceof Error ? err.message : 'Failed to update notification preference')
     } finally {
       setPending((prev) => {
         const nextSet = new Set(prev)
-        nextSet.delete(category)
+        categories.forEach((c) => nextSet.delete(c))
         return nextSet
       })
     }
   }
 
-  return { isEnabled, toggleCategory, loading, error, pending }
+  return { isEnabled, setCategories, loading, error, pending }
 }

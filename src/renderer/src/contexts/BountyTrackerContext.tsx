@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useCurrentUser } from '@renderer/hooks/useCurrentUser'
+import { useBountyAlerts } from '@renderer/lib/trackerAlerts'
 import { useBountyTrackerWebSocket } from '@renderer/hooks/useBountyTrackerWebSocket'
 import { useBountyFilters } from '@renderer/hooks/useBountyFilters'
 import { useJoinHistory, type JoinHistoryEntry } from '@renderer/hooks/useJoinHistory'
@@ -51,7 +52,15 @@ interface BountyTrackerContextValue {
 
 const BountyTrackerContext = createContext<BountyTrackerContextValue | null>(null)
 
-export function BountyTrackerProvider({ children }: { children: React.ReactNode }): React.JSX.Element {
+export function BountyTrackerProvider({
+  children,
+  enabled,
+  onAlertClick
+}: {
+  children: React.ReactNode
+  enabled: boolean
+  onAlertClick: () => void
+}): React.JSX.Element {
   const { user } = useCurrentUser()
   const {
     data: bounties,
@@ -65,7 +74,8 @@ export function BountyTrackerProvider({ children }: { children: React.ReactNode 
     reconnect,
     reconnectFromBan,
     checkBanStatus
-  } = useBountyTrackerWebSocket(true, user?.id)
+  } = useBountyTrackerWebSocket(enabled, user?.id)
+  useBountyAlerts(bounties, onAlertClick)
 
   const {
     searchQuery,

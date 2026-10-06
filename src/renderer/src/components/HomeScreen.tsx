@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRealtime } from '@renderer/contexts/RealtimeContext'
 import { useConversations } from '@renderer/hooks/useConversations'
@@ -11,6 +11,7 @@ import { RobloxStatusBar } from '@renderer/components/RobloxStatusBar'
 import { NavBar, type HomeTab } from '@renderer/components/NavBar'
 import { ConversationList } from '@renderer/components/messages/ConversationList'
 import { ConversationThread } from '@renderer/components/messages/ConversationThread'
+import { hasBountyAlerts, hasRobberyAlerts, useTrackerAlerts } from '@renderer/lib/trackerAlerts'
 import { RobberyTrackerProvider } from '@renderer/contexts/RobberyTrackerContext'
 import { RobberyTrackerScreen } from '@renderer/components/robbery/RobberyTrackerScreen'
 import { RobberySidebarFilters } from '@renderer/components/robbery/RobberySidebarFilters'
@@ -147,8 +148,27 @@ export function HomeScreen(): React.JSX.Element {
     ) : activeTab === 'dupefinder' ? (
       <DupeFinderScreen />
     ) : (
-      <TradesScreen />
+      <TradesScreen
+        onMessageUser={(userId) => {
+          setActiveTab('messages')
+          setSelectedId(userId)
+        }}
+      />
     )
+
+  const trackerAlerts = useTrackerAlerts()
+  const robberyAlertsOn = hasRobberyAlerts(trackerAlerts)
+  const bountyAlertsOn = hasBountyAlerts(trackerAlerts)
+  const onTracker = activeTab === 'tracker'
+  const trackerMounted = onTracker || robberyAlertsOn || bountyAlertsOn
+  const openRobberyTracker = useCallback(() => {
+    setActiveTab('tracker')
+    setTrackerView('robberies')
+  }, [])
+  const openBountyTracker = useCallback(() => {
+    setActiveTab('tracker')
+    setTrackerView('bounties')
+  }, [])
 
   const tabPane = (
     <>
@@ -156,6 +176,17 @@ export function HomeScreen(): React.JSX.Element {
       {mainContent}
     </>
   )
+
+  const tabContent =
+    activeTab === 'values' ? (
+      <ValuesProvider>{tabPane}</ValuesProvider>
+    ) : activeTab === 'dupefinder' ? (
+      <DupeFinderProvider>{tabPane}</DupeFinderProvider>
+    ) : activeTab === 'trades' ? (
+      <TradesProvider>{tabPane}</TradesProvider>
+    ) : (
+      tabPane
+    )
 
   return (
     <div className="flex h-full flex-1 min-w-0">
@@ -172,18 +203,14 @@ export function HomeScreen(): React.JSX.Element {
         </div>
       </div>
 
-      {activeTab === 'tracker' ? (
-        <RobberyTrackerProvider>
-          <BountyTrackerProvider>{tabPane}</BountyTrackerProvider>
+      {trackerMounted ? (
+        <RobberyTrackerProvider enabled={onTracker || robberyAlertsOn} onAlertClick={openRobberyTracker}>
+          <BountyTrackerProvider enabled={onTracker || bountyAlertsOn} onAlertClick={openBountyTracker}>
+            {tabContent}
+          </BountyTrackerProvider>
         </RobberyTrackerProvider>
-      ) : activeTab === 'values' ? (
-        <ValuesProvider>{tabPane}</ValuesProvider>
-      ) : activeTab === 'dupefinder' ? (
-        <DupeFinderProvider>{tabPane}</DupeFinderProvider>
-      ) : activeTab === 'trades' ? (
-        <TradesProvider>{tabPane}</TradesProvider>
       ) : (
-        tabPane
+        tabContent
       )}
     </div>
   )

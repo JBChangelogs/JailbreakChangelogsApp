@@ -31,6 +31,7 @@ const contentTypes = {
   '.blockmap': 'application/octet-stream',
   '.nupkg': 'application/octet-stream',
   '.AppImage': 'application/octet-stream',
+  '.dmg': 'application/x-apple-diskimage',
   '.ico': 'image/vnd.microsoft.icon',
   '': 'text/plain'
 }
@@ -41,7 +42,7 @@ function contentTypeFor(filename) {
 
 const distDir = join(import.meta.dirname, '..', 'dist')
 const RELEASE_FILE_PATTERN =
-  /^latest.*\.yml$|^releases\..*\.json$|^assets\..*\.json$|-Setup\.exe$|\.exe\.blockmap$|\.nupkg$|\.AppImage$|\.AppImage\.blockmap$|^RELEASES$/
+  /^latest.*\.yml$|^releases\..*\.json$|^assets\..*\.json$|-Setup\.exe$|\.exe\.blockmap$|\.nupkg$|\.AppImage$|\.AppImage\.blockmap$|\.dmg$|^RELEASES$/
 
 function uploadKeyFor(localName) {
   return localName.endsWith('-Setup.exe') ? 'JBCLSetup.exe' : localName
@@ -100,6 +101,20 @@ for (const path of toUpload) {
   )
 }
 
+if (uploadedNames.has('JBCLSetup.dmg')) {
+  // The Mac build can't auto-update; the app polls this to show a "new version, download" banner.
+  console.log('Uploading latest-mac.json...')
+  await client.send(
+    new PutObjectCommand({
+      Bucket: process.env.R2_BUCKET,
+      Key: 'latest-mac.json',
+      Body: JSON.stringify({ version, url: 'https://updates.jailbreakchangelogs.com/JBCLSetup.dmg' }),
+      ContentType: 'application/json',
+      CacheControl: 'no-cache'
+    })
+  )
+}
+
 const uploadedNupkg = [...uploadedNames].some((name) => name.endsWith('.nupkg'))
 
 if (uploadedNupkg) {
@@ -119,6 +134,9 @@ if (uploadedNupkg) {
 
 console.log(`Done.`)
 console.log(`Windows download link: https://updates.jailbreakchangelogs.com/JBCLSetup.exe`)
+if (uploadedNames.has('JBCLSetup.dmg')) {
+  console.log(`macOS download link: https://updates.jailbreakchangelogs.com/JBCLSetup.dmg`)
+}
 if (uploadedNames.has('JBCLSetup.AppImage')) {
   console.log(`Linux download link: https://updates.jailbreakchangelogs.com/JBCLSetup.AppImage`)
 }

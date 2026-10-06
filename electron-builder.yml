@@ -21,8 +21,14 @@ win:
     schemes:
       - jailbreakchangelogs
 mac:
-  target: dmg
+  target:
+    - target: dmg
+      arch: universal
   icon: build/icon.png
+  artifactName: JBCLSetup.dmg
+  # Ad-hoc signed (no Apple Developer account), so users must "Open Anyway" once and there is no auto-update.
+  identity: '-'
+  hardenedRuntime: false
   category: public.app-category.social-networking
   protocols:
     name: Jailbreak Changelogs

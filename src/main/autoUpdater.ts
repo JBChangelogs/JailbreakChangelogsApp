@@ -26,6 +26,7 @@ export type UpdaterStatus =
   | { state: 'downloading'; percent?: number }
   | { state: 'not-available' }
   | { state: 'downloaded'; version: string }
+  | { state: 'manual'; version: string; url: string }
   | { state: 'error'; message: string }
 
 let mainWindow: BrowserWindow | null = null
@@ -40,6 +41,32 @@ function isWindowsUpdateCapable(): boolean {
 
 function isLinuxUpdateCapable(): boolean {
   return process.platform === 'linux' && app.isPackaged
+}
+
+function isMacUpdateCapable(): boolean {
+  return process.platform === 'darwin' && app.isPackaged
+}
+
+// a > b for "x.y.z" versions.
+function isNewerVersion(a: string, b: string): boolean {
+  const pa = a.split('.').map(Number)
+  const pb = b.split('.').map(Number)
+  for (let i = 0; i < 3; i++) {
+    if ((pa[i] ?? 0) !== (pb[i] ?? 0)) return (pa[i] ?? 0) > (pb[i] ?? 0)
+  }
+  return false
+}
+
+// The Mac build is unsigned, so it can't update itself; point the user at the new DMG instead.
+async function checkMacUpdates(): Promise<void> {
+  try {
+    const res = await fetch(`${FEED_URL}/latest-mac.json`, { cache: 'no-store' })
+    if (!res.ok) return
+    const { version, url } = (await res.json()) as { version: string; url: string }
+    if (isNewerVersion(version, app.getVersion())) send({ state: 'manual', version, url })
+  } catch (err) {
+    console.error('[autoUpdater] mac check failed', err)
+  }
 }
 
 let initialized = false
@@ -69,7 +96,7 @@ async function checkWindowsUpdates(): Promise<void> {
 export function initAutoUpdater(window: BrowserWindow): void {
   mainWindow = window
 
-  if (isWindowsUpdateCapable()) {
+  if (isWindowsUpdateCapable() || isMacUpdateCapable()) {
     initialized = true
     return
   }
@@ -97,13 +124,15 @@ export function checkForUpdates(): void {
   if (!initialized) return
   if (isWindowsUpdateCapable()) {
     void checkWindowsUpdates()
+  } else if (isMacUpdateCapable()) {
+    void checkMacUpdates()
   } else if (isLinuxUpdateCapable()) {
     linuxAutoUpdater.checkForUpdates().catch((err: unknown) => console.error('[autoUpdater] check failed', err))
   }
 }
 
 export function startAutoUpdateChecks(): void {
-  if (!isWindowsUpdateCapable() && !isLinuxUpdateCapable()) return
+  if (!isWindowsUpdateCapable() && !isLinuxUpdateCapable() && !isMacUpdateCapable()) return
   checkForUpdates()
   setInterval(checkForUpdates, CHECK_INTERVAL_MS)
 }

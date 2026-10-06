@@ -9,6 +9,22 @@ export interface AppChangelogEntry {
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.5.13',
+    date: '2026-10-06',
+    added: [
+      'The app is now available for macOS. Mac users get a banner with a download link when a new version is out',
+      'Choose how many to remove when an item is stacked (x2 or more) in a trade ad or offer',
+      'Quick remove button on each item in the trade ad and offer sidebars',
+      'Profile Comment and Item Updated notification preferences'
+    ],
+    changed: [
+      'Notification preferences are now grouped (Trading, Comments and followers, Inventory and items, Other), with a switch for each group and a search box',
+      'Deleting a message now asks for confirmation inside the app instead of a system popup',
+      'Removed the Email Notifications and custom background settings for now'
+    ],
+    fixed: ['The settings page no longer shifts sideways when its scrollbar appears']
+  },
+  {
     version: '0.5.12',
     date: '2026-10-06',
     added: [

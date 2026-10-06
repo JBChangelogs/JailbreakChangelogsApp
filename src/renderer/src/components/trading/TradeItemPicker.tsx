@@ -45,8 +45,8 @@ function PlusIcon({ className }: { className?: string }): React.JSX.Element {
 interface TradeItemPickerProps {
   side: TradeSide
   onSide: (side: TradeSide) => void
-  onAddItem: (item: Item, duped: boolean, og: boolean) => void
-  onAddCustomType: (customId: string) => void
+  onAddItem: (item: Item, duped: boolean, og: boolean, side: TradeSide) => void
+  onAddCustomType: (customId: string, side: TradeSide) => void
   atCap: boolean
 }
 
@@ -135,12 +135,19 @@ export function TradeItemPicker({ side, onSide, onAddItem, onAddCustomType, atCa
 
   const hasMore = visibleCount < activeCount
 
+  // Ctrl/Cmd+click adds to requesting, Shift+click to offering, plain click to the selected side.
+  const sideFor = (e: React.MouseEvent): TradeSide =>
+    e.ctrlKey || e.metaKey ? 'requesting' : e.shiftKey ? 'offering' : side
+
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
       <div className="flex items-center justify-between border-b border-border-primary px-5 py-4">
         <h2 className="text-sm font-semibold text-primary-text">Trade Ads</h2>
       </div>
       <div className="flex shrink-0 flex-col gap-2 border-b border-border-primary p-3">
+        <p className="rounded-xl border border-border-card bg-secondary-bg px-3 py-2 text-xs text-secondary-text">
+          Tip: <Kbd>Shift</Kbd> + click to add to Offering, <Kbd>Ctrl</Kbd> + click to add to Requesting.
+        </p>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1.5 rounded-2xl border border-border-card bg-secondary-bg p-1">
             {(['offering', 'requesting'] as const).map((s) => (
@@ -209,9 +216,8 @@ export function TradeItemPicker({ side, onSide, onAddItem, onAddCustomType, atCa
             <button
               key={type.id}
               type="button"
-              disabled={atCap}
-              onClick={() => onAddCustomType(type.id)}
-              className="flex items-center gap-1.5 rounded-full border border-border-card bg-tertiary-bg py-1 pr-2.5 pl-1 text-[11px] font-medium text-secondary-text transition-colors hover:bg-quaternary-bg hover:text-primary-text disabled:cursor-not-allowed disabled:opacity-40"
+              onClick={(e) => onAddCustomType(type.id, sideFor(e))}
+              className={`flex items-center gap-1.5 rounded-full border border-border-card bg-tertiary-bg py-1 pr-2.5 pl-1 text-[11px] font-medium text-secondary-text transition-colors hover:bg-quaternary-bg hover:text-primary-text ${atCap ? 'opacity-40' : ''}`}
             >
               <img
                 src={getCustomTradeTypeIconUrl(type.icon)}
@@ -237,7 +243,7 @@ export function TradeItemPicker({ side, onSide, onAddItem, onAddCustomType, atCa
                   item={item}
                   disabled={atCap}
                   duped={condition === 'duped'}
-                  onAdd={() => onAddItem(item, condition === 'duped', condition === 'og')}
+                  onAdd={(e) => onAddItem(item, condition === 'duped', condition === 'og', sideFor(e))}
                 />
               ))}
             </div>
@@ -257,7 +263,7 @@ export function TradeItemPicker({ side, onSide, onAddItem, onAddCustomType, atCa
                   disabled={atCap}
                   duped={row.duped}
                   badge={row.duped ? 'Duped' : row.og ? 'OG' : undefined}
-                  onAdd={() => onAddItem(item, row.duped, row.og)}
+                  onAdd={(e) => onAddItem(item, row.duped, row.og, sideFor(e))}
                 />
               ))}
             </div>
@@ -266,6 +272,14 @@ export function TradeItemPicker({ side, onSide, onAddItem, onAddCustomType, atCa
         {hasMore && <div ref={sentinelRef} className="h-px" />}
       </div>
     </div>
+  )
+}
+
+function Kbd({ children }: { children: React.ReactNode }): React.JSX.Element {
+  return (
+    <kbd className="rounded-md border border-border-card bg-tertiary-bg px-1.5 py-0.5 font-sans text-[10px] font-semibold text-primary-text">
+      {children}
+    </kbd>
   )
 }
 
@@ -280,7 +294,7 @@ function PickerCard({
   disabled: boolean
   duped: boolean
   badge?: string
-  onAdd: () => void
+  onAdd: (e: React.MouseEvent) => void
 }): React.JSX.Element {
   const value = duped ? item.duped_value : item.cash_value
   const demandLabel = duped
@@ -307,9 +321,8 @@ function PickerCard({
             <TooltipTrigger asChild>
               <button
                 type="button"
-                disabled={disabled}
                 onClick={onAdd}
-                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-secondary-text transition-colors hover:bg-quaternary-bg hover:text-primary-text disabled:cursor-not-allowed disabled:opacity-40"
+                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-secondary-text transition-colors hover:bg-quaternary-bg hover:text-primary-text ${disabled ? 'opacity-40' : ''}`}
               >
                 <PlusIcon className="h-3.5 w-3.5" />
               </button>

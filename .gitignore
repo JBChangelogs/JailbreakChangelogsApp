@@ -6,3 +6,4 @@ out
 *.tsbuildinfo
 .env
 electron.vite.config.*.mjs
+screenshots/

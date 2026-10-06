@@ -67,7 +67,7 @@ function SideCard({ items, label }: { items: TradeItemWire[]; label: string }): 
   )
 }
 
-function ItemSide({ items, label }: { items: TradeItemWire[]; label: string }): React.JSX.Element {
+export function ItemSide({ items, label }: { items: TradeItemWire[]; label: string }): React.JSX.Element {
   return (
     <div className="min-w-0">
       <p className="mb-1.5 flex items-center justify-between text-[10px] font-bold tracking-wide text-quaternary-text uppercase">

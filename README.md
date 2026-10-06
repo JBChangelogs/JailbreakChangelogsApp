@@ -45,7 +45,7 @@ Releases are served from `https://updates.jailbreakchangelogs.com`, a Cloudflare
 
 - **Windows** is packaged with [Velopack](https://velopack.io) (`vpk`). Installs and updates go through Velopack's `UpdateManager`.
 - **Linux** is an AppImage. Updates go through `electron-updater` using `latest-linux.yml`.
-- **macOS** is a universal DMG built by the **Release macOS** GitHub Action. It is ad-hoc signed (no Apple Developer account), so it does not auto-update and users must allow it once under System Settings → Privacy & Security → Open Anyway.
+- **macOS** is a universal DMG, ad-hoc signed (no Apple Developer account), so it does not update itself (the app shows a "new version, Download" banner instead) and users must allow it once under System Settings → Privacy & Security → Open Anyway.
 
 ### One-time setup
 
@@ -89,29 +89,13 @@ Releases are served from `https://updates.jailbreakchangelogs.com`, a Cloudflare
 
    Every group is optional.
 
-3. **Build and upload.** Run each command on its own platform: Windows on Windows, the AppImage on Linux.
+3. **Commit and push** the version bump and changelog entry to `main`.
 
-   ```sh
-   npm run release:win
-   npm run release:linux
-   ```
+4. **Run the release.** On GitHub, open Actions → **Release** → Run workflow. It builds Windows, Linux and macOS in parallel from `main`, then uploads everything to R2 in one go with `build/upload-release.mjs`. The Windows installer is uploaded as `JBCLSetup.exe`, and only the current version's full `.nupkg` is kept; older ones are deleted from the bucket.
 
-   Each one clears `dist/` and builds the app. `release:win` packages it with `vpk`. Each then uploads the release files to R2 with `build/upload-release.mjs`. The Windows installer is always uploaded as `JBCLSetup.exe`. Only the current version's full `.nupkg` is kept; older ones are deleted from the bucket.
+   The workflow needs the four `R2_*` values as repository secrets (Settings → Secrets and variables → Actions).
 
-   **Releasing both from Windows:** build Windows, build the AppImage in Docker (container `node_modules` live in their own volume, so the Windows install isn't touched), then upload both at once:
-
-   ```sh
-   node -e "require('fs').rmSync('dist',{recursive:true,force:true})"
-   npm run build:win
-   MSYS_NO_PATHCONV=1 docker run --rm -v "$(pwd -W)":/project -v jbcl-linux-node-modules:/project/node_modules -w /project electronuserland/builder:22 bash -c "npm ci && npm run build:linux"
-   node build/upload-release.mjs
-   ```
-
-   That's Git Bash syntax. In PowerShell, use `-v "${PWD}:/project"` and drop the `MSYS_NO_PATHCONV=1` prefix.
-
-4. **Commit and push** the version bump and changelog entry.
-
-5. **macOS:** on GitHub, open Actions → **Release macOS** → Run workflow. It builds from `main` and uploads `JBCLSetup.dmg`. It needs the four `R2_*` values as repository secrets (Settings → Secrets and variables → Actions).
+   **Releasing locally instead:** `npm run release:win` (on Windows) and `npm run release:linux` (on Linux) still work, using `build/.env` from the one-time setup. macOS can only be built by the workflow, or on a Mac.
 
 Download links stay the same between releases:
 

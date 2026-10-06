@@ -5,6 +5,7 @@
   "desktopName": "jailbreak-changelogs.desktop",
   "main": "./out/main/index.js",
   "author": "Jailbreak Changelogs",
+  "license": "UNLICENSED",
   "private": true,
   "type": "module",
   "scripts": {

@@ -3,7 +3,7 @@ import {
   addCustomTypeToSide,
   addItemToSide,
   addRowToSide,
-  removeOneFromSide,
+  removeAmountFromSide,
   removeRowFromSide,
   setConditionOnSide,
   type TradeItemDraft,
@@ -18,8 +18,7 @@ export function useTradeComposer(initial?: { offering?: TradeItemDraft[]; reques
   requesting: TradeItemDraft[]
   addItem: (side: TradeSide, item: Item, duped: boolean, og: boolean) => void
   addCustomType: (side: TradeSide, customId: string) => void
-  removeOne: (side: TradeSide, key: TradeItemDraftKey) => void
-  removeRow: (side: TradeSide, key: TradeItemDraftKey) => void
+  removeAmount: (side: TradeSide, key: TradeItemDraftKey, amount: number) => void
   setCondition: (side: TradeSide, key: TradeItemDraftKey, next: { duped: boolean; og: boolean }) => void
   moveToOtherSide: (side: TradeSide, key: TradeItemDraftKey) => void
   reset: () => void
@@ -37,14 +36,9 @@ export function useTradeComposer(initial?: { offering?: TradeItemDraft[]; reques
     setter((prev) => addCustomTypeToSide(prev, customId))
   }
 
-  const removeOne = (side: TradeSide, key: TradeItemDraftKey): void => {
+  const removeAmount = (side: TradeSide, key: TradeItemDraftKey, amount: number): void => {
     const setter = side === 'offering' ? setOffering : setRequesting
-    setter((prev) => removeOneFromSide(prev, key))
-  }
-
-  const removeRow = (side: TradeSide, key: TradeItemDraftKey): void => {
-    const setter = side === 'offering' ? setOffering : setRequesting
-    setter((prev) => removeRowFromSide(prev, key))
+    setter((prev) => removeAmountFromSide(prev, key, amount))
   }
 
   const setCondition = (side: TradeSide, key: TradeItemDraftKey, next: { duped: boolean; og: boolean }): void => {
@@ -71,5 +65,5 @@ export function useTradeComposer(initial?: { offering?: TradeItemDraft[]; reques
     setRequesting(initial?.requesting ?? [])
   }
 
-  return { offering, requesting, addItem, addCustomType, removeOne, removeRow, setCondition, moveToOtherSide, reset }
+  return { offering, requesting, addItem, addCustomType, removeAmount, setCondition, moveToOtherSide, reset }
 }

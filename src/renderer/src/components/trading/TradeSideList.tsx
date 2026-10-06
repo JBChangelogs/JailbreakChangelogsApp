@@ -10,6 +10,9 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger
 } from '@renderer/components/ui/dropdown-menu'
 
@@ -43,6 +46,14 @@ function TrashIcon({ className }: { className?: string }): React.JSX.Element {
   )
 }
 
+function CloseIcon({ className }: { className?: string }): React.JSX.Element {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6 6 18" />
+    </svg>
+  )
+}
+
 function conditionOf(item: TradeItemDraft): 'clean' | 'duped' | 'og' {
   return item.duped ? 'duped' : item.og ? 'og' : 'clean'
 }
@@ -58,7 +69,7 @@ export function TradeSideList({
   title: string
   side: TradeSide
   items: TradeItemDraft[]
-  onRemove: (key: TradeItemDraftKey) => void
+  onRemove: (key: TradeItemDraftKey, amount: number) => void
   onSetCondition: (key: TradeItemDraftKey, next: { duped: boolean; og: boolean }) => void
   onMove: (key: TradeItemDraftKey) => void
 }): React.JSX.Element {
@@ -109,6 +120,15 @@ export function TradeSideList({
                   </p>
                 )}
               </div>
+              <button
+                type="button"
+                aria-label={item.amount > 1 ? `Remove one ${item.name}` : `Remove ${item.name}`}
+                title={item.amount > 1 ? 'Remove one' : 'Remove'}
+                onClick={() => onRemove(key, 1)}
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-tertiary-text transition-colors hover:bg-quaternary-bg hover:text-status-error"
+              >
+                <CloseIcon className="h-3.5 w-3.5" />
+              </button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
@@ -145,10 +165,34 @@ export function TradeSideList({
                     <SwapIcon className="h-4 w-4" />
                     Move to {otherSideLabel}
                   </DropdownMenuItem>
-                  <DropdownMenuItem destructive onClick={() => onRemove(key)}>
-                    <TrashIcon className="h-4 w-4" />
-                    Remove
-                  </DropdownMenuItem>
+                  {item.amount > 1 ? (
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger className="text-status-error focus:bg-status-error/10 data-[state=open]:bg-status-error/10">
+                        <TrashIcon className="h-4 w-4" />
+                        Remove
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent className="p-2">
+                        <p className="mb-1.5 px-0.5 text-[11px] font-medium text-tertiary-text">Remove how many?</p>
+                        <div className="flex flex-wrap gap-1">
+                          {Array.from({ length: item.amount }, (_, i) => i + 1).map((n) => (
+                            <DropdownMenuItem
+                              key={n}
+                              destructive
+                              onClick={() => onRemove(key, n)}
+                              className="h-7 min-w-7 justify-center rounded-md border border-border-card px-2 py-0 text-xs font-semibold"
+                            >
+                              {n === item.amount ? 'All' : n}
+                            </DropdownMenuItem>
+                          ))}
+                        </div>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                  ) : (
+                    <DropdownMenuItem destructive onClick={() => onRemove(key, 1)}>
+                      <TrashIcon className="h-4 w-4" />
+                      Remove
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>

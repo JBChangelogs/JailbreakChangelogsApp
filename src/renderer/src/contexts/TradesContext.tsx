@@ -35,7 +35,7 @@ interface TradesContextValue {
   setCreateActiveSide: (side: TradeSide) => void
   addCreateItem: (item: Item, duped: boolean, og: boolean, side: TradeSide) => void
   addCreateCustomType: (customId: string, side: TradeSide) => void
-  removeCreateItem: (side: TradeSide, key: TradeItemDraftKey) => void
+  removeCreateItem: (side: TradeSide, key: TradeItemDraftKey, amount: number) => void
   setCreateItemCondition: (side: TradeSide, key: TradeItemDraftKey, next: { duped: boolean; og: boolean }) => void
   moveCreateItem: (side: TradeSide, key: TradeItemDraftKey) => void
   createNote: string
@@ -162,7 +162,7 @@ export function TradesProvider({ children }: { children: React.ReactNode }): Rea
     setCreateActiveSide,
     addCreateItem: (item, duped, og, side) => composer.addItem(side, item, duped, og),
     addCreateCustomType: (customId, side) => composer.addCustomType(side, customId),
-    removeCreateItem: composer.removeRow,
+    removeCreateItem: composer.removeAmount,
     setCreateItemCondition: composer.setCondition,
     moveCreateItem: composer.moveToOtherSide,
     createNote,

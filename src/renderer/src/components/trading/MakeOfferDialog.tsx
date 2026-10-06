@@ -97,7 +97,7 @@ export function MakeOfferDialog({ tradeId, onCancel, onSent }: MakeOfferDialogPr
                 title="Your Offering"
                 side="offering"
                 items={composer.offering}
-                onRemove={(key) => composer.removeRow('offering', key)}
+                onRemove={(key, amount) => composer.removeAmount('offering', key, amount)}
                 onSetCondition={(key, next) => composer.setCondition('offering', key, next)}
                 onMove={(key) => composer.moveToOtherSide('offering', key)}
               />
@@ -105,7 +105,7 @@ export function MakeOfferDialog({ tradeId, onCancel, onSent }: MakeOfferDialogPr
                 title="Your Requesting"
                 side="requesting"
                 items={composer.requesting}
-                onRemove={(key) => composer.removeRow('requesting', key)}
+                onRemove={(key, amount) => composer.removeAmount('requesting', key, amount)}
                 onSetCondition={(key, next) => composer.setCondition('requesting', key, next)}
                 onMove={(key) => composer.moveToOtherSide('requesting', key)}
               />

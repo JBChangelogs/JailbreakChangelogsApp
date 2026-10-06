@@ -574,11 +574,8 @@ function MessageRow({
     }
   }
 
-  const handleDelete = (): void => {
-    if (window.confirm('Delete this message? This cannot be undone.')) {
-      void onDelete(message.id)
-    }
-  }
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const handleDelete = (): void => setDeleteOpen(true)
 
   const [reportOpen, setReportOpen] = useState(false)
   const [reportReason, setReportReason] = useState('')
@@ -773,6 +770,33 @@ function MessageRow({
 
   if (!canShowActions) return rowContent
 
+  const deleteDialog = (
+    <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Delete message?</DialogTitle>
+        </DialogHeader>
+        <div className="px-5 py-4 text-sm text-secondary-text">This cannot be undone.</div>
+        <div className="flex shrink-0 justify-end gap-2 border-t border-border-primary px-5 py-4">
+          <Button type="button" variant="secondary" size="sm" onClick={() => setDeleteOpen(false)}>
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            size="sm"
+            onClick={() => {
+              setDeleteOpen(false)
+              void onDelete(message.id)
+            }}
+          >
+            Delete
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+
   const reportDialog = (
     <Dialog open={reportOpen} onOpenChange={(open) => !open && setReportOpen(false)}>
       <DialogContent className="max-w-sm">
@@ -842,6 +866,7 @@ function MessageRow({
         </ContextMenuContent>
       </ContextMenu>
       {reportDialog}
+      {deleteDialog}
     </>
   )
 }

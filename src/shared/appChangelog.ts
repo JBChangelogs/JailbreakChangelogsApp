@@ -9,6 +9,11 @@ export interface AppChangelogEntry {
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.5.10',
+    date: '2026-10-06',
+    changed: ['Requests to the Jailbreak Changelogs API are now marked as coming from the desktop app']
+  },
+  {
     version: '0.5.9',
     date: '2026-10-05',
     changed: [

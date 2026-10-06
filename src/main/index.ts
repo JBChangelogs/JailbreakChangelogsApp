@@ -187,6 +187,9 @@ if (!gotSingleInstanceLock) {
       },
       (details, callback) => {
         details.requestHeaders['User-Agent'] = 'JailbreakChangelogsApp'
+        if (new URL(details.url).hostname === 'api.jailbreakchangelogs.com') {
+          details.requestHeaders['X-Application'] = 'true'
+        }
         callback({ requestHeaders: details.requestHeaders })
       }
     )

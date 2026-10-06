@@ -44,7 +44,7 @@ export function SettingsPage(): React.JSX.Element | null {
       }`}
     >
       <SettingsSidebar />
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable_both-edges]">
         {section === 'account' && <AccountSettingsSection />}
         {section === 'privacy' && <PrivacySettingsSection />}
         {section === 'notifications' && <NotificationsSettingsSection />}

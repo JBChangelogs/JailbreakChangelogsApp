@@ -98,6 +98,17 @@ Releases are served from `https://updates.jailbreakchangelogs.com`, a Cloudflare
 
    Each one clears `dist/` and builds the app. `release:win` packages it with `vpk`. Each then uploads the release files to R2 with `build/upload-release.mjs`. The Windows installer is always uploaded as `JBCLSetup.exe`. Only the current version's full `.nupkg` is kept; older ones are deleted from the bucket.
 
+   **Releasing both from Windows:** build Windows, build the AppImage in Docker (container `node_modules` live in their own volume, so the Windows install isn't touched), then upload both at once:
+
+   ```sh
+   node -e "require('fs').rmSync('dist',{recursive:true,force:true})"
+   npm run build:win
+   MSYS_NO_PATHCONV=1 docker run --rm -v "$(pwd -W)":/project -v jbcl-linux-node-modules:/project/node_modules -w /project electronuserland/builder:22 bash -c "npm ci && npm run build:linux"
+   node build/upload-release.mjs
+   ```
+
+   That's Git Bash syntax. In PowerShell, use `-v "${PWD}:/project"` and drop the `MSYS_NO_PATHCONV=1` prefix.
+
 4. **Commit** the version bump and changelog entry.
 
 Download links stay the same between releases:

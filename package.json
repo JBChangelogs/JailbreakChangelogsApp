@@ -13,9 +13,9 @@
     "build": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json && electron-vite build",
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
-    "build:win": "npm run build && electron-builder --win && node build/pack-windows.mjs",
-    "build:mac": "npm run build && electron-builder --mac",
-    "build:linux": "npm run build && electron-builder --linux",
+    "build:win": "npm run build && electron-builder --win --publish never && node build/pack-windows.mjs",
+    "build:mac": "npm run build && electron-builder --mac --publish never",
+    "build:linux": "npm run build && electron-builder --linux --publish never",
     "release:win": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && npm run build:win && node build/upload-release.mjs",
     "release:linux": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && npm run build:linux && node build/upload-release.mjs"
   },

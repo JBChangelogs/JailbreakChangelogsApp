@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useCurrentUser } from '@renderer/hooks/useCurrentUser'
+import { useRobberyAlerts } from '@renderer/lib/trackerAlerts'
 import { useRobberyTrackerWebSocket } from '@renderer/hooks/useRobberyTrackerWebSocket'
 import { useRobberyFilters, type ServerSizeFilter, type TimeSort } from '@renderer/hooks/useRobberyFilters'
 import { useJoinHistory, type JoinHistoryEntry } from '@renderer/hooks/useJoinHistory'
@@ -47,7 +48,15 @@ interface RobberyTrackerContextValue {
 
 const RobberyTrackerContext = createContext<RobberyTrackerContextValue | null>(null)
 
-export function RobberyTrackerProvider({ children }: { children: React.ReactNode }): React.JSX.Element {
+export function RobberyTrackerProvider({
+  children,
+  enabled,
+  onAlertClick
+}: {
+  children: React.ReactNode
+  enabled: boolean
+  onAlertClick: () => void
+}): React.JSX.Element {
   const { user } = useCurrentUser()
   const {
     data: robberies,
@@ -61,7 +70,8 @@ export function RobberyTrackerProvider({ children }: { children: React.ReactNode
     reconnect,
     reconnectFromBan,
     checkBanStatus
-  } = useRobberyTrackerWebSocket(true, user?.id)
+  } = useRobberyTrackerWebSocket(enabled, user?.id)
+  useRobberyAlerts(robberies, onAlertClick)
 
   const filters = useRobberyFilters()
   const { selectedTypes, serverSize, timeSort, searchQuery, selectedCountries } = filters

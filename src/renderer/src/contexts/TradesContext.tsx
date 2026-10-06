@@ -10,7 +10,7 @@ import type { TradeAd } from '@shared/trading'
 
 export type TradesTab = 'all' | 'mine'
 
-export type TradesView = { type: 'list' } | { type: 'create' } | { type: 'detail'; id: number }
+export type TradesView = { type: 'list' } | { type: 'create' } | { type: 'detail'; id: number; makeOffer?: boolean }
 
 interface TradesContextValue {
   ads: TradeAd[]

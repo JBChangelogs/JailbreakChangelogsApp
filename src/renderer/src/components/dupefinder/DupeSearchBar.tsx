@@ -123,18 +123,11 @@ export function DupeSearchBar({
         }}
       >
         <div className="relative flex items-center">
-          <button
-            type="submit"
-            disabled={loading || !value.trim()}
-            aria-label="Search"
-            className="absolute left-2.5 flex h-6 w-6 items-center justify-center rounded-lg text-secondary-text transition-colors hover:text-primary-text disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {loading ? (
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-border-primary border-t-status-info" />
-            ) : (
-              <SearchIcon className="h-4 w-4" />
-            )}
-          </button>
+          {loading ? (
+            <div className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 animate-spin rounded-full border-2 border-border-primary border-t-status-info" />
+          ) : (
+            <SearchIcon className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-secondary-text" />
+          )}
           <input
             type="search"
             autoComplete="off"

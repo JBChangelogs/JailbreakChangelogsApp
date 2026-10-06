@@ -9,6 +9,31 @@ export interface AppChangelogEntry {
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.5.11',
+    date: '2026-10-06',
+    added: [
+      'Robbery alerts: click the bell next to a robbery in the tracker sidebar to get notified when it opens',
+      'Bounty alerts: get notified when a server\'s total bounty or a single player\'s bounty lands in a range you pick',
+      'Alerts keep working while you\'re on other tabs',
+      'Message the poster of a trade ad, or anyone who made an offer, straight from the trade details page',
+      'Make Offer button on trade ads in the list'
+    ],
+    changed: [
+      'Redesigned trade ad cards with the poster\'s Roblox name, when the ad was created and when it expires',
+      'The trade details page now shows who posted the ad, the full item tiles, and when the ad expires',
+      'Trade totals now value duped items at their duped value, with a cash/duped breakdown',
+      'Clearer empty states for trade ads and offers',
+      'Reworked the values filters: grouped sort menu, clearer type tiles, color-coded demand and trend chips, and a Clear all button',
+      'Reworked the robbery and bounty tracker sidebars, with live counts per robbery and quick bounty range presets'
+    ],
+    fixed: [
+      'Accepting, declining or deleting trade offers now shows an error if it fails instead of silently doing nothing',
+      'Demand and trend filter chips no longer shift around when selected',
+      'Page headers now line up exactly with the navigation bar',
+      'The dupe finder search icon now matches the other search boxes'
+    ]
+  },
+  {
     version: '0.5.10',
     date: '2026-10-06',
     changed: ['Requests to the Jailbreak Changelogs API are now marked as coming from the desktop app']

@@ -9,11 +9,17 @@ import {
   getTrendColor,
   handleImageError
 } from '@renderer/lib/itemValueUtils'
-import { sideTotalValue, isTradeExpired } from '@renderer/lib/tradeDisplay'
-import { getCustomTradeTypeIconUrl, isCustomTradeItemId, type TradeAd, type TradeItemWire } from '@shared/trading'
+import { sideValue, isTradeExpired, formatTimeLeft } from '@renderer/lib/tradeDisplay'
+import {
+  getCustomTradeTypeIconUrl,
+  isCustomTradeItemId,
+  type TradeAd,
+  type TradeAdUser,
+  type TradeItemWire
+} from '@shared/trading'
 import { Button } from '@renderer/components/ui/button'
 
-function ItemTile({ item }: { item: TradeItemWire }): React.JSX.Element {
+export function ItemTile({ item }: { item: TradeItemWire }): React.JSX.Element {
   const custom = isCustomTradeItemId(item.id)
   const src = custom
     ? getCustomTradeTypeIconUrl(item.id.replace(' ', '_'))
@@ -107,6 +113,32 @@ function ItemTile({ item }: { item: TradeItemWire }): React.JSX.Element {
   )
 }
 
+export function TradeUserAvatar({
+  user,
+  label,
+  className = 'h-7 w-7'
+}: {
+  user: TradeAdUser | null | undefined
+  label: string
+  className?: string
+}): React.JSX.Element {
+  const [failed, setFailed] = useState(false)
+  const avatar = user?.roblox_avatar ?? null
+  return avatar && !failed ? (
+    <img src={avatar} alt="" onError={() => setFailed(true)} className={`${className} shrink-0 rounded-full object-cover`} />
+  ) : (
+    <div
+      className={`${className} flex shrink-0 items-center justify-center rounded-full bg-tertiary-bg text-[10px] font-semibold text-secondary-text`}
+    >
+      {label.slice(0, 2).toUpperCase()}
+    </div>
+  )
+}
+
+export function tradeUserLabel(user: TradeAdUser | null | undefined, fallbackId?: string): string {
+  return user?.global_name || user?.username || (fallbackId ? `User #${fallbackId.slice(-6)}` : 'Someone')
+}
+
 function ItemThumbnails({ items }: { items: TradeItemWire[] }): React.JSX.Element {
   return (
     <div className="flex gap-1.5 overflow-x-auto pb-0.5">
@@ -117,47 +149,73 @@ function ItemThumbnails({ items }: { items: TradeItemWire[] }): React.JSX.Elemen
   )
 }
 
+export function SideTotals({ items }: { items: TradeItemWire[] }): React.JSX.Element | null {
+  const value = sideValue(items)
+  if (value.total === 0) return null
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
+      <span className="inline-flex h-5 items-center rounded-md border border-border-card bg-quaternary-bg px-2 font-medium text-primary-text">
+        Total: {formatFullValue(String(value.total))}
+      </span>
+      {value.hasDuped && (
+        <>
+          <span className="inline-flex h-5 items-center rounded-md bg-status-success/80 px-2 font-medium text-form-button-text">
+            Cash: {formatFullValue(String(value.cash))}
+          </span>
+          <span className="inline-flex h-5 items-center rounded-md bg-status-error/80 px-2 font-medium text-form-button-text">
+            Duped: {formatFullValue(String(value.duped))}
+          </span>
+        </>
+      )}
+    </div>
+  )
+}
+
+function TradeSide({ label, items }: { label: string; items: TradeItemWire[] }): React.JSX.Element {
+  return (
+    <section className="min-w-0">
+      <h3 className="mb-2 text-xs font-semibold text-primary-text">
+        {label} <span className="font-medium text-secondary-text">({items.length})</span>
+      </h3>
+      <ItemThumbnails items={items} />
+      <SideTotals items={items} />
+    </section>
+  )
+}
+
 export function TradeAdCard({
   ad,
   onOpenDetail,
   onDelete
 }: {
   ad: TradeAd
-  onOpenDetail: (id: number) => void
+  onOpenDetail: (id: number, makeOffer?: boolean) => void
   onDelete: (id: number) => void
 }): React.JSX.Element {
   const { user: currentUser } = useCurrentUser()
   const created = useRelativeTime(ad.created_at)
   const expired = isTradeExpired(ad)
   const isOwner = currentUser?.id === ad.author
-  const [avatarFailed, setAvatarFailed] = useState(false)
-  const avatar = ad.user?.roblox_avatar ?? null
-  const label = ad.user?.global_name || ad.user?.username || `User #${ad.author.slice(-6)}`
+  const label = tradeUserLabel(ad.user, ad.author)
+  const robloxName = ad.user?.roblox_username
 
   return (
-    <div className="flex flex-col gap-2.5 rounded-2xl border border-border-card bg-secondary-bg p-3">
-      <div className="flex items-center gap-2">
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          {avatar && !avatarFailed ? (
-            <img
-              src={avatar}
-              alt=""
-              onError={() => setAvatarFailed(true)}
-              className="h-7 w-7 shrink-0 rounded-full object-cover"
-            />
-          ) : (
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-tertiary-bg text-[10px] font-semibold text-secondary-text">
-              {label.slice(0, 2).toUpperCase()}
-            </div>
-          )}
-          <span className="min-w-0 flex-1 truncate text-sm font-medium text-primary-text">{label}</span>
+    <div className="overflow-hidden rounded-xl border border-border-card bg-secondary-bg">
+      <div className="flex items-center gap-3 border-b border-border-card bg-tertiary-bg px-3 py-2">
+        <TradeUserAvatar user={ad.user} label={label} className="h-10 w-10 border border-border-card" />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-primary-text">{label}</p>
+          {robloxName && <p className="truncate text-xs text-secondary-text">@{robloxName}</p>}
+          <p className="mt-0.5 text-xs text-secondary-text">
+            Created {created ?? 'just now'}
+            <span className="mx-1.5">•</span>
+            {expired ? (
+              <span className="font-medium text-status-error">Expired</span>
+            ) : (
+              <>Expires in {formatTimeLeft(ad.expires)}</>
+            )}
+          </p>
         </div>
-        {expired && (
-          <span className="shrink-0 rounded-full bg-status-error/15 px-2 py-0.5 text-[10px] font-semibold text-status-error">
-            Expired
-          </span>
-        )}
-        <span className="shrink-0 text-[11px] text-quaternary-text">{created ?? 'just now'}</span>
         <div className="flex shrink-0 items-center gap-2">
           {isOwner && (
             <Button type="button" size="sm" variant="secondary" onClick={() => onDelete(ad.id)}>
@@ -167,25 +225,20 @@ export function TradeAdCard({
           <Button type="button" size="sm" onClick={() => onOpenDetail(ad.id)}>
             {isOwner ? 'View Offers' : 'Details'}
           </Button>
+          {!isOwner && !expired && (
+            <Button type="button" size="sm" variant="secondary" onClick={() => onOpenDetail(ad.id, true)}>
+              Make Offer
+            </Button>
+          )}
         </div>
       </div>
 
-      {ad.note && <p className="line-clamp-2 text-xs text-secondary-text">{ad.note}</p>}
-
-      <div className="grid grid-cols-2 gap-3">
-        <div className="min-w-0">
-          <p className="mb-1.5 text-[10px] font-bold tracking-wide text-quaternary-text uppercase">Offering</p>
-          <ItemThumbnails items={ad.offering} />
+      <div className="p-3">
+        {ad.note && <p className="mb-3 line-clamp-2 text-xs text-secondary-text">{ad.note}</p>}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <TradeSide label="Offering" items={ad.offering} />
+          <TradeSide label="Requesting" items={ad.requesting} />
         </div>
-        <div className="min-w-0">
-          <p className="mb-1.5 text-[10px] font-bold tracking-wide text-quaternary-text uppercase">Requesting</p>
-          <ItemThumbnails items={ad.requesting} />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 border-t border-border-primary pt-2">
-        <p className="text-xs font-semibold text-primary-text">{formatFullValue(String(sideTotalValue(ad.offering)))}</p>
-        <p className="text-xs font-semibold text-primary-text">{formatFullValue(String(sideTotalValue(ad.requesting)))}</p>
       </div>
     </div>
   )

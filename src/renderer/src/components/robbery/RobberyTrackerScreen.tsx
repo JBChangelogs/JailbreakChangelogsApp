@@ -94,7 +94,7 @@ export function RobberyTrackerScreen({
         ) : (
           <div
             className="grid gap-3"
-            style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 320px))' }}
+            style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 1fr))' }}
           >
             {filteredRobberies.map((robbery) => (
               <RobberyCard key={`${robbery.marker_name}-${robbery.job_id}-${robbery.timestamp}`} robbery={robbery} />

@@ -123,8 +123,8 @@ export function MakeOfferDialog({ tradeId, onCancel, onSent }: MakeOfferDialogPr
               <TradeItemPicker
                 side={activeSide}
                 onSide={setActiveSide}
-                onAddItem={(item, duped, og) => composer.addItem(activeSide, item, duped, og)}
-                onAddCustomType={(customId) => composer.addCustomType(activeSide, customId)}
+                onAddItem={(item, duped, og, side) => composer.addItem(side, item, duped, og)}
+                onAddCustomType={(customId, side) => composer.addCustomType(side, customId)}
                 atCap={totalCount(activeSide === 'offering' ? composer.offering : composer.requesting) >= 8}
               />
             </div>

@@ -9,6 +9,7 @@ files:
   - package.json
 asarUnpack:
   - '**/velopack/lib/native/**'
+  - 'resources/**'
 publish:
   provider: generic
   url: https://updates.jailbreakchangelogs.com

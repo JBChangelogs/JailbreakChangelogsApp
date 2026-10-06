@@ -33,8 +33,8 @@ interface TradesContextValue {
   createRequesting: TradeItemDraft[]
   createActiveSide: TradeSide
   setCreateActiveSide: (side: TradeSide) => void
-  addCreateItem: (item: Item, duped: boolean, og: boolean) => void
-  addCreateCustomType: (customId: string) => void
+  addCreateItem: (item: Item, duped: boolean, og: boolean, side: TradeSide) => void
+  addCreateCustomType: (customId: string, side: TradeSide) => void
   removeCreateItem: (side: TradeSide, key: TradeItemDraftKey) => void
   setCreateItemCondition: (side: TradeSide, key: TradeItemDraftKey, next: { duped: boolean; og: boolean }) => void
   moveCreateItem: (side: TradeSide, key: TradeItemDraftKey) => void
@@ -160,8 +160,8 @@ export function TradesProvider({ children }: { children: React.ReactNode }): Rea
     createRequesting: composer.requesting,
     createActiveSide,
     setCreateActiveSide,
-    addCreateItem: (item, duped, og) => composer.addItem(createActiveSide, item, duped, og),
-    addCreateCustomType: (customId) => composer.addCustomType(createActiveSide, customId),
+    addCreateItem: (item, duped, og, side) => composer.addItem(side, item, duped, og),
+    addCreateCustomType: (customId, side) => composer.addCustomType(side, customId),
     removeCreateItem: composer.removeRow,
     setCreateItemCondition: composer.setCondition,
     moveCreateItem: composer.moveToOtherSide,

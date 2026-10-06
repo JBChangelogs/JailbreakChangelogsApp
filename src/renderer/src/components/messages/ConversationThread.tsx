@@ -26,6 +26,10 @@ import { serversApi } from '@renderer/lib/serversApi'
 import { buildRobloxGameDeepLink } from '@renderer/lib/robberyUtils'
 import { FLOATING_PANEL_SURFACE } from '@renderer/lib/floatingPanelSurface'
 import type { MessageItem } from '@renderer/lib/messagesApi'
+import { useAuth } from '@renderer/contexts/AuthContext'
+import { tradesApi } from '@renderer/lib/tradesApi'
+import { ItemSide } from '@renderer/components/trading/TradeAdDetailScreen'
+import type { TradeOffer } from '@shared/trading'
 import type { UserProfile } from '@shared/user'
 import type { VipServerWithOwner } from '@shared/servers'
 
@@ -301,6 +305,57 @@ function SystemEmbedCard({
   )
 }
 
+function OfferAcceptedCard({
+  message,
+  tradeId,
+  offerId
+}: {
+  message: DisplayMessage
+  tradeId: number
+  offerId: number | null
+}): React.JSX.Element {
+  const { token } = useAuth()
+  const [offer, setOffer] = useState<TradeOffer | null>(null)
+
+  useEffect(() => {
+    if (!token) return
+    let cancelled = false
+    const load = offerId
+      ? tradesApi.getOffer(token, tradeId, offerId)
+      : tradesApi
+          .listOffers(token, tradeId)
+          .then((offers) => offers.find((o) => o.status === 1 || o.status === 3) ?? null)
+    load
+      .then((res) => {
+        if (!cancelled) setOffer(res)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [token, tradeId, offerId])
+
+  return (
+    <div className="relative max-w-md overflow-hidden rounded-2xl bg-secondary-bg py-2 pr-3 pl-4">
+      <span className="absolute inset-y-0 left-0 w-1 bg-status-success-vibrant" />
+      <p className="flex items-center gap-1.5 text-sm font-semibold text-status-success-vibrant">
+        <SystemCheckIcon className="h-4 w-4" />
+        Trade Offer Accepted
+      </p>
+      <p className="mt-0.5 text-sm text-secondary-text">
+        Offer on trade <span className="font-semibold text-primary-text">#{tradeId}</span> was accepted
+      </p>
+      {offer && (
+        <div className="mt-2 grid grid-cols-2 gap-3">
+          <ItemSide items={offer.offering ?? []} label="Offered" />
+          <ItemSide items={offer.requesting ?? []} label="For" />
+        </div>
+      )}
+      <p className="mt-1.5 text-[10px] text-quaternary-text">{formatMessageTimestamp(message.created_at)}</p>
+    </div>
+  )
+}
+
 function SystemMessageText({ metadata }: { metadata: Record<string, unknown> }): React.JSX.Element {
   if (metadata.type === 'offer_accepted' && metadata.trade) {
     return (
@@ -459,6 +514,18 @@ function MessageRow({
     const metadata = message.metadata
     const metaType = metadata.type
 
+    if (metaType === 'offer_accepted' && typeof metadata.trade === 'number') {
+      return (
+        <div className="group rounded px-5 py-1.5 pt-1 hover:bg-secondary-bg/60">
+          <OfferAcceptedCard
+            message={message}
+            tradeId={metadata.trade}
+            offerId={typeof metadata.offer === 'number' ? metadata.offer : null}
+          />
+        </div>
+      )
+    }
+
     if (metaType === 'game_invite' || metaType === 'vip_server_invite' || metaType === 'gift_sent') {
       return (
         <div className="group rounded px-5 py-1.5 pt-1 hover:bg-secondary-bg/60">
@@ -540,7 +607,7 @@ function MessageRow({
   const rowContent = (
     <div
       ref={(el) => registerRef(message.id, el)}
-      className={`group rounded px-5 transition-colors duration-150 hover:bg-secondary-bg/60 ${showSenderInfo ? 'mt-2 pt-1 o' : ''
+      className={`group rounded px-5 transition-colors duration-150 hover:bg-secondary-bg/60 ${showSenderInfo || message.parent_id ? 'mt-2 pt-1' : ''
         } ${isHighlighted ? 'bg-status-info/15' : isContextMenuOpen ? 'bg-secondary-bg/60' : ''}`}
     >
       {message.parent_id && (

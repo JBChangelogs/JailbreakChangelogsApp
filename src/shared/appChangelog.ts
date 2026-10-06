@@ -9,6 +9,21 @@ export interface AppChangelogEntry {
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.5.12',
+    date: '2026-10-06',
+    added: [
+      'Shift + click an item to add it to Offering, or Ctrl + click to add it to Requesting, when creating a trade ad or making an offer'
+    ],
+    changed: [
+      'Accepted trade offer messages now show the items that were traded',
+      'Robbery tracker cards now stretch to fill the available width'
+    ],
+    fixed: [
+      'Replies in messages no longer sit right up against the message above them',
+      'The app icon now loads correctly in the installed app'
+    ]
+  },
+  {
     version: '0.5.11',
     date: '2026-10-06',
     added: [

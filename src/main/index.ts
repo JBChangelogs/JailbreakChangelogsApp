@@ -1,8 +1,9 @@
 import { app, shell, BrowserWindow, ipcMain, session } from 'electron'
 import { join } from 'path'
+import { mkdirSync, writeFileSync } from 'fs'
 import { electronApp, is } from '@electron-toolkit/utils'
-import icon from '../../resources/icon.ico?asset'
-import iconPng from '../../resources/icon.png?asset'
+import icon from '../../resources/icon.ico?asset&asarUnpack'
+import iconPng from '../../resources/icon.png?asset&asarUnpack'
 import { saveToken, loadToken, clearToken } from './auth'
 import {
   connectDiscordRpc,
@@ -81,6 +82,13 @@ function watchWindowShortcuts(window: BrowserWindow): void {
       if (input.code === 'F12') {
         if (window.webContents.isDevToolsOpened()) window.webContents.closeDevTools()
         else window.webContents.openDevTools({ mode: 'undocked' })
+      }
+      if (input.code === 'F9') {
+        void window.webContents.capturePage().then((image) => {
+          const dir = join(process.cwd(), 'screenshots')
+          mkdirSync(dir, { recursive: true })
+          writeFileSync(join(dir, `preview-${Date.now()}.png`), image.toPNG())
+        })
       }
     } else {
       const isDevToolsShortcut =

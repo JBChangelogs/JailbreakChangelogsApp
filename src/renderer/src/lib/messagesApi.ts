@@ -7,14 +7,13 @@ const API_BASE = 'https://api.jailbreakchangelogs.com'
 async function request<T>(
   token: string,
   path: string,
-  init?: { method?: string; body?: unknown; headers?: Record<string, string> }
+  init?: { method?: string; body?: unknown }
 ): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     method: init?.method ?? 'GET',
     headers: {
       Authorization: token,
-      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
-      ...init?.headers
+      ...(init?.body ? { 'Content-Type': 'application/json' } : {})
     },
     body: init?.body ? JSON.stringify(init.body) : undefined
   })
@@ -73,8 +72,7 @@ export const messagesApi = {
   ): Promise<RawSentMessage> => {
     const res = await request<MessageEnvelope>(token, `/v2/conversations/${recipientId}/messages`, {
       method: 'POST',
-      body: { content, parent_id: parentId, ...(metadata ? { metadata } : {}) },
-      headers: { 'X-Application': 'true' }
+      body: { content, parent_id: parentId, ...(metadata ? { metadata } : {}) }
     })
     return res.message
   },

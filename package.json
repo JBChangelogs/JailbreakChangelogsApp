@@ -1,6 +1,6 @@
 {
   "name": "jailbreak-changelogs-desktop",
-  "version": "0.5.9",
+  "version": "0.5.10",
   "description": "Jailbreak Changelogs desktop app",
   "desktopName": "jailbreak-changelogs.desktop",
   "main": "./out/main/index.js",

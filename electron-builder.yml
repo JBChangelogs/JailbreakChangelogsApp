@@ -1,0 +1,38 @@
+appId: com.jailbreakchangelogs.desktop
+productName: Jailbreak Changelogs
+directories:
+  output: dist
+  buildResources: build
+files:
+  - out/**/*
+  - resources/**/*
+  - package.json
+asarUnpack:
+  - '**/velopack/lib/native/**'
+publish:
+  provider: generic
+  url: https://updates.jailbreakchangelogs.com
+win:
+  target: dir
+  icon: build/icon.ico
+  protocols:
+    name: Jailbreak Changelogs
+    schemes:
+      - jailbreakchangelogs
+mac:
+  target: dmg
+  icon: build/icon.png
+  category: public.app-category.social-networking
+  protocols:
+    name: Jailbreak Changelogs
+    schemes:
+      - jailbreakchangelogs
+linux:
+  target: AppImage
+  icon: build/icon.png
+  category: Network
+  syncDesktopName: true
+  artifactName: JBCLSetup.AppImage
+  desktop:
+    entry:
+      X-AppImage-Integrate: 'false'

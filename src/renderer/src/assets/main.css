@@ -1,0 +1,783 @@
+@layer theme, base, mui, components, utilities;
+@import "tailwindcss";
+@import "tw-animate-css";
+
+.ccpa-footer [data-ccpa-link] a,
+.ccpa-footer [data-ccpa-link] a span {
+  color: var(--color-secondary-text) !important;
+  text-decoration: none;
+}
+
+.ccpa-footer [data-ccpa-link] a:hover,
+.ccpa-footer [data-ccpa-link] a:hover span {
+  color: var(--color-secondary-text) !important;
+  text-decoration: underline;
+}
+
+@keyframes update-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(350%);
+  }
+}
+
+.animate-update-indeterminate {
+  animation: update-indeterminate 1.1s ease-in-out infinite;
+}
+
+@keyframes typing-dot {
+
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+  }
+
+  30% {
+    transform: translateY(-2px);
+  }
+}
+
+.animate-typing-dot {
+  animation-name: typing-dot;
+  animation-duration: 1s;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+@theme {
+  --color-primary-bg: #121317;
+  --color-secondary-bg: #17181d;
+  --color-tertiary-bg: #1c1e24;
+  --color-quaternary-bg: hsl(225,
+      4%,
+      25%);
+  --color-surface-bg: hsl(240,
+      3%,
+      12%);
+  --color-overlay-bg: hsl(240,
+      8%,
+      9%,
+      0.8);
+  --color-newsletter-bg: hsl(60, 100%, 100%);
+
+  --color-primary-text: hsl(60, 5%, 97%);
+  --color-secondary-text: hsl(214, 16%, 64%);
+  --color-tertiary-text: hsl(214,
+      12%,
+      45%);
+  --color-quaternary-text: hsl(214, 8%, 35%);
+  --color-card-headline: hsl(60, 100%, 100%);
+  --color-card-paragraph: hsl(214, 16%, 64%);
+
+  --color-border-primary: hsl(214,
+      8%,
+      20%);
+  --color-border-card: hsl(214, 8%, 22%);
+  --color-border-secondary: hsl(214,
+      6%,
+      15%);
+  --color-border-tertiary: hsl(214,
+      4%,
+      12%);
+  --color-border-focus: hsl(210, 99%, 50%);
+  --color-border-error: hsl(0,
+      81%,
+      62%);
+
+  --color-card-tag-bg: hsl(210, 99%, 50%);
+  --color-card-tag-text: hsl(60, 100%, 100%);
+  --color-card-highlight: hsl(60,
+      100%,
+      100%);
+  --color-card-shadow: hsl(0, 0%, 0%, 0.1);
+
+  --color-link: hsl(210, 100%, 70%);
+  --color-link-hover: hsl(210, 100%, 75%);
+  --color-link-active: hsl(210, 100%, 65%);
+  --color-link-visited: hsl(214, 12%, 65%);
+
+  --color-button-info: hsl(210,
+      99%,
+      35%);
+  --color-button-info-hover: hsl(210, 99%, 30%);
+  --color-button-info-active: hsl(218, 60%, 32%);
+  --color-button-info-disabled: hsl(214, 8%, 25%);
+  --color-button-success: hsl(155, 65%, 30%);
+  --color-button-success-hover: hsl(155, 60%, 24%);
+  --color-button-danger: hsl(0, 81%, 62%);
+  --color-button-danger-hover: hsl(0, 75%, 55%);
+  --color-button-secondary: hsl(212, 14%, 22%);
+  --color-button-secondary-hover: hsl(212, 14%, 18%);
+  --color-button-secondary-active: hsl(212, 20%, 16%);
+  --color-form-button: hsl(210,
+      99%,
+      35%);
+  --color-form-button-text: hsl(60, 100%, 100%);
+
+  --color-form-input: hsl(240, 8%, 9%);
+  --color-form-input-focus: hsl(240, 3%, 12%);
+  --color-form-input-disabled: hsl(214,
+      4%,
+      12%);
+  --color-form-label: hsl(60, 100%, 100%);
+  --color-form-placeholder: hsl(214, 8%, 35%);
+  --color-form-error: hsl(0, 81%, 62%);
+  --color-form-success: hsl(155, 61%, 44%);
+
+  --color-status-success: hsl(155,
+      61%,
+      30%);
+  --color-status-success-vibrant: hsl(120,
+      61%,
+      50%);
+  --color-status-warning: hsl(38, 100%, 61%);
+  --color-status-error: hsl(0,
+      81%,
+      45%);
+  --color-status-info: hsl(210, 99%, 50%);
+  --color-status-neutral: hsl(214, 8%, 35%);
+
+  --color-highlight: hsl(210, 99%, 50%);
+  --color-secondary: hsl(225, 5%, 47%);
+  --color-tertiary: hsl(155, 61%, 44%);
+  --color-stroke: hsl(0, 0%, 0%);
+
+  --color-warning: hsl(38, 100%, 61%);
+  --color-warning-light: hsl(48, 100%, 62%);
+  --color-warning-dark: hsl(32, 85%, 52%);
+
+  --color-badge-owner: linear-gradient(to right,
+      hsl(270, 100%, 50%),
+      hsl(240, 100%, 50%));
+  --color-badge-tester: hsl(270, 100%, 60%);
+  --color-badge-vtm: linear-gradient(to right,
+      hsl(155, 100%, 30%),
+      hsl(155, 100%, 25%));
+  --color-badge-vt: hsl(220, 100%, 50%);
+  --color-badge-partner: hsl(25, 100%, 50%);
+  --color-badge-contributor: linear-gradient(to right,
+      hsl(180, 100%, 30%),
+      hsl(180, 100%, 25%));
+  --color-badge-developer: linear-gradient(to right,
+      hsl(90, 100%, 50%),
+      hsl(90, 100%, 45%));
+  --color-badge-designer: linear-gradient(to right,
+      hsl(290, 100%, 55%),
+      hsl(320, 100%, 50%));
+  --color-badge-early-adopter: linear-gradient(to right,
+      hsl(45, 100%, 50%),
+      hsl(45, 100%, 45%));
+  --color-badge-premium-bronze: linear-gradient(to right,
+      hsl(30, 100%, 50%),
+      hsl(30, 100%, 45%));
+  --color-badge-premium-silver: linear-gradient(to right,
+      hsl(0, 0%, 75%),
+      hsl(0, 0%, 65%));
+  --color-badge-premium-gold: linear-gradient(to right,
+      hsl(45, 100%, 50%),
+      hsl(45, 100%, 45%));
+
+  --color-supporter-bronze-border: #cd7f32;
+  --color-supporter-silver-border: #c0c0c0;
+  --color-supporter-gold-border: #ffd700;
+
+  --color-supporter-bronze-bg: hsl(30,
+      25%,
+      18%);
+  --color-supporter-silver-bg: hsl(210,
+      8%,
+      18%);
+  --color-supporter-gold-bg: hsl(45,
+      30%,
+      18%);
+
+  --color-overlay-light: hsl(240, 8%, 9%, 0.5);
+  --color-overlay-medium: hsl(240, 8%, 9%, 0.7);
+  --color-overlay-dark: hsl(240, 8%, 9%, 0.9);
+
+  --color-hero-overlay: hsl(0, 0%, 0%, 0.7);
+
+  --header-height-mobile: 4rem;
+  --header-height-desktop: 3rem;
+  --header-height: 0px;
+}
+
+.amoled {
+  --color-primary-bg: #000000;
+  --color-secondary-bg: #0a0a0a;
+  --color-tertiary-bg: #111111;
+  --color-quaternary-bg: hsl(0, 0%, 12%);
+  --color-surface-bg: #050505;
+  --color-overlay-bg: hsl(0, 0%, 0%, 0.9);
+  --color-newsletter-bg: hsl(60, 100%, 100%);
+
+  --color-primary-text: hsl(60, 100%, 100%);
+  --color-secondary-text: hsl(214, 16%, 64%);
+  --color-tertiary-text: hsl(214, 12%, 45%);
+  --color-quaternary-text: hsl(214, 8%, 35%);
+  --color-card-headline: hsl(60, 100%, 100%);
+  --color-card-paragraph: hsl(214, 16%, 64%);
+
+  --color-border-primary: hsl(214, 8%, 18%);
+  --color-border-card: hsl(214, 8%, 20%);
+  --color-border-secondary: hsl(214, 6%, 13%);
+  --color-border-tertiary: hsl(214, 4%, 10%);
+  --color-border-focus: hsl(210, 99%, 50%);
+  --color-border-error: hsl(0, 81%, 62%);
+
+  --color-card-tag-bg: hsl(210, 99%, 50%);
+  --color-card-tag-text: hsl(60, 100%, 100%);
+  --color-card-highlight: hsl(60, 100%, 100%);
+  --color-card-shadow: hsl(0, 0%, 0%, 0.3);
+
+  --color-link: hsl(210, 100%, 70%);
+  --color-link-hover: hsl(210, 100%, 75%);
+  --color-link-active: hsl(210, 100%, 65%);
+  --color-link-visited: hsl(214, 12%, 65%);
+
+  --color-button-info: hsl(210, 80%, 32%);
+  --color-button-info-hover: hsl(210, 80%, 26%);
+  --color-button-info-active: hsl(218, 55%, 28%);
+  --color-button-info-disabled: hsl(214, 8%, 25%);
+  --color-button-success: hsl(155, 65%, 30%);
+  --color-button-success-hover: hsl(155, 65%, 40%);
+  --color-button-danger: hsl(0, 95%, 72%);
+  --color-button-danger-hover: hsl(0, 90%, 64%);
+  --color-button-secondary: hsl(212, 12%, 14%);
+  --color-button-secondary-hover: hsl(212, 14%, 19%);
+  --color-button-secondary-active: hsl(212, 18%, 11%);
+  --color-form-button: hsl(210, 80%, 32%);
+  --color-form-button-text: hsl(60, 100%, 100%);
+
+  --color-form-input: #050505;
+  --color-form-input-focus: #0a0a0a;
+  --color-form-input-disabled: hsl(214, 4%, 10%);
+  --color-form-label: hsl(60, 100%, 100%);
+  --color-form-placeholder: hsl(214, 8%, 35%);
+  --color-form-error: hsl(0, 81%, 62%);
+  --color-form-success: hsl(155, 61%, 44%);
+
+  --color-status-success: hsl(155, 61%, 30%);
+  --color-status-success-vibrant: hsl(120, 61%, 50%);
+  --color-status-warning: hsl(38, 100%, 61%);
+  --color-status-error: hsl(0, 81%, 55%);
+  --color-status-info: hsl(210, 99%, 50%);
+  --color-status-neutral: hsl(214, 8%, 35%);
+
+  --color-highlight: hsl(210, 99%, 50%);
+  --color-secondary: hsl(225, 5%, 47%);
+  --color-tertiary: hsl(155, 61%, 44%);
+  --color-stroke: hsl(0, 0%, 0%);
+
+  --color-warning: hsl(38, 100%, 61%);
+  --color-warning-light: hsl(48, 100%, 62%);
+  --color-warning-dark: hsl(32, 85%, 52%);
+
+  --color-badge-owner: linear-gradient(to right, hsl(270, 100%, 50%), hsl(240, 100%, 50%));
+  --color-badge-tester: hsl(270, 100%, 60%);
+  --color-badge-vtm: linear-gradient(to right, hsl(155, 100%, 42%), hsl(155, 100%, 36%));
+  --color-badge-vt: hsl(220, 100%, 50%);
+  --color-badge-partner: hsl(25, 100%, 50%);
+  --color-badge-contributor: linear-gradient(to right, hsl(180, 100%, 38%), hsl(180, 100%, 32%));
+  --color-badge-developer: linear-gradient(to right, hsl(90, 100%, 50%), hsl(90, 100%, 45%));
+  --color-badge-designer: linear-gradient(to right, hsl(290, 100%, 55%), hsl(320, 100%, 50%));
+  --color-badge-early-adopter: linear-gradient(to right, hsl(45, 100%, 50%), hsl(45, 100%, 45%));
+  --color-badge-premium-bronze: linear-gradient(to right, hsl(30, 100%, 50%), hsl(30, 100%, 45%));
+  --color-badge-premium-silver: linear-gradient(to right, hsl(0, 0%, 75%), hsl(0, 0%, 65%));
+  --color-badge-premium-gold: linear-gradient(to right, hsl(45, 100%, 50%), hsl(45, 100%, 45%));
+
+  --color-supporter-bronze-border: #cd7f32;
+  --color-supporter-silver-border: #c0c0c0;
+  --color-supporter-gold-border: #ffd700;
+
+  --color-supporter-bronze-bg: hsl(30, 25%, 10%);
+  --color-supporter-silver-bg: hsl(210, 8%, 10%);
+  --color-supporter-gold-bg: hsl(45, 30%, 10%);
+
+  --color-overlay-light: hsl(0, 0%, 0%, 0.5);
+  --color-overlay-medium: hsl(0, 0%, 0%, 0.7);
+  --color-overlay-dark: hsl(0, 0%, 0%, 0.95);
+
+  --color-hero-overlay: hsl(0, 0%, 0%, 0.8);
+}
+
+.light {
+  --color-primary-bg: #ffffff;
+  --color-secondary-bg: hsl(240,
+      5%,
+      94%);
+  --color-tertiary-bg: hsl(220,
+      8%,
+      91%);
+  --color-quaternary-bg: hsl(0,
+      0%,
+      94%);
+  --color-surface-bg: hsl(0, 0%, 100%);
+  --color-overlay-bg: hsl(0,
+      0%,
+      100%,
+      0.8);
+  --color-newsletter-bg: hsl(240, 8%, 9%);
+
+  --color-primary-text: hsl(240, 8%, 9%);
+  --color-secondary-text: hsl(214, 16%, 36%);
+  --color-tertiary-text: hsl(214, 12%, 55%);
+  --color-quaternary-text: hsl(214, 8%, 65%);
+  --color-card-headline: hsl(240, 8%, 9%);
+  --color-card-paragraph: hsl(214,
+      16%,
+      36%);
+
+  --color-border-primary: hsl(214, 8%, 80%);
+  --color-border-card: hsl(214, 7%, 86%);
+  --color-border-secondary: hsl(214,
+      6%,
+      85%);
+  --color-border-tertiary: hsl(214,
+      4%,
+      88%);
+  --color-border-focus: hsl(210, 99%, 50%);
+  --color-border-error: hsl(0, 81%, 62%);
+
+  --color-card-tag-bg: hsl(210,
+      99%,
+      50%);
+  --color-card-tag-text: hsl(60, 100%, 100%);
+  --color-card-highlight: hsl(240, 8%, 9%);
+  --color-card-shadow: hsl(0, 0%, 0%, 0.05);
+
+  --color-link: hsl(210, 99%, 40%);
+  --color-link-hover: hsl(210, 99%, 30%);
+  --color-link-active: hsl(218,
+      60%,
+      32%);
+  --color-link-visited: hsl(214, 12%, 55%);
+
+  --color-button-info: hsl(210,
+      99%,
+      35%);
+  --color-button-info-hover: hsl(210, 99%, 30%);
+  --color-button-info-active: hsl(218, 60%, 32%);
+  --color-button-info-disabled: hsl(214,
+      8%,
+      75%);
+  --color-button-success: hsl(155, 65%, 30%);
+  --color-button-success-hover: hsl(155, 60%, 24%);
+  --color-button-danger: hsl(0, 81%, 62%);
+  --color-button-danger-hover: hsl(0, 75%, 55%);
+  --color-button-secondary: hsl(214,
+      10%,
+      90%);
+  --color-button-secondary-hover: hsl(214,
+      10%,
+      84%);
+  --color-button-secondary-active: hsl(214,
+      12%,
+      78%);
+  --color-form-button: hsl(210,
+      99%,
+      35%);
+  --color-form-button-text: hsl(60, 100%, 100%);
+
+  --color-form-input: hsl(0, 0%, 100%);
+  --color-form-input-focus: hsl(0,
+      0%,
+      98%);
+  --color-form-input-disabled: hsl(214,
+      4%,
+      88%);
+  --color-form-label: hsl(240, 8%, 9%);
+  --color-form-placeholder: hsl(214,
+      8%,
+      65%);
+  --color-form-error: hsl(0, 81%, 62%);
+  --color-form-success: hsl(155, 61%, 44%);
+
+  --color-status-success: hsl(155,
+      61%,
+      30%);
+  --color-status-success-vibrant: hsl(120,
+      61%,
+      50%);
+  --color-status-warning: hsl(38, 100%, 61%);
+  --color-status-error: hsl(0,
+      81%,
+      45%);
+  --color-status-info: hsl(210, 99%, 50%);
+  --color-status-neutral: hsl(214, 8%, 65%);
+
+  --color-highlight: hsl(210,
+      99%,
+      50%);
+  --color-secondary: hsl(225, 5%, 47%);
+  --color-tertiary: hsl(155, 61%, 44%);
+  --color-stroke: hsl(214, 8%, 80%);
+
+  --color-warning: hsl(38, 100%, 61%);
+  --color-warning-light: hsl(48, 100%, 62%);
+  --color-warning-dark: hsl(32, 85%, 52%);
+
+  --color-badge-owner: linear-gradient(to right,
+      hsl(270, 100%, 50%),
+      hsl(240, 100%, 50%));
+  --color-badge-tester: hsl(270, 100%, 60%);
+  --color-badge-vtm: linear-gradient(to right,
+      hsl(155, 100%, 30%),
+      hsl(155, 100%, 25%));
+  --color-badge-vt: hsl(220, 100%, 50%);
+  --color-badge-partner: hsl(25, 100%, 50%);
+  --color-badge-contributor: linear-gradient(to right,
+      hsl(180, 100%, 30%),
+      hsl(180, 100%, 25%));
+  --color-badge-developer: linear-gradient(to right,
+      hsl(90, 100%, 50%),
+      hsl(90, 100%, 45%));
+  --color-badge-designer: linear-gradient(to right,
+      hsl(290, 100%, 55%),
+      hsl(320, 100%, 50%));
+  --color-badge-early-adopter: linear-gradient(to right,
+      hsl(45, 100%, 50%),
+      hsl(45, 100%, 45%));
+  --color-badge-premium-bronze: linear-gradient(to right,
+      hsl(30, 100%, 50%),
+      hsl(30, 100%, 45%));
+  --color-badge-premium-silver: linear-gradient(to right,
+      hsl(0, 0%, 75%),
+      hsl(0, 0%, 65%));
+  --color-badge-premium-gold: linear-gradient(to right,
+      hsl(45, 100%, 50%),
+      hsl(45, 100%, 45%));
+
+  --color-supporter-bronze-border: #cd7f32;
+  --color-supporter-silver-border: #c0c0c0;
+  --color-supporter-gold-border: #ffd700;
+
+  --color-supporter-bronze-bg: hsl(30,
+      35%,
+      94%);
+  --color-supporter-silver-bg: hsl(210,
+      15%,
+      94%);
+  --color-supporter-gold-bg: hsl(45,
+      45%,
+      94%);
+
+  --color-overlay-light: hsl(0, 0%, 100%, 0.5);
+  --color-overlay-medium: hsl(0, 0%, 100%, 0.7);
+  --color-overlay-dark: hsl(0, 0%, 100%, 0.9);
+
+  --color-hero-overlay: hsl(0,
+      0%,
+      0%,
+      0.5);
+}
+
+@layer base {
+  * {
+    outline-color: hsla(231,
+        100%,
+        62%,
+        0.3);
+  }
+
+  select,
+  select option {
+    font-family: "Inter", sans-serif;
+  }
+
+  select {
+    border-radius: 0.75rem;
+  }
+
+  select option {
+    border-radius: 0.75rem;
+  }
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  mix-blend-mode: normal;
+  animation: none;
+}
+
+::view-transition-group(navbar),
+::view-transition-group(navbar-mobile) {
+  backdrop-filter: blur(16px);
+}
+
+::view-transition-group(hero-card-1),
+::view-transition-group(hero-card-2),
+::view-transition-group(hero-card-3),
+::view-transition-group(hero-card-4),
+::view-transition-group(hero-card-5),
+::view-transition-group(hero-card-6),
+::view-transition-group(hero-card-7),
+::view-transition-group(hero-card-8),
+::view-transition-group(hero-card-9),
+::view-transition-group(hero-card-10),
+::view-transition-group(hero-card-11),
+::view-transition-group(hero-card-12),
+::view-transition-group(hero-card-13),
+::view-transition-group(hero-card-14),
+::view-transition-group(hero-card-15) {
+  backdrop-filter: blur(16px);
+}
+
+::view-transition-old(root) {
+  z-index: 1;
+}
+
+::view-transition-new(root) {
+  z-index: 999;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--color-border-primary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-secondary);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.tabs {
+  --tab-bg: var(--color-secondary-bg);
+  --tab-border-color: var(--color-border-primary);
+  --tab-radius: 0.5rem;
+}
+
+.tab {
+  color: var(--color-secondary-text);
+  background-color: var(--color-secondary-bg);
+  border-color: var(--color-border-primary);
+}
+
+.tab:hover {
+  color: var(--color-primary-text);
+  background-color: var(--color-quaternary-bg);
+}
+
+.tab-active {
+  color: var(--color-status-info);
+  background-color: var(--color-secondary-bg);
+  border-bottom-color: var(--color-status-info);
+  border-bottom-width: 2px;
+}
+
+#ncmp-consent-link button {
+  color: var(--color-link) !important;
+  background: none !important;
+  border: none !important;
+  padding: 0 !important;
+  font-size: 0.875rem !important;
+  line-height: 1.25rem !important;
+  text-align: left !important;
+  cursor: pointer !important;
+  transition-property: color !important;
+  transition-duration: 200ms !important;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important;
+  display: block !important;
+  font-family: inherit !important;
+  text-decoration: none !important;
+}
+
+#ncmp-consent-link button:hover {
+  color: var(--color-link-hover) !important;
+  background: none !important;
+}
+
+#ncmp-consent-link button:active {
+  color: var(--color-link-active) !important;
+}
+
+.changelog-prose {
+  color: var(--color-primary-text);
+  max-width: none;
+}
+
+.changelog-prose h1,
+.changelog-prose h2,
+.changelog-prose h3,
+.changelog-prose h4,
+.changelog-prose h5,
+.changelog-prose h6 {
+  color: var(--color-primary-text);
+  font-weight: 700;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+.changelog-prose h2 {
+  font-size: 1.875rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border-primary);
+}
+
+.changelog-prose h3 {
+  font-size: 1.5rem;
+}
+
+.changelog-prose p {
+  color: var(--color-secondary-text);
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  line-height: 1.75;
+}
+
+.changelog-prose a {
+  color: var(--color-button-info);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.changelog-prose a:hover {
+  opacity: 0.8;
+}
+
+.changelog-prose ul,
+.changelog-prose ol {
+  color: var(--color-secondary-text);
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+}
+
+.changelog-prose li {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.changelog-prose strong {
+  color: var(--color-primary-text);
+  font-weight: 600;
+}
+
+.changelog-prose code {
+  background-color: var(--color-secondary-bg);
+  color: var(--color-primary-text);
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.25rem;
+  font-size: 0.875em;
+  border: 1px solid var(--color-border-primary);
+}
+
+.changelog-prose pre {
+  background-color: var(--color-secondary-bg);
+  border: 1px solid var(--color-border-primary);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  overflow-x: auto;
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.changelog-prose pre code {
+  background-color: transparent;
+  color: var(--color-primary-text);
+  padding: 0;
+  border: none;
+  font-size: 0.875rem;
+}
+
+.changelog-prose img {
+  border-radius: 0.5rem;
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+  border: 1px solid var(--color-border-primary);
+}
+
+.changelog-prose blockquote {
+  border-left: 4px solid var(--color-button-info);
+  padding-left: 1rem;
+  color: var(--color-secondary-text);
+  font-style: italic;
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.changelog-prose hr {
+  border-color: var(--color-border-primary);
+  margin-top: 3rem;
+  margin-bottom: 3rem;
+}
+
+.changelog-prose table {
+  color: var(--color-secondary-text);
+  border-collapse: collapse;
+  width: 100%;
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+}
+
+.changelog-prose th,
+.changelog-prose td {
+  border: 1px solid var(--color-border-primary);
+  padding: 0.75rem;
+  text-align: left;
+}
+
+.changelog-prose th {
+  background-color: var(--color-secondary-bg);
+  color: var(--color-primary-text);
+  font-weight: 600;
+}
+
+@media (min-width: 1440px) {
+  .inventory-breakdown-sticky-card {
+    position: sticky;
+    height: fit-content;
+  }
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-primary) transparent;
+}
+
+img.twemoji {
+  display: inline !important;
+  height: 1.1em !important;
+  width: 1.1em !important;
+  vertical-align: -0.15em;
+  margin: 0;
+}
+
+[data-sonner-toaster] {
+  transition:
+    right 0.24s ease,
+    left 0.24s ease,
+    transform 0.24s ease !important;
+  will-change: right, left, transform;
+}
+
+[data-sonner-toaster][data-x-position="right"] [data-sonner-toast][data-removed="true"] {
+  --y: translateX(120%) !important;
+}
+
+.light [data-sonner-toaster][data-sonner-theme="light"] [data-sonner-toast] {
+  background-color: color-mix(in srgb,
+      var(--color-tertiary-bg),
+      transparent 30%) !important;
+  border-color: color-mix(in srgb,
+      var(--color-border-card),
+      black 18%) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+}

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' https://api.jailbreakchangelogs.com https://proof.jailbreakchangelogs.com wss://api.jailbreakchangelogs.com https://inventories.jailbreakchangelogs.com wss://inventories.jailbreakchangelogs.com; img-src 'self' data: blob: https:;" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jailbreak Changelogs</title>
+  <style>
+    #splash {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      background: #121317;
+      z-index: 9999;
+      opacity: 1;
+      transition: opacity 0.25s ease;
+    }
+
+    #splash.splash-hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    #splash img {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+    }
+
+    #splash .spinner {
+      width: 24px;
+      height: 24px;
+      border: 3px solid rgba(255, 255, 255, 0.15);
+      border-top-color: hsl(210, 99%, 50%);
+      border-radius: 50%;
+      animation: splash-spin 0.8s linear infinite;
+    }
+
+    @keyframes splash-spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    #splash .splash-links {
+      display: flex;
+      gap: 16px;
+      margin-top: 8px;
+    }
+
+    #splash .splash-links a {
+      font-family:
+        system-ui,
+        -apple-system,
+        sans-serif;
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.45);
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    #splash .splash-links a:hover {
+      color: rgba(255, 255, 255, 0.75);
+      text-decoration: underline;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="splash">
+    <img src="/src/assets/icon.png" alt="" />
+    <div class="spinner"></div>
+    <div class="splash-links">
+      <a id="splash-status-link">Status Page</a>
+      <a id="splash-website-link">Website</a>
+    </div>
+  </div>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
+</html>

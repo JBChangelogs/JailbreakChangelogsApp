@@ -308,7 +308,7 @@ function PickerCard({
     ? !item.duped_demand || item.duped_demand === 'N/A'
       ? 'N/A'
       : item.duped_demand
-    : item.demand === 'N/A'
+    : !item.demand || item.demand === 'N/A'
       ? 'Unknown'
       : item.demand
 

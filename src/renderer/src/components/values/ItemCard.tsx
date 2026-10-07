@@ -65,7 +65,7 @@ export function ItemCard({ item }: { item: Item }): React.JSX.Element {
 
   const cashChange = getValueChange(item.recent_changes, 'cash_value')
   const dupedChange = getValueChange(item.recent_changes, 'duped_value')
-  const demandLabel = item.demand === 'N/A' ? 'Unknown' : item.demand
+  const demandLabel = !item.demand || item.demand === 'N/A' ? 'Unknown' : item.demand
   const dupedDemandLabel = !item.duped_demand || item.duped_demand === 'N/A' ? 'N/A' : item.duped_demand
   const trendLabel = item.trend === null || item.trend === 'N/A' ? 'Unknown' : item.trend
   const hasNotes = Boolean(item.notes && item.notes !== 'N/A' && item.notes.trim() !== '')

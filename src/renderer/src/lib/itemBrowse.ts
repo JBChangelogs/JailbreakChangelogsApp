@@ -41,7 +41,7 @@ function compare(a: Item, b: Item, sort: ValueSort): number {
       return shuffleKey(a.id) - shuffleKey(b.id)
     case 'demand-desc':
     case 'demand-asc': {
-      const rank = (d: string): number => (demandOrder as readonly string[]).indexOf(d)
+      const rank = (d: string | null): number => (demandOrder as readonly string[]).indexOf(d ?? '')
       const diff = rank(b.demand) - rank(a.demand)
       return sort === 'demand-desc' ? diff : -diff
     }
@@ -59,7 +59,7 @@ export function filterAndSortItems(items: Item[], f: ItemBrowseFilters): Item[] 
     .filter(
       (item) =>
         (wantedTypes.size === 0 || wantedTypes.has(item.type.toLowerCase())) &&
-        (f.demand.size === 0 || f.demand.has(item.demand)) &&
+        (f.demand.size === 0 || f.demand.has(item.demand ?? '')) &&
         (f.trend.size === 0 || f.trend.has(item.trend ?? '')) &&
         (!query || item.name.toLowerCase().includes(query))
     )

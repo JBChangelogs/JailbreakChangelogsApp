@@ -20,7 +20,8 @@ export const APP_CHANGELOG: AppChangelogEntry[] = [
     ],
     changed: ['Trade ad totals now count duped items at their duped value'],
     fixed: [
-      'Discord Rich Presence and the Roblox status bar no longer think you left the game after a few quiet seconds'
+      'Discord Rich Presence and the Roblox status bar no longer think you left the game after a few quiet seconds',
+      'Fixed a crash when viewing your inventory in trade ads if it had an item without demand or trend info'
     ]
   },
   {

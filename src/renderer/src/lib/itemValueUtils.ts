@@ -83,8 +83,9 @@ export function formatPrice(price: string | null): string {
   return formatSinglePrice(price)
 }
 
-function normalizeCase(value: string): string {
-  return value
+// Some items have null demand/trend in the API (e.g. Time Attack), so accept missing values.
+function normalizeCase(value: string | null | undefined): string {
+  return (value ?? '')
     .split(' ')
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(' ')
@@ -142,7 +143,7 @@ export function getItemTypeColor(type: string): string {
   }
 }
 
-export function getDemandColor(demand: string): string {
+export function getDemandColor(demand: string | null | undefined): string {
   switch (normalizeCase(demand)) {
     case 'Close To None':
       return 'bg-gray-600 text-white'
@@ -165,7 +166,7 @@ export function getDemandColor(demand: string): string {
   }
 }
 
-export function getTrendColor(trend: string): string {
+export function getTrendColor(trend: string | null | undefined): string {
   switch (normalizeCase(trend)) {
     case 'Dropping':
       return 'bg-rose-600 text-white'

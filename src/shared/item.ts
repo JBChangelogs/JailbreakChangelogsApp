@@ -29,8 +29,9 @@ export interface Item {
   price: string
   is_limited: 0 | 1
   notes: string
-  demand: string
-  duped_demand: string
+  // null for a few items in the API.
+  demand: string | null
+  duped_demand: string | null
   description: string
   health: number
   tradable: 0 | 1

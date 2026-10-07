@@ -9,6 +9,21 @@ export interface AppChangelogEntry {
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.5.14',
+    date: '2026-10-06',
+    added: [
+      "Value Calculator page (between Values and Dupe Finder): add items to each side and see both totals and whether you're giving or getting more, with Swap, Mirror and Clear",
+      'Browse items in the calculator with search, sorting, type, demand and trend filters, or pick from your own inventory',
+      'Scan trade: draw a box around a trade window and the calculator fills itself in. Scanning runs on your computer',
+      'Auto scan: on the Jailbreak trading server, the calculator follows the open trade live and clears when you leave the trade menu',
+      'A "Send usage data" setting under Settings → Privacy'
+    ],
+    changed: ['Trade ad totals now count duped items at their duped value'],
+    fixed: [
+      'Discord Rich Presence and the Roblox status bar no longer think you left the game after a few quiet seconds'
+    ]
+  },
+  {
     version: '0.5.13',
     date: '2026-10-06',
     added: [

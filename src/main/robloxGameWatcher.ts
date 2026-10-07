@@ -11,7 +11,8 @@ const JOB_ID_PATTERN = /Joining game '([0-9a-fA-F-]{36})' place (\d+)/g
 const LOG_CREATE_BUFFER_MS = 5_000
 const POLL_INTERVAL_MS = 2_000
 const LAUNCH_TIME_FALLBACK_WINDOW_MS = 12 * 60 * 60 * 1000
-const STALE_SESSION_MS = 10_000
+// Written when the player leaves a game for the Roblox menu (teleports log a new join instead).
+const LEAVE_PATTERN = 'leaveUGCGameInternal'
 export interface RobloxActivityEvent {
   jobId: string | null
   placeId: string | null
@@ -101,7 +102,6 @@ export function startRobloxGameWatcher(onActivity: (event: RobloxActivityEvent) 
   let sessionStart = 0
   let initializing = false
   let inGame = false
-  let lastLogGrowthAt = 0
   const REQUIRED_CONSECUTIVE_POLLS = 2
   let presentStreak = 0
   let missingStreak = 0
@@ -112,22 +112,27 @@ export function startRobloxGameWatcher(onActivity: (event: RobloxActivityEvent) 
     if (seenJobIds.has(jobId)) return
     seenJobIds.add(jobId)
     inGame = true
-    lastLogGrowthAt = Date.now()
     onActivity({ jobId, placeId, game: KNOWN_ROBLOX_GAMES[placeId] ?? null })
   }
 
   const clearActivity = (): void => {
     if (!inGame) return
     inGame = false
+    seenJobIds.clear()
     onActivity({ jobId: null, placeId: null, game: null })
   }
 
+  // Joins and leaves in log order, so a leave followed by a rejoin ends up in-game.
   const scanFile = (content: string, baseline: number): void => {
+    const fresh = content.slice(baseline)
+    const events: { at: number; join?: { jobId: string; placeId: string } }[] = []
     JOB_ID_PATTERN.lastIndex = 0
     let match: RegExpExecArray | null
-    while ((match = JOB_ID_PATTERN.exec(content))) {
-      if (match.index + match[0].length <= baseline) continue
-      report(match[1], match[2])
+    while ((match = JOB_ID_PATTERN.exec(fresh))) events.push({ at: match.index, join: { jobId: match[1], placeId: match[2] } })
+    for (let at = fresh.indexOf(LEAVE_PATTERN); at !== -1; at = fresh.indexOf(LEAVE_PATTERN, at + 1)) events.push({ at })
+    for (const event of events.sort((a, b) => a.at - b.at)) {
+      if (event.join) report(event.join.jobId, event.join.placeId)
+      else clearActivity()
     }
   }
 
@@ -164,7 +169,6 @@ export function startRobloxGameWatcher(onActivity: (event: RobloxActivityEvent) 
     if (running || initializing) {
       const files = await getRecentLogFiles(logDir, sessionStart)
       let alreadyInGame: { jobId: string; placeId: string } | null = null
-      let grew = false
 
       for (const filePath of files) {
         const content = await readText(filePath)
@@ -174,12 +178,12 @@ export function startRobloxGameWatcher(onActivity: (event: RobloxActivityEvent) 
           fileBaselines.set(filePath, content.length)
           if (initializing) {
             const last = findLastMatch(content)
-            if (last) alreadyInGame = last
+            // Skip a join that was followed by leaving to the menu.
+            if (last && content.lastIndexOf(LEAVE_PATTERN) < content.lastIndexOf(`'${last.jobId}'`)) alreadyInGame = last
           }
           continue
         }
 
-        if (content.length !== knownBaseline) grew = true
         const baseline = content.length < knownBaseline ? 0 : knownBaseline
         fileBaselines.set(filePath, content.length)
         scanFile(content, baseline)
@@ -195,12 +199,6 @@ export function startRobloxGameWatcher(onActivity: (event: RobloxActivityEvent) 
         initializing = false
       }
 
-      if (grew) lastLogGrowthAt = Date.now()
-
-      if (inGame && Date.now() - lastLogGrowthAt > STALE_SESSION_MS) {
-        console.log('[roblox-watcher] no log activity for a while - treating the game session as ended')
-        clearActivity()
-      }
     }
 
     if (!cancelled) setTimeout(() => void poll(), POLL_INTERVAL_MS)

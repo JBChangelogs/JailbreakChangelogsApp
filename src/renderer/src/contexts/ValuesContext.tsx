@@ -6,6 +6,7 @@ import { itemsApi } from '@renderer/lib/itemDetailApi'
 import type { ValueSort } from '@renderer/lib/itemValueUtils'
 import { getLastSelectedItemId, setLastSelectedItemId } from '@renderer/lib/localPreferences'
 import type { Item } from '@shared/item'
+import { track } from '@renderer/lib/analytics'
 
 interface ValuesContextValue {
   items: Item[]
@@ -92,6 +93,7 @@ export function ValuesProvider({ children }: { children: React.ReactNode }): Rea
             setItems(res.items)
             setTotal(res.total)
             setPage(1)
+            if (query) track('search', { surface: 'values', query_len: query.length, results: res.total })
           })
           .catch(() => {
             if (id === queryId.current) setError(true)

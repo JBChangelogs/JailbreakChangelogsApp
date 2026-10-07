@@ -1,9 +1,10 @@
-import { createContext, useContext, useMemo, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useItems } from '@renderer/hooks/useItems'
 import { dupesApi, DupeUserNotFoundError, NoDupesFoundError } from '@renderer/lib/dupesApi'
 import { computeDuplicateInfo, getDupedValueForItem, mergeDupeFinderWithMetadata } from '@renderer/lib/dupeUtils'
 import type { DupeFinderItem, RobloxUserSummary } from '@shared/dupe'
 import type { Item } from '@shared/item'
+import { track } from '@renderer/lib/analytics'
 
 export type SortOrder = 'duplicates' | 'alpha-asc' | 'alpha-desc' | 'created-asc' | 'created-desc' | 'duped-desc' | 'duped-asc'
 
@@ -71,7 +72,15 @@ export function DupeFinderProvider({ children }: { children: React.ReactNode }):
   const [selectedItem, setSelectedItem] = useState<DupeFinderItem | null>(null)
   const [compareState, setCompareState] = useState<CompareState>({ status: 'closed' })
 
+  const searchedLength = useRef(0)
+  useEffect(() => {
+    if (state.status === 'idle' || state.status === 'loading') return
+    const results = state.status === 'success' ? state.items.length : 0
+    track('search', { surface: 'dupefinder', query_len: searchedLength.current, results })
+  }, [state])
+
   const search = (input: string): void => {
+    searchedLength.current = input.trim().length
     setState({ status: 'loading' })
     setSearchTerm('')
     setSelectedCategories(new Set())

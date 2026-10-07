@@ -1,4 +1,5 @@
 import { getDesktopNotificationsEnabled } from './localPreferences'
+import { track } from './analytics'
 export interface ToastAction {
   label: string
   onClick: () => void
@@ -9,6 +10,8 @@ export interface ToastOptions {
   action?: ToastAction
   durationMs?: number
   accent?: 'default' | 'info'
+  // Reported as desktop_notification_click {type} when the OS notification is clicked.
+  analyticsType?: string
 }
 
 export interface ToastRecord extends ToastOptions {
@@ -55,6 +58,7 @@ export function showToast(title: string, options: ToastOptions = {}): string {
 
 export function triggerToastAction(id: string): void {
   const toast = toasts.find((t) => t.id === id)
+  track('desktop_notification_click', { type: toast?.analyticsType ?? 'other' })
   toast?.action?.onClick()
   dismissToast(id)
 }

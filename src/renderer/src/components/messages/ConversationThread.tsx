@@ -32,6 +32,7 @@ import { ItemSide } from '@renderer/components/trading/TradeAdDetailScreen'
 import type { TradeOffer } from '@shared/trading'
 import type { UserProfile } from '@shared/user'
 import type { VipServerWithOwner } from '@shared/servers'
+import { track } from '@renderer/lib/analytics'
 
 const AVATAR_GROUP_GAP_MS = 5 * 60 * 1000
 
@@ -228,7 +229,14 @@ function VipServerJoinAction({ serverId }: { serverId: number }): React.JSX.Elem
     return <p className="text-xs text-quaternary-text italic">This invite is no longer valid.</p>
   }
   return (
-    <Button type="button" size="sm" onClick={() => void window.api.openExternal(server.link)}>
+    <Button
+      type="button"
+      size="sm"
+      onClick={() => {
+        track('server_join_click', { source: 'vip_invite' })
+        void window.api.openExternal(server.link)
+      }}
+    >
       <ExternalLinkIcon className="h-3.5 w-3.5" />
       Join Server
     </Button>
@@ -281,14 +289,15 @@ function SystemEmbedCard({
           <Button
             type="button"
             size="sm"
-            onClick={() =>
+            onClick={() => {
+              track('server_join_click', { source: 'game_invite' })
               void window.api.openExternal(
                 buildRobloxGameDeepLink(
                   metadata.place_id as string,
                   typeof metadata.job_id === 'string' ? metadata.job_id : null
                 )
               )
-            }
+            }}
           >
             <ExternalLinkIcon className="h-3.5 w-3.5" />
             Join Game

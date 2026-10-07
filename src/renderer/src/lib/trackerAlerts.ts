@@ -3,6 +3,7 @@ import { showToast } from '@renderer/lib/toast'
 import { robberyMarkerToDisplayName } from '@renderer/lib/robberyUtils'
 import type { RobberyData } from '@shared/robbery'
 import type { BountyData } from '@shared/bounty'
+import { track } from '@renderer/lib/analytics'
 
 export interface BountyRange {
   min: number
@@ -35,7 +36,14 @@ export function getTrackerAlerts(): TrackerAlertSettings {
   return settings
 }
 
+const rangeLabel = (r: BountyRange): string => `${r.min}-${r.max || 'max'}`
+
 export function updateTrackerAlerts(patch: Partial<TrackerAlertSettings>): void {
+  for (const type of patch.robberyTypes ?? []) {
+    if (!settings.robberyTypes.includes(type)) track('tracker_alert_set', { kind: 'robbery', robbery_type: type })
+  }
+  if (patch.serverBounty) track('tracker_alert_set', { kind: 'server_bounty', range: rangeLabel(patch.serverBounty) })
+  if (patch.playerBounty) track('tracker_alert_set', { kind: 'player_bounty', range: rangeLabel(patch.playerBounty) })
   settings = { ...settings, ...patch }
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
@@ -65,13 +73,21 @@ function inRange(value: number, range: BountyRange | null): boolean {
   return range !== null && value >= range.min && (range.max === 0 || value <= range.max)
 }
 
-function notifyAll(alerts: { title: string; description: string }[], summary: string, onClick: () => void): void {
+function notifyAll(
+  kind: 'robbery' | 'bounty',
+  alerts: { title: string; description: string }[],
+  summary: string,
+  onClick: () => void
+): void {
+  track('alert_fired', { kind, count: alerts.length })
   const action = { label: 'View', onClick }
   if (alerts.length > MAX_INDIVIDUAL_ALERTS) {
-    showToast(summary, { description: 'Open the tracker to see them.', action, accent: 'info' })
+    showToast(summary, { description: 'Open the tracker to see them.', action, accent: 'info', analyticsType: `${kind}_alert` })
     return
   }
-  for (const alert of alerts) showToast(alert.title, { description: alert.description, action, accent: 'info' })
+  for (const alert of alerts) {
+    showToast(alert.title, { description: alert.description, action, accent: 'info', analyticsType: `${kind}_alert` })
+  }
 }
 
 const isOpen = (r: RobberyData): boolean => r.status === 1 || r.status === 2
@@ -92,6 +108,7 @@ export function useRobberyAlerts(robberies: RobberyData[], onClick: () => void):
     if (fresh.length === 0) return
 
     notifyAll(
+      'robbery',
       fresh.map((r) => {
         const players = r.server?.players?.length
         const country = r.region_data?.country
@@ -141,6 +158,6 @@ export function useBountyAlerts(bounties: BountyData[], onClick: () => void): vo
       }))
     ]
     if (alerts.length === 0) return
-    notifyAll(alerts, `${alerts.length} bounties hit your alert ranges`, onClick)
+    notifyAll('bounty', alerts, `${alerts.length} bounties hit your alert ranges`, onClick)
   }, [bounties, onClick])
 }

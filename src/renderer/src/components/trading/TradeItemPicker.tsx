@@ -18,6 +18,7 @@ import { FilterMenu } from '@renderer/components/tracker/FilterMenus'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import type { Item } from '@shared/item'
 import type { TradeSide } from '@renderer/hooks/useTradeComposer'
+import { track, useSearchTracking } from '@renderer/lib/analytics'
 
 type TypeFilterValue = 'all' | ItemTypeFilter
 type Condition = 'clean' | 'duped' | 'og'
@@ -135,9 +136,15 @@ export function TradeItemPicker({ side, onSide, onAddItem, onAddCustomType, atCa
 
   const hasMore = visibleCount < activeCount
 
+  useSearchTracking('trade_picker', search, activeCount)
+
   // Ctrl/Cmd+click adds to requesting, Shift+click to offering, plain click to the selected side.
-  const sideFor = (e: React.MouseEvent): TradeSide =>
-    e.ctrlKey || e.metaKey ? 'requesting' : e.shiftKey ? 'offering' : side
+  const sideFor = (e: React.MouseEvent, from: Source | 'custom'): TradeSide => {
+    const method = e.ctrlKey || e.metaKey ? 'ctrl' : e.shiftKey ? 'shift' : 'click'
+    const target = method === 'ctrl' ? 'requesting' : method === 'shift' ? 'offering' : side
+    track('trade_item_add', { side: target, method, source: from })
+    return target
+  }
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
@@ -216,7 +223,7 @@ export function TradeItemPicker({ side, onSide, onAddItem, onAddCustomType, atCa
             <button
               key={type.id}
               type="button"
-              onClick={(e) => onAddCustomType(type.id, sideFor(e))}
+              onClick={(e) => onAddCustomType(type.id, sideFor(e, 'custom'))}
               className={`flex items-center gap-1.5 rounded-full border border-border-card bg-tertiary-bg py-1 pr-2.5 pl-1 text-[11px] font-medium text-secondary-text transition-colors hover:bg-quaternary-bg hover:text-primary-text ${atCap ? 'opacity-40' : ''}`}
             >
               <img
@@ -243,7 +250,7 @@ export function TradeItemPicker({ side, onSide, onAddItem, onAddCustomType, atCa
                   item={item}
                   disabled={atCap}
                   duped={condition === 'duped'}
-                  onAdd={(e) => onAddItem(item, condition === 'duped', condition === 'og', sideFor(e))}
+                  onAdd={(e) => onAddItem(item, condition === 'duped', condition === 'og', sideFor(e, 'catalog'))}
                 />
               ))}
             </div>
@@ -263,7 +270,7 @@ export function TradeItemPicker({ side, onSide, onAddItem, onAddCustomType, atCa
                   disabled={atCap}
                   duped={row.duped}
                   badge={row.duped ? 'Duped' : row.og ? 'OG' : undefined}
-                  onAdd={(e) => onAddItem(item, row.duped, row.og, sideFor(e))}
+                  onAdd={(e) => onAddItem(item, row.duped, row.og, sideFor(e, 'inventory'))}
                 />
               ))}
             </div>

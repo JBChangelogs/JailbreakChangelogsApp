@@ -8,6 +8,7 @@ import {
   setInAppNotificationsEnabled
 } from '@renderer/lib/localPreferences'
 import { SearchInput } from '@renderer/components/ui/search-input'
+import { useSearchTracking } from '@renderer/lib/analytics'
 import { NOTIFICATION_PREFERENCE_GROUPS } from '@shared/notification'
 
 function ChevronIcon({ className }: { className?: string }): React.JSX.Element {
@@ -32,6 +33,11 @@ export function NotificationsSettingsSection(): React.JSX.Element {
       ? group.categories.filter((c) => `${c.label} ${c.description}`.toLowerCase().includes(query))
       : group.categories
   })).filter((group) => group.categories.length > 0)
+  useSearchTracking(
+    'notification_settings',
+    search,
+    groups.reduce((n, g) => n + g.categories.length, 0)
+  )
 
   const toggleExpanded = (id: string): void =>
     setExpanded((prev) => {

@@ -13,6 +13,7 @@ import {
   robberyMarkerToDisplayName
 } from '@renderer/lib/robberyUtils'
 import type { RobberyData } from '@shared/robbery'
+import { track } from '@renderer/lib/analytics'
 
 function ClockIcon({ className }: { className?: string }): React.JSX.Element {
   return (
@@ -287,6 +288,7 @@ export function RobberyCard({ robbery }: { robbery: RobberyData }): React.JSX.El
                 setIsJoining(true)
                 addJoinHistoryEntry({ markerName: robbery.marker_name, displayName, serverId: jobId })
                 markJoined(jobId)
+                track('server_join_click', { source: 'tracker' })
                 window.api.openExternal(buildRobloxServerDeepLink(jobId))
                 setTimeout(() => setIsJoining(false), 5000)
               }}

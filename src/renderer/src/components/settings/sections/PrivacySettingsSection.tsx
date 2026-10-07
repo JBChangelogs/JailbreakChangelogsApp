@@ -1,8 +1,38 @@
+import { useEffect, useState } from 'react'
+import { Switch } from '@renderer/components/ui/switch'
 import { useAccountSettings } from '@renderer/hooks/useAccountSettings'
 import { CategorySettingsList } from './CategorySettingsList'
 import { BlockedUsersSection } from './BlockedUsersSection'
 
 const SHOWN_ELSEWHERE = new Set(['hide_roblox_activity'])
+
+function UsageDataToggle(): React.JSX.Element {
+  const [enabled, setEnabled] = useState<boolean | null>(null)
+  useEffect(() => {
+    void window.api.analytics.isEnabled().then(setEnabled)
+  }, [])
+
+  const toggle = (next: boolean): void => {
+    setEnabled(next)
+    window.api.analytics.setEnabled(next)
+  }
+
+  return (
+    <div className="mt-6">
+      <h2 className="text-xs font-bold tracking-wide text-quaternary-text uppercase">This app</h2>
+      <label className="mt-3 flex cursor-pointer items-center justify-between gap-3 rounded-md px-3 py-2 transition-colors hover:bg-quaternary-bg">
+        <div className="min-w-0">
+          <span className="text-sm text-primary-text">Send usage data</span>
+          <p className="mt-0.5 text-xs text-tertiary-text">
+            Share how you use the app, like which tabs you open and when alerts fire, to help improve it. Linked to
+            your account while you're logged in. Never includes your messages or what you search for.
+          </p>
+        </div>
+        <Switch checked={enabled ?? false} disabled={enabled === null} onCheckedChange={toggle} />
+      </label>
+    </div>
+  )
+}
 
 export function PrivacySettingsSection(): React.JSX.Element {
   const { settings, loading, error, pending, toggle } = useAccountSettings()
@@ -23,6 +53,8 @@ export function PrivacySettingsSection(): React.JSX.Element {
         categoryFilter={(name) => name.toLowerCase() === 'privacy'}
         excludeSettings={SHOWN_ELSEWHERE}
       />
+
+      <UsageDataToggle />
 
       <BlockedUsersSection />
     </div>

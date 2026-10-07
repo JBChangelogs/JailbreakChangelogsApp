@@ -8,6 +8,7 @@ import { ServerRoster } from '@renderer/components/tracker/ServerRoster'
 import { BountyCard } from '@renderer/components/bounty/BountyCard'
 import { buildRobloxServerDeepLink, formatServerTime } from '@renderer/lib/robberyUtils'
 import type { BountyServerGroup as BountyServerGroupData } from '@renderer/contexts/BountyTrackerContext'
+import { track } from '@renderer/lib/analytics'
 
 function DollarIcon({ className }: { className?: string }): React.JSX.Element {
   return (
@@ -118,6 +119,7 @@ export function ServerBountyGroup({ group }: { group: BountyServerGroupData }): 
                   serverId: jobId
                 })
                 markJoined(jobId)
+                track('server_join_click', { source: 'tracker' })
                 window.api.openExternal(buildRobloxServerDeepLink(jobId))
                 setTimeout(() => setIsJoining(false), 5000)
               }}

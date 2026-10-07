@@ -1,4 +1,6 @@
-const USER_AGENT = 'JailbreakChangelogsApp'
+import { app } from 'electron'
+
+export const USER_AGENT = `JailbreakChangelogsApp/${app.getVersion()} (${process.platform}; ${process.arch})`
 
 export function apiFetch(url: string, init: RequestInit = {}): Promise<Response> {
   return fetch(url, {

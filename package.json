@@ -34,6 +34,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "electron-updater": "^6.8.9",
+    "onnxruntime-node": "^1.30.0",
     "react-easy-crop": "^6.2.3",
     "react-markdown": "^10.1.0",
     "recharts": "^3.10.1",

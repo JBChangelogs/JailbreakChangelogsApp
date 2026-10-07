@@ -1,5 +1,6 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
 import type { UpdaterStatus } from '../main/autoUpdater'
+import type { AutoScanSettings, ScannerStatus, ScanResponse } from '../shared/tradeScan'
 import type { RobloxActivityEvent } from '../main/robloxGameWatcher'
 import type { RichPresencePreferenceKey } from '../shared/richPresence'
 
@@ -30,6 +31,19 @@ interface DesktopApi {
     onClick: (callback: (id: string) => void) => () => void
   }
   onRobloxActivityChanged: (callback: (event: RobloxActivityEvent) => void) => () => void
+  scanner: {
+    status: () => Promise<ScannerStatus>
+    snip: () => Promise<ScanResponse | null>
+    getAuto: () => Promise<AutoScanSettings>
+    setAutoEnabled: (enabled: boolean) => Promise<AutoScanSettings>
+    pickAutoArea: () => Promise<AutoScanSettings>
+    onAutoResult: (callback: (result: ScanResponse) => void) => () => void
+  }
+  analytics: {
+    track: (name: string, props?: Record<string, string | number | boolean>) => void
+    isEnabled: () => Promise<boolean>
+    setEnabled: (enabled: boolean) => void
+  }
   discordRpc: {
     setPreference: (key: RichPresencePreferenceKey, value: boolean) => void
   }

@@ -1,6 +1,7 @@
 import { CUSTOM_TRADE_TYPES, isCustomTradeItemId, type TradeItemWire } from '@shared/trading'
 import type { CreateTradeItemPayload } from '@renderer/lib/tradesApi'
 import type { Item } from '@shared/item'
+import { parseCashValue } from '@renderer/lib/itemValueUtils'
 
 export interface TradeItemDraft {
   id: string
@@ -21,6 +22,17 @@ function draftKey(id: string, duped: boolean, og: boolean): string {
 
 export type TradeItemDraftKey = { id: string; duped: boolean; og: boolean }
 
+// Value of a side, counting duped items at their duped value. Custom types (Adds, Overpays…) count as 0.
+export function sideValue(items: TradeItemDraft[]): number {
+  return items
+    .filter((item) => !isCustomTradeItemId(item.id))
+    .reduce(
+      (sum, item) =>
+        sum + Math.max(0, parseCashValue((item.duped ? item.dupedValue : item.cashValue) ?? null)) * item.amount,
+      0
+    )
+}
+
 export function totalCount(items: TradeItemDraft[]): number {
   return items.reduce((sum, item) => sum + item.amount, 0)
 }
@@ -38,9 +50,10 @@ export function addItemToSide(
   items: TradeItemDraft[],
   item: Item,
   duped: boolean,
-  og: boolean
+  og: boolean,
+  max = MAX_ITEMS_PER_SIDE
 ): TradeItemDraft[] {
-  if (totalCount(items) >= MAX_ITEMS_PER_SIDE) return items
+  if (totalCount(items) >= max) return items
   return upsertRow(items, {
     id: String(item.id),
     name: item.name,
@@ -53,8 +66,8 @@ export function addItemToSide(
   })
 }
 
-export function addCustomTypeToSide(items: TradeItemDraft[], customId: string): TradeItemDraft[] {
-  if (totalCount(items) >= MAX_ITEMS_PER_SIDE) return items
+export function addCustomTypeToSide(items: TradeItemDraft[], customId: string, max = MAX_ITEMS_PER_SIDE): TradeItemDraft[] {
+  if (totalCount(items) >= max) return items
   if (items.some((i) => i.id === customId)) return items
   const label = CUSTOM_TRADE_TYPES.find((t) => t.id === customId)?.label ?? customId
   return [...items, { id: customId, name: label, type: 'Custom', duped: false, og: false, amount: 1 }]
@@ -85,8 +98,8 @@ export function setConditionOnSide(
   return upsertRow(rest, { ...current, duped: next.duped, og: next.og })
 }
 
-export function addRowToSide(items: TradeItemDraft[], row: TradeItemDraft): TradeItemDraft[] {
-  if (totalCount(items) >= MAX_ITEMS_PER_SIDE) return items
+export function addRowToSide(items: TradeItemDraft[], row: TradeItemDraft, max = MAX_ITEMS_PER_SIDE): TradeItemDraft[] {
+  if (totalCount(items) >= max) return items
   return upsertRow(items, row)
 }
 

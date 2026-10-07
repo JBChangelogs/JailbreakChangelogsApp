@@ -1,7 +1,6 @@
 import { formatFullValue, getItemImagePath, handleImageError } from '@renderer/lib/itemValueUtils'
-import { parseCashValue } from '@renderer/lib/itemValueUtils'
 import { getCustomTradeTypeIconUrl, isCustomTradeItemId } from '@shared/trading'
-import { MAX_ITEMS_PER_SIDE, totalCount, type TradeItemDraft, type TradeItemDraftKey } from '@renderer/lib/tradeItemDraft'
+import { MAX_ITEMS_PER_SIDE, sideValue, totalCount, type TradeItemDraft, type TradeItemDraftKey } from '@renderer/lib/tradeItemDraft'
 import type { TradeSide } from '@renderer/hooks/useTradeComposer'
 import {
   DropdownMenu,
@@ -64,7 +63,9 @@ export function TradeSideList({
   items,
   onRemove,
   onSetCondition,
-  onMove
+  onMove,
+  max = MAX_ITEMS_PER_SIDE,
+  headerAction
 }: {
   title: string
   side: TradeSide
@@ -72,21 +73,24 @@ export function TradeSideList({
   onRemove: (key: TradeItemDraftKey, amount: number) => void
   onSetCondition: (key: TradeItemDraftKey, next: { duped: boolean; og: boolean }) => void
   onMove: (key: TradeItemDraftKey) => void
+  max?: number
+  headerAction?: React.ReactNode
 }): React.JSX.Element {
   const otherSideLabel = side === 'offering' ? 'Requesting' : 'Offering'
   const count = totalCount(items)
-  const totalValue = items
-    .filter((item) => !isCustomTradeItemId(item.id))
-    .reduce((sum, item) => sum + Math.max(0, parseCashValue(item.cashValue ?? null)) * item.amount, 0)
+  const totalValue = sideValue(items)
 
   return (
     <div className="flex min-h-0 flex-1 flex-col rounded-2xl border border-border-card bg-secondary-bg">
       <div className="flex shrink-0 items-center justify-between border-b border-border-primary px-3 py-2">
         <h3 className="text-xs font-bold tracking-wide text-quaternary-text uppercase">{title}</h3>
-        <span className="text-[11px] text-tertiary-text">
-          {count}/{MAX_ITEMS_PER_SIDE}
-          {totalValue > 0 && ` · ${formatFullValue(String(totalValue))}`}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-tertiary-text">
+            {Number.isFinite(max) ? `${count}/${max}` : count}
+            {totalValue > 0 && ` · ${formatFullValue(String(totalValue))}`}
+          </span>
+          {headerAction}
+        </div>
       </div>
       <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto p-2">
         {items.length === 0 && (

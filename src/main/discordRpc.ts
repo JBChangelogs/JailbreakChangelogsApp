@@ -70,6 +70,7 @@ const STATIC_LOCATIONS: Record<string, string> = {
 
 function humanizeSlug(slug: string): string {
   if (slug === 'dupefinder') return 'Dupe Finder'
+  if (slug === 'calculator') return 'Value Calculator'
   return decodeURIComponent(slug)
     .replace(/[-_]+/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase())

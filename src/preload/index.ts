@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import type { UpdaterStatus } from '../main/autoUpdater'
+import type { AutoScanSettings, ScannerStatus, ScanResponse } from '../shared/tradeScan'
 import type { RobloxActivityEvent } from '../main/robloxGameWatcher'
 import type { RichPresencePreferenceKey } from '../shared/richPresence'
 
@@ -62,6 +63,25 @@ const api = {
       callback(activityEvent)
     ipcRenderer.on('roblox:activity-changed', listener)
     return () => ipcRenderer.removeListener('roblox:activity-changed', listener)
+  },
+  scanner: {
+    status: (): Promise<ScannerStatus> => ipcRenderer.invoke('scanner:status'),
+    snip: (): Promise<ScanResponse | null> => ipcRenderer.invoke('scanner:snip'),
+    getAuto: (): Promise<AutoScanSettings> => ipcRenderer.invoke('scanner:get-auto'),
+    setAutoEnabled: (enabled: boolean): Promise<AutoScanSettings> =>
+      ipcRenderer.invoke('scanner:set-auto-enabled', enabled),
+    pickAutoArea: (): Promise<AutoScanSettings> => ipcRenderer.invoke('scanner:pick-auto-area'),
+    onAutoResult: (callback: (result: ScanResponse) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, result: ScanResponse): void => callback(result)
+      ipcRenderer.on('scanner:auto-result', listener)
+      return () => ipcRenderer.removeListener('scanner:auto-result', listener)
+    }
+  },
+  analytics: {
+    track: (name: string, props?: Record<string, string | number | boolean>) =>
+      ipcRenderer.send('analytics:track', name, props),
+    isEnabled: (): Promise<boolean> => ipcRenderer.invoke('analytics:get-enabled'),
+    setEnabled: (enabled: boolean) => ipcRenderer.send('analytics:set-enabled', enabled)
   },
   discordRpc: {
     setPreference: (key: RichPresencePreferenceKey, value: boolean) =>

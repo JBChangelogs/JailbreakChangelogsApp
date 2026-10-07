@@ -19,6 +19,17 @@ import { showDesktopNotification, registerWindowsToastIdentity } from './notific
 import { ensureLinuxProtocolHandler } from './linuxProtocol'
 import { startRobloxGameWatcher } from './robloxGameWatcher'
 import { VelopackApp } from 'velopack'
+import { USER_AGENT } from './apiFetch'
+import {
+  getAutoScanSettings,
+  getScannerStatus,
+  initAutoScan,
+  pickAutoScanArea,
+  setAutoScanEnabled,
+  setRobloxPlace,
+  snipAndScan
+} from './scanner'
+import { flushAnalytics, initAnalytics, isAnalyticsEnabled, setAnalyticsEnabled, track, trackAppClose } from './analytics'
 
 VelopackApp.build().run()
 
@@ -55,11 +66,14 @@ function deliverProtocolUrl(url: string): void {
   const error = parsed.searchParams.get('error')
 
   if (token) {
+    track('login_success')
     saveToken(token)
     mainWindow?.webContents.send('auth:login-success', token)
     refreshDiscordPresence()
     void refreshDevToolsAccess()
   } else if (error) {
+    // Only a short error code; never forward free text that could carry a token.
+    track('login_error', { reason: /^[\w-]{1,40}$/.test(error) ? error : 'other' })
     mainWindow?.webContents.send('auth:login-error', error)
   }
 }
@@ -174,6 +188,7 @@ if (!gotSingleInstanceLock) {
   app.quit()
 } else {
   app.on('second-instance', (_event, argv) => {
+    track('app_open', { cold_start: false })
     const url = extractProtocolUrl(argv)
     if (url) handleProtocolUrl(url)
   })
@@ -194,7 +209,7 @@ if (!gotSingleInstanceLock) {
         ]
       },
       (details, callback) => {
-        details.requestHeaders['User-Agent'] = 'JailbreakChangelogsApp'
+        details.requestHeaders['User-Agent'] = USER_AGENT
         if (new URL(details.url).hostname === 'api.jailbreakchangelogs.com') {
           details.requestHeaders['X-Application'] = 'true'
         }
@@ -226,6 +241,16 @@ if (!gotSingleInstanceLock) {
       return shell.openExternal(url)
     })
 
+    ipcMain.handle('scanner:status', () => getScannerStatus())
+    ipcMain.handle('scanner:snip', () => snipAndScan())
+    ipcMain.handle('scanner:get-auto', () => getAutoScanSettings())
+    ipcMain.handle('scanner:set-auto-enabled', (_event, enabled: boolean) => setAutoScanEnabled(enabled))
+    ipcMain.handle('scanner:pick-auto-area', () => pickAutoScanArea())
+
+    ipcMain.on('analytics:track', (_event, name: string, props: unknown) => track(name, props))
+    ipcMain.handle('analytics:get-enabled', () => isAnalyticsEnabled())
+    ipcMain.on('analytics:set-enabled', (_event, enabled: boolean) => setAnalyticsEnabled(Boolean(enabled)))
+
     ipcMain.on('updater:quit-and-install', () => quitAndInstall())
     ipcMain.on('updater:check-now', () => checkForUpdates())
 
@@ -242,11 +267,14 @@ if (!gotSingleInstanceLock) {
     })
 
     createWindow()
+    if (mainWindow) initAnalytics(mainWindow)
+    initAutoScan((result) => mainWindow?.webContents.send('scanner:auto-result', result))
     connectDiscordRpc()
     startAutoUpdateChecks()
     void refreshDevToolsAccess()
     startRobloxGameWatcher((event) => {
       mainWindow?.webContents.send('roblox:activity-changed', event)
+      setRobloxPlace(event.placeId)
       setRobloxActivity(event)
     })
 
@@ -270,6 +298,7 @@ app.on('before-quit', (event) => {
   if (isQuitting) return
   event.preventDefault()
   isQuitting = true
+  trackAppClose()
   const timeout = new Promise<void>((resolve) => setTimeout(resolve, 3000))
-  Promise.race([disconnectDiscordRpc(), timeout]).finally(() => app.quit())
+  Promise.race([Promise.all([disconnectDiscordRpc(), flushAnalytics()]), timeout]).finally(() => app.quit())
 })

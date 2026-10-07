@@ -20,6 +20,7 @@ import {
   getDemandColor,
   getTrendColor,
   trendOrder,
+  type ItemTypeFilter,
   type ValueSort
 } from '@renderer/lib/itemValueUtils'
 import { ItemCommentsSidebar } from '@renderer/components/values/itemdetail/ItemCommentsSidebar'
@@ -42,7 +43,15 @@ function CheckIcon({ className }: { className?: string }): React.JSX.Element {
 
 const SORT_LABELS = new Map(VALUE_SORT_GROUPS.flatMap((g) => g.options.map((o) => [o.value, o.label])))
 
-function SortMenu({ value, onChange }: { value: ValueSort; onChange: (value: ValueSort) => void }): React.JSX.Element {
+export function SortMenu({
+  value,
+  onChange,
+  groups = VALUE_SORT_GROUPS
+}: {
+  value: ValueSort
+  onChange: (value: ValueSort) => void
+  groups?: typeof VALUE_SORT_GROUPS
+}): React.JSX.Element {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -50,7 +59,7 @@ function SortMenu({ value, onChange }: { value: ValueSort; onChange: (value: Val
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="max-h-96 w-60 overflow-y-auto">
         <DropdownMenuRadioGroup value={value} onValueChange={(next) => onChange(next as ValueSort)}>
-          {VALUE_SORT_GROUPS.map((group, i) => (
+          {groups.map((group, i) => (
             <Fragment key={group.label}>
               {i > 0 && <DropdownMenuSeparator />}
               <DropdownMenuLabel className="text-[10px] font-bold tracking-wide text-quaternary-text uppercase">
@@ -69,7 +78,7 @@ function SortMenu({ value, onChange }: { value: ValueSort; onChange: (value: Val
   )
 }
 
-function SectionHeader({
+export function SectionHeader({
   label,
   count,
   onClear
@@ -93,7 +102,7 @@ function SectionHeader({
   )
 }
 
-function ColorChip({
+export function ColorChip({
   label,
   colorClass,
   active,
@@ -117,6 +126,45 @@ function ColorChip({
       <span className={`h-2 w-2 shrink-0 rounded-full ${active ? 'bg-current opacity-70' : colorClass}`} />
       {label}
     </button>
+  )
+}
+
+export function TypeTiles({
+  selected,
+  onToggle
+}: {
+  selected: ReadonlySet<string>
+  onToggle: (value: ItemTypeFilter) => void
+}): React.JSX.Element {
+  return (
+    <div className="grid grid-cols-2 gap-1.5">
+      {ITEM_TYPE_FILTERS.map((filter) => {
+        const active = selected.has(filter.value)
+        const color = getCategoryColor(filter.type)
+        const CategoryIcon = getCategoryIcon(filter.type)
+        return (
+          <button
+            key={filter.value}
+            type="button"
+            onClick={() => onToggle(filter.value)}
+            aria-pressed={active}
+            className={`relative flex items-center gap-1.5 rounded-lg border p-2 transition-colors ${active ? '' : 'border-border-card bg-tertiary-bg hover:bg-quaternary-bg'
+              }`}
+            style={active ? { borderColor: color, backgroundColor: `${color}26` } : undefined}
+          >
+            {CategoryIcon && <CategoryIcon className="h-4 w-4 shrink-0" style={{ color }} />}
+            <span className="min-w-0 flex-1 truncate text-left text-[11px] font-semibold text-primary-text">
+              {filter.label}
+            </span>
+            {active && (
+              <span className="shrink-0" style={{ color }}>
+                <CheckIcon className="h-3 w-3" />
+              </span>
+            )}
+          </button>
+        )
+      })}
+    </div>
   )
 }
 
@@ -200,34 +248,7 @@ export function ValuesSidebarFilters(): React.JSX.Element {
 
       <div className="min-h-0 flex-1 overflow-y-auto border-t border-border-primary px-2 pt-3 pb-2">
         <SectionHeader label="Type" count={selectedTypes.size} onClear={clearTypes} />
-        <div className="grid grid-cols-2 gap-1.5">
-          {ITEM_TYPE_FILTERS.map((filter) => {
-            const active = selectedTypes.has(filter.value)
-            const color = getCategoryColor(filter.type)
-            const CategoryIcon = getCategoryIcon(filter.type)
-            return (
-              <button
-                key={filter.value}
-                type="button"
-                onClick={() => toggleType(filter.value)}
-                aria-pressed={active}
-                className={`relative flex items-center gap-1.5 rounded-lg border p-2 transition-colors ${active ? '' : 'border-border-card bg-tertiary-bg hover:bg-quaternary-bg'
-                  }`}
-                style={active ? { borderColor: color, backgroundColor: `${color}26` } : undefined}
-              >
-                {CategoryIcon && <CategoryIcon className="h-4 w-4 shrink-0" style={{ color }} />}
-                <span className="min-w-0 flex-1 truncate text-left text-[11px] font-semibold text-primary-text">
-                  {filter.label}
-                </span>
-                {active && (
-                  <span className="shrink-0" style={{ color }}>
-                    <CheckIcon className="h-3 w-3" />
-                  </span>
-                )}
-              </button>
-            )
-          })}
-        </div>
+        <TypeTiles selected={selectedTypes} onToggle={toggleType} />
 
         <button
           type="button"

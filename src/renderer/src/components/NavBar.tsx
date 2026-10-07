@@ -47,6 +47,15 @@ function TradesIcon(): React.JSX.Element {
     )
 }
 
+function CalculatorIcon(): React.JSX.Element {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4.5 w-4.5">
+            <rect x="5" y="2" width="14" height="20" rx="2" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8 6h8M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15h.01M8 19h.01M12 19h4" />
+        </svg>
+    )
+}
+
 function DupeFinderIcon(): React.JSX.Element {
     return (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4.5 w-4.5">
@@ -60,7 +69,7 @@ function DupeFinderIcon(): React.JSX.Element {
     )
 }
 
-export type HomeTab = 'messages' | 'tracker' | 'values' | 'dupefinder' | 'trades'
+export type HomeTab = 'messages' | 'tracker' | 'values' | 'calculator' | 'dupefinder' | 'trades'
 
 interface NavItemProps {
     active?: boolean
@@ -127,6 +136,9 @@ export function NavBar({
             </NavItem>
             <NavItem label="Values" active={activeTab === 'values'} onClick={() => onSelect('values')}>
                 <GemIcon />
+            </NavItem>
+            <NavItem label="Value Calculator" active={activeTab === 'calculator'} onClick={() => onSelect('calculator')}>
+                <CalculatorIcon />
             </NavItem>
             <NavItem label="Dupe Finder" active={activeTab === 'dupefinder'} onClick={() => onSelect('dupefinder')}>
                 <DupeFinderIcon />

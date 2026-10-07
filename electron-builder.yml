@@ -9,12 +9,16 @@ files:
   - package.json
 asarUnpack:
   - '**/velopack/lib/native/**'
+  - '**/onnxruntime-node/bin/**'
   - 'resources/**'
 publish:
   provider: generic
   url: https://updates.jailbreakchangelogs.com
 win:
   target: dir
+  files:
+    - '!node_modules/onnxruntime-node/bin/napi-v*/{darwin,linux}/**'
+    - '!node_modules/onnxruntime-node/bin/napi-v*/win32/arm64/**'
   icon: build/icon.ico
   protocols:
     name: Jailbreak Changelogs
@@ -29,6 +33,10 @@ mac:
   # Ad-hoc signed (no Apple Developer account), so users must "Open Anyway" once and there is no auto-update.
   identity: '-'
   hardenedRuntime: false
+  files:
+    - '!node_modules/onnxruntime-node/bin/napi-v*/{win32,linux}/**'
+  # onnxruntime only ships arm64 Mac binaries; the same files land in both halves of the universal build.
+  x64ArchFiles: '**/onnxruntime-node/bin/**'
   category: public.app-category.social-networking
   protocols:
     name: Jailbreak Changelogs
@@ -36,6 +44,9 @@ mac:
       - jailbreakchangelogs
 linux:
   target: AppImage
+  files:
+    - '!node_modules/onnxruntime-node/bin/napi-v*/{win32,darwin}/**'
+    - '!node_modules/onnxruntime-node/bin/napi-v*/linux/arm64/**'
   icon: build/icon.png
   category: Network
   syncDesktopName: true

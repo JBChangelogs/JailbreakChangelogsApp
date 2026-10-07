@@ -22,6 +22,9 @@ import { ValuesProvider } from '@renderer/contexts/ValuesContext'
 import { ValuesScreen } from '@renderer/components/values/ValuesScreen'
 import { ValuesSidebarFilters } from '@renderer/components/values/ValuesSidebarFilters'
 import { DupeFinderProvider } from '@renderer/contexts/DupeFinderContext'
+import { CalculatorProvider } from '@renderer/contexts/CalculatorContext'
+import { CalculatorScreen } from '@renderer/components/calculator/CalculatorScreen'
+import { CalculatorSidebar } from '@renderer/components/calculator/CalculatorSidebar'
 import { DupeFinderScreen } from '@renderer/components/dupefinder/DupeFinderScreen'
 import { DupeFinderSidebar } from '@renderer/components/dupefinder/DupeFinderSidebar'
 import { TradesProvider } from '@renderer/contexts/TradesContext'
@@ -36,11 +39,13 @@ import {
   getLastSelectedConversationId,
   setLastSelectedConversationId
 } from '@renderer/lib/localPreferences'
+import { track } from '@renderer/lib/analytics'
 
 const VALID_TABS: readonly string[] = [
   'messages',
   'tracker',
   'values',
+  'calculator',
   'trades',
   'dupefinder',
 ] satisfies HomeTab[]
@@ -59,6 +64,7 @@ export function HomeScreen(): React.JSX.Element {
     return isHomeTab(stored) ? stored : 'messages'
   })
   const setActiveTab = (tab: HomeTab): void => {
+    if (tab !== activeTab) track('tab_view', { tab, prev_tab: activeTab })
     setActiveTabState(tab)
     setLastActiveTab(tab)
   }
@@ -67,6 +73,7 @@ export function HomeScreen(): React.JSX.Element {
     return isTrackerView(stored) ? stored : 'robberies'
   })
   const setTrackerView = (view: TrackerView): void => {
+    if (view !== trackerView) track('tracker_view_switch', { view: view === 'robberies' ? 'robbery' : 'bounty' })
     setTrackerViewState(view)
     setLastTrackerView(view)
   }
@@ -124,6 +131,8 @@ export function HomeScreen(): React.JSX.Element {
       )
     ) : activeTab === 'values' ? (
       <ValuesSidebarFilters />
+    ) : activeTab === 'calculator' ? (
+      <CalculatorSidebar />
     ) : activeTab === 'dupefinder' ? (
       <DupeFinderSidebar />
     ) : activeTab === 'trades' ? (
@@ -145,6 +154,8 @@ export function HomeScreen(): React.JSX.Element {
       )
     ) : activeTab === 'values' ? (
       <ValuesScreen />
+    ) : activeTab === 'calculator' ? (
+      <CalculatorScreen />
     ) : activeTab === 'dupefinder' ? (
       <DupeFinderScreen />
     ) : (
@@ -189,6 +200,7 @@ export function HomeScreen(): React.JSX.Element {
     )
 
   return (
+    <CalculatorProvider>
     <div className="flex h-full flex-1 min-w-0">
       <div className="flex h-full w-64 shrink-0 flex-col border-r border-border-primary bg-secondary-bg">
         <NavBar activeTab={activeTab} onSelect={setActiveTab} unreadCount={unread} />
@@ -213,5 +225,6 @@ export function HomeScreen(): React.JSX.Element {
         tabContent
       )}
     </div>
+    </CalculatorProvider>
   )
 }

@@ -5,7 +5,15 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()]
+    plugins: [externalizeDepsPlugin()],
+    build: {
+      rollupOptions: {
+        input: {
+          index: resolve('src/main/index.ts'),
+          ocrWorker: resolve('src/main/ocrWorker.ts')
+        }
+      }
+    }
   },
   preload: {
     build: {

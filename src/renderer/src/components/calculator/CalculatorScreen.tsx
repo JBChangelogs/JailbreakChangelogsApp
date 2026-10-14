@@ -322,7 +322,7 @@ export function CalculatorScreen(): React.JSX.Element {
 
   return (
     <div className="min-h-0 min-w-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]">
-      <div className="flex items-center justify-between border-b border-border-primary px-5 py-4">
+      <div className="flex items-center justify-between border-b border-border-primary px-5 py-2.5">
         <h2 className="text-sm font-semibold text-primary-text">Value Calculator</h2>
         <ScanControls />
       </div>

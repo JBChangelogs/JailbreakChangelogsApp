@@ -11,6 +11,12 @@ import { parseCashValue } from '@renderer/lib/itemValueUtils'
 const API = 'https://api.jailbreakchangelogs.com'
 const INV = 'https://inventories.jailbreakchangelogs.com'
 const now = Math.floor(Date.now() / 1000)
+
+// randomUUID only exists on HTTPS pages (Electron always has it), so the preview would die on plain HTTP.
+crypto.randomUUID ??= (() =>
+  '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, (c) =>
+    (Number(c) ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (Number(c) / 4)))).toString(16)
+  )) as Crypto['randomUUID']
 const ago = (s: number): number => now - s
 
 // Focus moves inside the app (popovers handing focus back, inputs) would otherwise scroll the page embedding the preview.

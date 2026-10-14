@@ -121,7 +121,7 @@ export function DisplaySettingsSection(): React.JSX.Element {
         />
         <SettingRow
           label="Theme button in title bar"
-          description="Show a button in the title bar for switching themes. Saved on this computer."
+          description="Show a button in the title bar that opens these settings. Saved on this computer."
           checked={!shortcutHidden}
           onCheckedChange={(show) => setShortcutHidden(!show)}
         />

@@ -2,12 +2,17 @@ import { useTrades } from '@renderer/contexts/TradesContext'
 import { SearchInput } from '@renderer/components/ui/search-input'
 import { Button } from '@renderer/components/ui/button'
 import { CreateTradeAdSidebar } from '@renderer/components/trading/CreateTradeAdSidebar'
+import { MakeOfferSidebar } from '@renderer/components/trading/MakeOfferSidebar'
 
 export function TradesSidebar(): React.JSX.Element {
   const { tab, setTab, searchQuery, setSearchQuery, setView, view } = useTrades()
 
   if (view.type === 'create') {
     return <CreateTradeAdSidebar />
+  }
+
+  if (view.type === 'offer') {
+    return <MakeOfferSidebar />
   }
 
   return (

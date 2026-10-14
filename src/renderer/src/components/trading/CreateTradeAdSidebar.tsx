@@ -1,20 +1,29 @@
+import { useState } from 'react'
 import { useTrades } from '@renderer/contexts/TradesContext'
 import { TradeSideList } from '@renderer/components/trading/TradeSideList'
 import { Button } from '@renderer/components/ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@renderer/components/ui/popover'
 
 const ALL_EXPIRATION_HOURS = [6, 12, 24, 48]
 
-function BackIcon({ className }: { className?: string }): React.JSX.Element {
+function TimerIcon({ className }: { className?: string }): React.JSX.Element {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19 8 12l7-7" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M10 2h4M12 14l3-3M12 22a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z" />
+    </svg>
+  )
+}
+
+function CheckIcon({ className }: { className?: string }): React.JSX.Element {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="m5 13 4 4L19 7" />
     </svg>
   )
 }
 
 export function CreateTradeAdSidebar(): React.JSX.Element {
   const {
-    setView,
     createOffering,
     createRequesting,
     removeCreateItem,
@@ -31,21 +40,10 @@ export function CreateTradeAdSidebar(): React.JSX.Element {
     hasRealOfferingItem,
     submitCreateAd
   } = useTrades()
+  const [expiryOpen, setExpiryOpen] = useState(false)
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
-      <div className="flex items-center gap-2 border-b border-border-primary px-3 py-2.5">
-        <button
-          type="button"
-          onClick={() => setView({ type: 'list' })}
-          aria-label="Back"
-          className="flex h-7 w-7 items-center justify-center rounded-lg text-secondary-text transition-colors hover:bg-quaternary-bg hover:text-primary-text"
-        >
-          <BackIcon className="h-4 w-4" />
-        </button>
-        <h1 className="text-xs font-bold uppercase tracking-wide text-quaternary-text">Create Trade Ad</h1>
-      </div>
-
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
         <TradeSideList
           title="Offering"
@@ -76,39 +74,46 @@ export function CreateTradeAdSidebar(): React.JSX.Element {
           />
         </div>
 
-        <div>
-          <label className="mb-1 block text-xs font-bold tracking-wide text-quaternary-text uppercase">Expires In</label>
-          <div className="flex flex-wrap gap-1.5">
-            {ALL_EXPIRATION_HOURS.map((hours) => {
-              const unlocked = unlockedExpirationHours.has(hours)
-              return (
-                <button
-                  key={hours}
-                  type="button"
-                  disabled={!unlocked}
-                  onClick={() => setCreateExpiration(hours)}
-                  className={`rounded-xl border px-3 py-1.5 text-xs font-medium transition-colors ${createExpiration === hours
-                    ? 'border-button-info bg-button-info text-form-button-text'
-                    : unlocked
-                      ? 'border-border-card bg-tertiary-bg text-secondary-text hover:bg-quaternary-bg'
-                      : 'border-border-card bg-tertiary-bg text-quaternary-text opacity-50'
-                    }`}
-                >
-                  {hours}h{!unlocked && ' 🔒'}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
         {createError && <p className="text-xs text-form-error">{createError}</p>}
 
-        <Button type="button" onClick={() => void submitCreateAd()} disabled={!canSubmitCreate}>
-          {createSubmitting ? 'Posting…' : 'Post Trade Ad'}
-        </Button>
+        <div className="flex gap-2">
+          <Popover open={expiryOpen} onOpenChange={setExpiryOpen}>
+            <PopoverTrigger asChild>
+              <Button type="button" variant="secondary" aria-label="Expires in" className="shrink-0 gap-1.5 px-3!">
+                <TimerIcon />
+                {createExpiration}h
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent side="top" align="start" className="w-44 p-1">
+              <p className="px-2.5 pt-1.5 pb-1 text-[11px] font-bold tracking-wide text-quaternary-text uppercase">Expires in</p>
+              {ALL_EXPIRATION_HOURS.map((hours) => {
+                const unlocked = unlockedExpirationHours.has(hours)
+                return (
+                  <button
+                    key={hours}
+                    type="button"
+                    disabled={!unlocked}
+                    onClick={() => {
+                      setCreateExpiration(hours)
+                      setExpiryOpen(false)
+                    }}
+                    className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-sm transition-colors hover:bg-quaternary-bg disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent ${createExpiration === hours ? 'text-primary-text' : 'text-secondary-text'
+                      }`}
+                  >
+                    {hours} hours
+                    {unlocked ? createExpiration === hours && <CheckIcon className="h-4 w-4 text-status-info" /> : <span>🔒</span>}
+                  </button>
+                )
+              })}
+            </PopoverContent>
+          </Popover>
+          <Button type="button" className="flex-1" onClick={() => void submitCreateAd()} disabled={!canSubmitCreate}>
+            {createSubmitting ? 'Posting…' : 'Post Trade Ad'}
+          </Button>
+        </div>
         {!hasRealOfferingItem && (
           <p className="text-[11px] text-quaternary-text">
-            Offering needs at least one real item (custom types alone aren't enough).
+            Offering needs at least one real item.
           </p>
         )}
       </div>

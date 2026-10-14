@@ -8,17 +8,9 @@ import { showToast } from '@renderer/lib/toast'
 import { formatFullValue } from '@renderer/lib/itemValueUtils'
 import { sideTotalValue, isTradeExpired, formatTimeLeft } from '@renderer/lib/tradeDisplay'
 import type { TradeAd, TradeItemWire, TradeOffer } from '@shared/trading'
-import { MakeOfferDialog } from '@renderer/components/trading/MakeOfferDialog'
 import { ItemTile, SideTotals, TradeUserAvatar, tradeUserLabel } from '@renderer/components/trading/TradeAdCard'
 import { Button } from '@renderer/components/ui/button'
-
-function BackIcon({ className }: { className?: string }): React.JSX.Element {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19 8 12l7-7" />
-    </svg>
-  )
-}
+import { TradesHeader } from '@renderer/components/trading/TradesHeader'
 
 const OFFER_STATUS_LABELS: Record<number, string> = {
   0: 'Pending',
@@ -169,21 +161,18 @@ function OfferRow({
 export function TradeAdDetailScreen({
   tradeId,
   onBack,
-  onMessageUser,
-  openMakeOffer = false
+  onMessageUser
 }: {
   tradeId: number
   onBack: () => void
-  openMakeOffer?: boolean
   onMessageUser?: (userId: string) => void
 }): React.JSX.Element {
   const { token } = useAuth()
   const { user: currentUser } = useCurrentUser()
-  const { bumpRefreshToken, refresh } = useTrades()
+  const { bumpRefreshToken, refresh, offer } = useTrades()
   const [ad, setAd] = useState<TradeAd | null>(null)
   const [offers, setOffers] = useState<TradeOffer[] | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [showMakeOffer, setShowMakeOffer] = useState(openMakeOffer)
   const [busy, setBusy] = useState(false)
   const relativeCreated = useRelativeTime(ad?.created_at)
 
@@ -247,17 +236,7 @@ export function TradeAdDetailScreen({
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
-      <div className="flex shrink-0 items-center gap-2 border-b border-border-primary px-4 py-2">
-        <button
-          type="button"
-          onClick={onBack}
-          aria-label="Back"
-          className="flex h-9 w-9 items-center justify-center rounded-xl text-secondary-text transition-colors hover:bg-quaternary-bg hover:text-primary-text"
-        >
-          <BackIcon className="h-4 w-4" />
-        </button>
-        <h1 className="text-sm font-semibold text-primary-text">Trade Ad #{tradeId}</h1>
-      </div>
+      <TradesHeader title={`Trade Ad #${tradeId}`} onBack={onBack} />
 
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
         {error && <p className="text-sm text-form-error">{error}</p>}
@@ -293,7 +272,7 @@ export function TradeAdDetailScreen({
                         </Button>
                       )}
                       {!expired && (
-                        <Button type="button" size="sm" onClick={() => setShowMakeOffer(true)}>
+                        <Button type="button" size="sm" onClick={() => offer.start(tradeId, 'detail')}>
                           Make Offer
                         </Button>
                       )}
@@ -336,7 +315,7 @@ export function TradeAdDetailScreen({
                       : 'Be the first to make an offer on this trade.'}
                 </p>
                 {!isOwner && !expired && (
-                  <Button type="button" size="sm" className="mt-4" onClick={() => setShowMakeOffer(true)}>
+                  <Button type="button" size="sm" className="mt-4" onClick={() => offer.start(tradeId, 'detail')}>
                     Make Offer
                   </Button>
                 )}
@@ -361,16 +340,6 @@ export function TradeAdDetailScreen({
         )}
       </div>
 
-      {showMakeOffer && (
-        <MakeOfferDialog
-          tradeId={tradeId}
-          onCancel={() => setShowMakeOffer(false)}
-          onSent={() => {
-            setShowMakeOffer(false)
-            load()
-          }}
-        />
-      )}
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { useTrades } from '@renderer/contexts/TradesContext'
 import { totalCount } from '@renderer/lib/tradeItemDraft'
 import { TradeItemPicker } from '@renderer/components/trading/TradeItemPicker'
+import { TradesHeader } from '@renderer/components/trading/TradesHeader'
 
 export function CreateTradeAdScreen(): React.JSX.Element {
   const {
@@ -9,13 +10,15 @@ export function CreateTradeAdScreen(): React.JSX.Element {
     createActiveSide,
     setCreateActiveSide,
     addCreateItem,
-    addCreateCustomType
+    addCreateCustomType,
+    setView
   } = useTrades()
 
   const activeItems = createActiveSide === 'offering' ? createOffering : createRequesting
 
   return (
     <TradeItemPicker
+      header={<TradesHeader title="Create Trade Ad" onBack={() => setView({ type: 'list' })} />}
       side={createActiveSide}
       onSide={setCreateActiveSide}
       onAddItem={addCreateItem}

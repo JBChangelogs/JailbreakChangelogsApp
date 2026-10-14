@@ -15,6 +15,7 @@ import {
 import { CUSTOM_TRADE_TYPES, getCustomTradeTypeIconUrl } from '@shared/trading'
 import { SearchInput } from '@renderer/components/ui/search-input'
 import { FilterMenu } from '@renderer/components/tracker/FilterMenus'
+import { Kbd } from '@renderer/components/ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import type { Item } from '@shared/item'
 import type { TradeSide } from '@renderer/hooks/useTradeComposer'
@@ -44,6 +45,7 @@ function PlusIcon({ className }: { className?: string }): React.JSX.Element {
 }
 
 interface TradeItemPickerProps {
+  header: React.ReactNode
   side: TradeSide
   onSide: (side: TradeSide) => void
   onAddItem: (item: Item, duped: boolean, og: boolean, side: TradeSide) => void
@@ -53,7 +55,7 @@ interface TradeItemPickerProps {
 
 const PAGE_SIZE = 60
 
-export function TradeItemPicker({ side, onSide, onAddItem, onAddCustomType, atCap }: TradeItemPickerProps): React.JSX.Element {
+export function TradeItemPicker({ header, side, onSide, onAddItem, onAddCustomType, atCap }: TradeItemPickerProps): React.JSX.Element {
   const { user } = useCurrentUser()
   const { items, loading } = useItems()
   const [condition, setCondition] = useState<Condition>('clean')
@@ -148,9 +150,7 @@ export function TradeItemPicker({ side, onSide, onAddItem, onAddCustomType, atCa
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
-      <div className="flex items-center justify-between border-b border-border-primary px-5 py-4">
-        <h2 className="text-sm font-semibold text-primary-text">Trade Ads</h2>
-      </div>
+      {header}
       <div className="flex shrink-0 flex-col gap-2 border-b border-border-primary p-3">
         <p className="rounded-xl border border-border-card bg-secondary-bg px-3 py-2 text-xs text-secondary-text">
           Tip: <Kbd>Shift</Kbd> + click to add to Offering, <Kbd>Ctrl</Kbd> + click to add to Requesting.
@@ -279,14 +279,6 @@ export function TradeItemPicker({ side, onSide, onAddItem, onAddCustomType, atCa
         {hasMore && <div ref={sentinelRef} className="h-px" />}
       </div>
     </div>
-  )
-}
-
-function Kbd({ children }: { children: React.ReactNode }): React.JSX.Element {
-  return (
-    <kbd className="rounded-md border border-border-card bg-tertiary-bg px-1.5 py-0.5 font-sans text-[10px] font-semibold text-primary-text">
-      {children}
-    </kbd>
   )
 }
 

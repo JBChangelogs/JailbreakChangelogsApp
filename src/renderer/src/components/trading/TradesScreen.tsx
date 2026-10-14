@@ -3,6 +3,8 @@ import { useAuth } from '@renderer/contexts/AuthContext'
 import { useTrades } from '@renderer/contexts/TradesContext'
 import { tradesApi } from '@renderer/lib/tradesApi'
 import { TradeAdCard } from '@renderer/components/trading/TradeAdCard'
+import { MakeOfferScreen } from '@renderer/components/trading/MakeOfferScreen'
+import { OfferChoiceDialog } from '@renderer/components/trading/OfferChoiceDialog'
 import { CreateTradeAdScreen } from '@renderer/components/trading/CreateTradeAdScreen'
 import { TradeAdDetailScreen } from '@renderer/components/trading/TradeAdDetailScreen'
 import { Button } from '@renderer/components/ui/button'
@@ -31,8 +33,17 @@ function EmptyState({
 }
 
 export function TradesScreen({ onMessageUser }: { onMessageUser: (userId: string) => void }): React.JSX.Element {
+  return (
+    <>
+      <TradesPane onMessageUser={onMessageUser} />
+      <OfferChoiceDialog />
+    </>
+  )
+}
+
+function TradesPane({ onMessageUser }: { onMessageUser: (userId: string) => void }): React.JSX.Element {
   const { token } = useAuth()
-  const { ads, loading, error, page, totalPages, setPage, bumpRefreshToken, refresh, view, setView, tab, searchQuery, setSearchQuery } =
+  const { ads, loading, error, page, totalPages, setPage, bumpRefreshToken, refresh, view, setView, tab, searchQuery, setSearchQuery, offer } =
     useTrades()
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
@@ -52,6 +63,10 @@ export function TradesScreen({ onMessageUser }: { onMessageUser: (userId: string
     return <CreateTradeAdScreen />
   }
 
+  if (view.type === 'offer') {
+    return <MakeOfferScreen tradeId={view.id} from={view.from} />
+  }
+
   if (view.type === 'detail') {
     return (
       <TradeAdDetailScreen
@@ -59,7 +74,6 @@ export function TradesScreen({ onMessageUser }: { onMessageUser: (userId: string
         tradeId={view.id}
         onBack={() => setView({ type: 'list' })}
         onMessageUser={onMessageUser}
-        openMakeOffer={view.makeOffer}
       />
     )
   }
@@ -119,7 +133,7 @@ export function TradesScreen({ onMessageUser }: { onMessageUser: (userId: string
             <TradeAdCard
               key={ad.id}
               ad={ad}
-              onOpenDetail={(id, makeOffer) => setView({ type: 'detail', id, makeOffer })}
+              onOpenDetail={(id, makeOffer) => (makeOffer ? offer.start(id, 'list') : setView({ type: 'detail', id }))}
               onDelete={(id) => void handleDelete(id)}
             />
           ))}

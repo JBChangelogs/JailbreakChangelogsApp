@@ -3,6 +3,7 @@ import { useAuth } from '@renderer/contexts/AuthContext'
 import { useCurrentUser } from '@renderer/hooks/useCurrentUser'
 import { useTradeComposer, type TradeSide } from '@renderer/hooks/useTradeComposer'
 import { tradesApi } from '@renderer/lib/tradesApi'
+import { showToast } from '@renderer/lib/toast'
 import { toCreatePayload, totalCount, type TradeItemDraft, type TradeItemDraftKey } from '@renderer/lib/tradeItemDraft'
 import { EXPIRATION_HOURS_BY_TIER, isCustomTradeItemId } from '@shared/trading'
 import type { Item } from '@shared/item'
@@ -10,7 +11,32 @@ import type { TradeAd } from '@shared/trading'
 
 export type TradesTab = 'all' | 'mine'
 
-export type TradesView = { type: 'list' } | { type: 'create' } | { type: 'detail'; id: number; makeOffer?: boolean }
+// Where an offer was started from, so Back on the offer page returns there.
+export type OfferOrigin = 'list' | 'detail'
+
+export type TradesView =
+  | { type: 'list' }
+  | { type: 'create' }
+  | { type: 'detail'; id: number }
+  | { type: 'offer'; id: number; from: OfferOrigin }
+
+export interface OfferDraft {
+  // The Quick/Custom choice shown when Make Offer is clicked.
+  prompt: { id: number; from: OfferOrigin } | null
+  start: (id: number, from: OfferOrigin) => void
+  closePrompt: () => void
+  customize: () => void
+  composer: ReturnType<typeof useTradeComposer>
+  activeSide: TradeSide
+  setActiveSide: (side: TradeSide) => void
+  note: string
+  setNote: (note: string) => void
+  submitting: boolean
+  error: string | null
+  canSubmitCustom: boolean
+  // Quick sends exactly what the ad asks for (from the prompt); otherwise the composed sides and note.
+  submit: (quick: boolean) => Promise<void>
+}
 
 interface TradesContextValue {
   ads: TradeAd[]
@@ -48,6 +74,8 @@ interface TradesContextValue {
   canSubmitCreate: boolean
   hasRealOfferingItem: boolean
   submitCreateAd: () => Promise<void>
+
+  offer: OfferDraft
 }
 
 const TradesContext = createContext<TradesContextValue | null>(null)
@@ -140,6 +168,50 @@ export function TradesProvider({ children }: { children: React.ReactNode }): Rea
     }
   }
 
+  const offerComposer = useTradeComposer()
+  const [offerActiveSide, setOfferActiveSide] = useState<TradeSide>('offering')
+  const [offerNote, setOfferNote] = useState('')
+  const [offerSubmitting, setOfferSubmitting] = useState(false)
+  const [offerError, setOfferError] = useState<string | null>(null)
+  const [offerPrompt, setOfferPrompt] = useState<{ id: number; from: OfferOrigin } | null>(null)
+  const offerTradeId = view.type === 'offer' ? view.id : null
+
+  // Every visit to the offer view starts from an empty draft.
+  useEffect(() => {
+    if (offerTradeId === null) return
+    offerComposer.reset()
+    setOfferActiveSide('offering')
+    setOfferNote('')
+    setOfferError(null)
+  }, [offerTradeId])
+
+  const submitOffer = async (quick: boolean): Promise<void> => {
+    const tradeId = quick ? offerPrompt?.id : offerTradeId
+    if (!token || tradeId == null) return
+    setOfferSubmitting(true)
+    setOfferError(null)
+    try {
+      await tradesApi.createOffer(
+        token,
+        tradeId,
+        quick
+          ? undefined
+          : {
+              note: offerNote.trim() || undefined,
+              offering: toCreatePayload(offerComposer.offering),
+              requesting: toCreatePayload(offerComposer.requesting)
+            }
+      )
+      setOfferPrompt(null)
+      showToast('Offer sent')
+      setView({ type: 'detail', id: tradeId })
+    } catch (err) {
+      setOfferError(err instanceof Error ? err.message : 'Failed to send offer')
+    } finally {
+      setOfferSubmitting(false)
+    }
+  }
+
   const value: TradesContextValue = {
     ads: filteredAds,
     loading,
@@ -174,7 +246,29 @@ export function TradesProvider({ children }: { children: React.ReactNode }): Rea
     createError,
     canSubmitCreate,
     hasRealOfferingItem,
-    submitCreateAd
+    submitCreateAd,
+    offer: {
+      prompt: offerPrompt,
+      start: (id, from) => {
+        setOfferError(null)
+        setOfferPrompt({ id, from })
+      },
+      closePrompt: () => setOfferPrompt(null),
+      customize: () => {
+        if (!offerPrompt) return
+        setOfferPrompt(null)
+        setView({ type: 'offer', ...offerPrompt })
+      },
+      composer: offerComposer,
+      activeSide: offerActiveSide,
+      setActiveSide: setOfferActiveSide,
+      note: offerNote,
+      setNote: setOfferNote,
+      submitting: offerSubmitting,
+      error: offerError,
+      canSubmitCustom: !offerSubmitting && totalCount(offerComposer.offering) + totalCount(offerComposer.requesting) > 0,
+      submit: submitOffer
+    }
   }
 
   return <TradesContext.Provider value={value}>{children}</TradesContext.Provider>

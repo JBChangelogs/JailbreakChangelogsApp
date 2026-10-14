@@ -31,6 +31,11 @@ jobs:
 
       - run: npm run preview:build
 
+      - name: Record preview.gif
+        run: |
+          command -v ffmpeg || (sudo apt-get update && sudo apt-get install -y ffmpeg)
+          node preview/record.mjs
+
       - uses: actions/upload-pages-artifact@v4
         with:
           path: preview/dist

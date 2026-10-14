@@ -5,6 +5,7 @@ import { useItems } from '@renderer/hooks/useItems'
 import type { TradeSide } from '@renderer/hooks/useTradeComposer'
 import { Button } from '@renderer/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@renderer/components/ui/dialog'
+import { Kbd } from '@renderer/components/ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { filterAndSortItems } from '@renderer/lib/itemBrowse'
 import { formatFullValue } from '@renderer/lib/itemValueUtils'
@@ -28,10 +29,35 @@ const MIRROR_PATH = 'M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.
 
 const format = (n: number): string => (n === 0 ? '0' : formatFullValue(String(n)))
 
+// Animates its content's height and opacity between shown and hidden.
+function Collapsible({ hidden, children }: { hidden: boolean; children: React.ReactNode }): React.JSX.Element {
+  return (
+    <div
+      className={`grid transition-[grid-template-rows,opacity] duration-200 ${hidden ? 'grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr]'}`}
+    >
+      <div className="overflow-hidden">{children}</div>
+    </div>
+  )
+}
+
 function SummaryBar(): React.JSX.Element {
   const { composer, offeringTotal, requestingTotal } = useCalculator()
   const { offering, requesting, setSides } = composer
   const [clearOpen, setClearOpen] = useState(false)
+  const stickyRef = useRef<HTMLDivElement>(null)
+  const [stuck, setStuck] = useState(false)
+
+  // Stuck once its top reaches the top of the scroll area (its parent).
+  useEffect(() => {
+    const el = stickyRef.current
+    if (!el?.parentElement) return undefined
+    const observer = new IntersectionObserver(
+      ([entry]) => setStuck(!!entry.rootBounds && entry.boundingClientRect.top <= entry.rootBounds.top),
+      { root: el.parentElement, rootMargin: '-1px 0px 0px 0px', threshold: 1 }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
 
   const offeringCount = totalCount(offering)
   const requestingCount = totalCount(requesting)
@@ -63,100 +89,137 @@ function SummaryBar(): React.JSX.Element {
   }
 
   return (
-    <div className="rounded-lg border border-border-card bg-secondary-bg px-4 pt-3 pb-2.5">
-      <div className="flex items-center gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-medium tracking-wide text-status-success uppercase">
-            Offering <span className="text-secondary-text normal-case">({offeringCount})</span>
-          </p>
-          <p className="truncate text-base font-bold text-primary-text tabular-nums">{format(offeringTotal)}</p>
-        </div>
-        <span
-          className={`inline-flex shrink-0 items-center rounded-md border px-2.5 py-1 text-xs font-bold tabular-nums ${netClass}`}
-        >
-          {netLabel}
-        </span>
-        <div className="min-w-0 flex-1 text-right">
-          <p className="text-[10px] font-medium tracking-wide text-status-error uppercase">
-            Requesting <span className="text-secondary-text normal-case">({requestingCount})</span>
-          </p>
-          <p className="truncate text-base font-bold text-primary-text tabular-nums">{format(requestingTotal)}</p>
-        </div>
-        <div className="flex shrink-0 items-center gap-1 border-l border-border-card pl-3">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                aria-label="Swap sides"
-                disabled={!hasItems}
-                onClick={() => setSides(requesting, offering)}
-                className="flex h-7 w-7 items-center justify-center rounded-md text-secondary-text transition-colors hover:bg-quaternary-bg hover:text-primary-text disabled:pointer-events-none disabled:opacity-40"
-              >
-                <SvgIcon d={SWAP_PATH} className="h-4 w-4" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>Swap sides</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                aria-label="Clear"
-                disabled={!hasItems}
-                onClick={(e) => (e.shiftKey ? clear('both') : setClearOpen(true))}
-                className="flex h-7 w-7 items-center justify-center rounded-md text-secondary-text transition-colors hover:bg-status-error/15 hover:text-status-error disabled:pointer-events-none disabled:opacity-40"
-              >
-                <SvgIcon d={TRASH_PATH} className="h-4 w-4" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>Clear (hold Shift to clear both sides)</TooltipContent>
-          </Tooltip>
-        </div>
-      </div>
-
-      <div className="mt-2 flex h-1 w-full overflow-hidden rounded-full bg-tertiary-bg">
-        {hasItems && (
-          <>
-            <div className="h-full bg-status-error transition-all duration-300" style={{ width: `${offeringShare}%` }} />
-            <div
-              className="h-full bg-status-success transition-all duration-300"
-              style={{ width: `${100 - offeringShare}%` }}
-            />
-          </>
-        )}
-      </div>
-
-      <Dialog open={clearOpen} onOpenChange={setClearOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Clear calculator?</DialogTitle>
-          </DialogHeader>
-          <div className="px-5 py-4 text-sm text-secondary-text">Choose which side to clear.</div>
-          <div className="flex shrink-0 justify-end gap-2 border-t border-border-primary px-5 py-4">
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              disabled={offeringCount === 0}
-              onClick={() => clear('offering')}
-            >
-              Offering
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              disabled={requestingCount === 0}
-              onClick={() => clear('requesting')}
-            >
-              Requesting
-            </Button>
-            <Button type="button" size="sm" variant="destructive" onClick={() => clear('both')}>
-              Both
-            </Button>
+    // Sticks flush under the header while browsing (-top-5 cancels the scroll area's p-5), and turns compact.
+    // The wrapper is page-coloured down to the bar's corner radius from the bottom, covering the gap above the
+    // bar and its top corners so items don't show through there, while the bottom corners stay open. The
+    // ::before strip reaches above it to hide any sub-pixel gap under the header at fractional display scaling.
+    <div
+      ref={stickyRef}
+      className={`sticky -top-5 z-10 bg-[linear-gradient(var(--color-primary-bg)_calc(100%-0.5rem),transparent_0)] transition-[padding] duration-200 before:absolute before:inset-x-0 before:bottom-full before:h-2 before:bg-primary-bg ${stuck ? 'pt-2' : ''}`}
+    >
+      <div
+        className={`rounded-lg border border-border-card bg-secondary-bg px-4 transition-[padding,box-shadow] duration-200 ${stuck ? 'py-2 shadow-lg' : 'pt-3 pb-2.5'}`}
+      >
+        <div className="flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <Collapsible hidden={stuck}>
+              <p className="text-[10px] font-medium tracking-wide text-status-success uppercase">
+                Offering <span className="text-secondary-text normal-case">({offeringCount})</span>
+              </p>
+            </Collapsible>
+            <p className="truncate text-base font-bold text-primary-text tabular-nums">{format(offeringTotal)}</p>
           </div>
-        </DialogContent>
-      </Dialog>
+          <span
+            className={`inline-flex shrink-0 items-center rounded-md border px-2.5 py-1 text-xs font-bold tabular-nums ${netClass}`}
+          >
+            {netLabel}
+          </span>
+          <div className="min-w-0 flex-1 text-right">
+            <Collapsible hidden={stuck}>
+              <p className="text-[10px] font-medium tracking-wide text-status-error uppercase">
+                Requesting <span className="text-secondary-text normal-case">({requestingCount})</span>
+              </p>
+            </Collapsible>
+            <p className="truncate text-base font-bold text-primary-text tabular-nums">{format(requestingTotal)}</p>
+          </div>
+          <div className="flex shrink-0 items-center gap-1 border-l border-border-card pl-3">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Swap sides"
+                  disabled={!hasItems}
+                  onClick={() => setSides(requesting, offering)}
+                  className="flex h-7 w-7 items-center justify-center rounded-md text-secondary-text transition-colors hover:bg-quaternary-bg hover:text-primary-text disabled:pointer-events-none disabled:opacity-40"
+                >
+                  <SvgIcon d={SWAP_PATH} className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Swap sides</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Clear"
+                  disabled={!hasItems}
+                  onClick={(e) => (e.shiftKey ? clear('both') : e.ctrlKey ? clear('offering') : setClearOpen(true))}
+                  onContextMenu={(e) => {
+                    if (!e.ctrlKey) return
+                    e.preventDefault()
+                    // macOS turns Ctrl+left-click into a context menu, so the button decides the side.
+                    clear(e.button === 0 ? 'offering' : 'requesting')
+                  }}
+                  className="flex h-7 w-7 items-center justify-center rounded-md text-secondary-text transition-colors hover:bg-status-error/15 hover:text-status-error disabled:pointer-events-none disabled:opacity-40"
+                >
+                  <SvgIcon d={TRASH_PATH} className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Clear</TooltipContent>
+            </Tooltip>
+          </div>
+        </div>
+
+        <div
+          className={`flex h-1 w-full overflow-hidden rounded-full bg-tertiary-bg transition-[margin] duration-200 ${stuck ? 'mt-1.5' : 'mt-2'}`}
+        >
+          {hasItems && (
+            <>
+              <div className="h-full bg-status-error transition-all duration-300" style={{ width: `${offeringShare}%` }} />
+              <div
+                className="h-full bg-status-success transition-all duration-300"
+                style={{ width: `${100 - offeringShare}%` }}
+              />
+            </>
+          )}
+        </div>
+
+        <Dialog open={clearOpen} onOpenChange={setClearOpen}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Clear calculator?</DialogTitle>
+            </DialogHeader>
+            <div className="px-5 py-4 text-sm text-secondary-text">
+              <p>Choose which side to clear.</p>
+              <p className="mt-3 text-xs text-quaternary-text">Skip this next time:</p>
+              <ul className="mt-1.5 space-y-1.5 text-xs text-quaternary-text">
+                <li>
+                  <Kbd>Shift</Kbd> + click clears both sides
+                </li>
+                <li>
+                  <Kbd>Ctrl</Kbd> + click clears Offering
+                </li>
+                <li>
+                  <Kbd>Ctrl</Kbd> + right-click clears Requesting
+                </li>
+              </ul>
+            </div>
+            <div className="flex shrink-0 justify-end gap-2 border-t border-border-primary px-5 py-4">
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                disabled={offeringCount === 0}
+                onClick={() => clear('offering')}
+              >
+                Offering
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                disabled={requestingCount === 0}
+                onClick={() => clear('requesting')}
+              >
+                Requesting
+              </Button>
+              <Button type="button" size="sm" variant="destructive" onClick={() => clear('both')}>
+                Both
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   )
 }
@@ -200,15 +263,17 @@ function SidePanel({ side, items }: { side: TradeSide; items: Item[] }): React.J
           <TooltipContent>Copy to {isOffering ? 'Requesting' : 'Offering'}</TooltipContent>
         </Tooltip>
       </div>
+      {/* Empty state and list share a min height of one item row (wrapped rows are 112px), so adding the
+          first item doesn't shift the layout. */}
       {drafts.length === 0 ? (
-        <div className="flex min-h-40 flex-1 flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-border-card p-3 text-center">
+        <div className="flex min-h-28 flex-1 flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-border-card p-3 text-center">
           <span className="text-xs font-medium text-secondary-text">No items selected</span>
           <span className="text-xs text-tertiary-text">
             Use {isOffering ? 'Offer' : 'Request'} on an item below, or scan a trade
           </span>
         </div>
       ) : (
-        <div className="flex max-h-120 flex-col gap-1.5 overflow-y-auto pr-1">
+        <div className="flex min-h-28 max-h-120 flex-col gap-1.5 overflow-y-auto pr-1">
           {drafts.map((draft) => {
             const key = { id: draft.id, duped: draft.duped, og: draft.og }
             const live = byId.get(draft.id)
@@ -321,12 +386,12 @@ export function CalculatorScreen(): React.JSX.Element {
   const { items } = useItems()
 
   return (
-    <div className="min-h-0 min-w-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]">
-      <div className="flex items-center justify-between border-b border-border-primary px-5 py-2.5">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <div className="flex shrink-0 items-center justify-between border-b border-border-primary px-5 py-2.5">
         <h2 className="text-sm font-semibold text-primary-text">Value Calculator</h2>
         <ScanControls />
       </div>
-      <div className="space-y-4 p-5">
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5 [scrollbar-gutter:stable]">
         <div className="grid grid-cols-2 gap-4">
           <SidePanel side="offering" items={items} />
           <SidePanel side="requesting" items={items} />

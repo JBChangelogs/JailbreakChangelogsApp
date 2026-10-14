@@ -121,10 +121,31 @@ export function SelectedItemCard({
       </div>
 
       <div className="min-w-0 flex-1">
-        <div className="flex items-baseline justify-between gap-2">
-          <p className="truncate text-sm font-semibold text-primary-text" title={draft.name}>
-            {draft.name}
-          </p>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <p className="truncate text-sm font-semibold text-primary-text" title={draft.name}>
+              {draft.name}
+            </p>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={`Condition: ${CONDITION_LABELS[condition]}`}
+                  className={`inline-flex h-5 shrink-0 items-center gap-1 rounded px-1.5 text-[10px] leading-none font-semibold transition-opacity hover:opacity-90 ${CONDITION_STYLES[condition]}`}
+                >
+                  {CONDITION_LABELS[condition]}
+                  <Icon d="m6 9 6 6 6-6" className="h-2.5 w-2.5 opacity-80" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuRadioGroup value={condition} onValueChange={(value) => onCondition(value as Condition)}>
+                  <DropdownMenuRadioItem value="clean">Clean</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="duped">Duped</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="og">OG</DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
           <p className="shrink-0 text-sm font-bold text-primary-text tabular-nums">
             {unitValue > 0 ? formatFullValue(String(unitValue * draft.amount)) : formatFullValue(unit ?? null)}
           </p>
@@ -154,27 +175,6 @@ export function SelectedItemCard({
         </div>
 
         <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-          <Labeled label="Condition">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  aria-label={`Condition: ${CONDITION_LABELS[condition]}`}
-                  className={`inline-flex h-5 items-center gap-1 rounded px-1.5 text-[10px] leading-none font-semibold transition-opacity hover:opacity-90 ${CONDITION_STYLES[condition]}`}
-                >
-                  {CONDITION_LABELS[condition]}
-                  <Icon d="m6 9 6 6 6-6" className="h-2.5 w-2.5 opacity-80" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuRadioGroup value={condition} onValueChange={(value) => onCondition(value as Condition)}>
-                  <DropdownMenuRadioItem value="clean">Clean</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="duped">Duped</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="og">OG</DropdownMenuRadioItem>
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </Labeled>
           <Labeled label="Demand">
             <Chip label={demand} colorClass={getDemandColor(demand)} />
           </Labeled>
@@ -201,7 +201,6 @@ export function BrowseItemCard({
   const [picked, setPicked] = useState<Condition>('clean')
   const condition = fixedCondition ?? picked
   const duped = condition === 'duped'
-  const hasValue = !!item.cash_value && item.cash_value !== 'N/A'
 
   return (
     <div className="flex flex-col rounded-lg border border-border-card bg-tertiary-bg p-2">
@@ -249,31 +248,24 @@ export function BrowseItemCard({
         </div>
       </div>
 
-      {item.tradable === 0 && hasValue && (
+      {item.tradable === 0 && (
         <span className="mb-1.5 self-start rounded border border-border-card bg-secondary-bg px-1.5 py-0.5 text-[10px] font-medium text-secondary-text">
           Non-Tradable
         </span>
       )}
-      {/* Some non-tradable items (e.g. HyperShift) still have values worth showing. */}
-      {!hasValue ? (
-        <p className="rounded-lg bg-secondary-bg p-1.5 text-center text-xs font-medium text-secondary-text">
-          {item.tradable === 0 ? 'Non-Tradable' : 'No value yet'}
-        </p>
-      ) : (
-        <div className="space-y-1 text-xs">
-          <ValueRow label={duped ? 'Duped' : 'Cash'}>
-            <span className={`${pill} bg-button-info text-form-button-text`}>
-              {formatFullValue(duped ? item.duped_value : item.cash_value)}
-            </span>
-          </ValueRow>
-          <ValueRow label="Demand">
-            <span className={`${pill} ${getDemandColor(demandFor(item, duped))}`}>{demandFor(item, duped)}</span>
-          </ValueRow>
-          <ValueRow label="Trend">
-            <span className={`${pill} ${getTrendColor(trendFor(item))}`}>{trendFor(item)}</span>
-          </ValueRow>
-        </div>
-      )}
+      <div className="space-y-1 text-xs">
+        <ValueRow label={duped ? 'Duped' : 'Cash'}>
+          <span className={`${pill} bg-button-info text-form-button-text`}>
+            {formatFullValue(duped ? item.duped_value : item.cash_value)}
+          </span>
+        </ValueRow>
+        <ValueRow label="Demand">
+          <span className={`${pill} ${getDemandColor(demandFor(item, duped))}`}>{demandFor(item, duped)}</span>
+        </ValueRow>
+        <ValueRow label="Trend">
+          <span className={`${pill} ${getTrendColor(trendFor(item))}`}>{trendFor(item)}</span>
+        </ValueRow>
+      </div>
 
       <div className="mt-auto grid grid-cols-2 gap-1.5 pt-2">
         <button

@@ -1,6 +1,7 @@
 import { useCalculator } from '@renderer/contexts/CalculatorContext'
 import { useCurrentUser } from '@renderer/hooks/useCurrentUser'
 import { SearchInput } from '@renderer/components/ui/search-input'
+import { Kbd } from '@renderer/components/ui/kbd'
 import { ColorChip, SectionHeader, SortMenu, TypeTiles } from '@renderer/components/values/ValuesSidebarFilters'
 import { LOCAL_SORT_GROUPS } from '@renderer/lib/itemBrowse'
 import { demandOrder, getDemandColor, getTrendColor, trendOrder } from '@renderer/lib/itemValueUtils'
@@ -92,6 +93,22 @@ export function CalculatorSidebar(): React.JSX.Element {
             ))}
           </div>
         </div>
+      </div>
+
+      {/* Stays at the bottom while the filters scroll. */}
+      <div className="shrink-0 border-t border-border-primary px-3 py-2.5">
+        <p className="mb-1.5 text-[11px] font-bold tracking-wide text-quaternary-text uppercase">Clear shortcuts</p>
+        <ul className="space-y-1.5 text-[11px] text-secondary-text">
+          <li>
+            <Kbd>Shift</Kbd> + click: both sides
+          </li>
+          <li>
+            <Kbd>Ctrl</Kbd> + click: Offering
+          </li>
+          <li>
+            <Kbd>Ctrl</Kbd> + right-click: Requesting
+          </li>
+        </ul>
       </div>
     </div>
   )

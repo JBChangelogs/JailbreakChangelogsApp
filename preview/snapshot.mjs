@@ -62,4 +62,7 @@ const snapshot = {
 }
 
 writeFileSync(new URL('app/snapshot.json', import.meta.url), JSON.stringify(snapshot))
-console.log(`snapshot: ${snapshot.people.length} people, ${snapshot.routes[`${API}/v2/items/partial`].length} items, ${dupes.length} dupes`)
+// Every enabled theme, for the app (which asks /v2/themes) and the showcase's tabs and backdrop.
+const themes = await get(`${API}/v2/themes`)
+writeFileSync(new URL('app/themes.json', import.meta.url), JSON.stringify(themes))
+console.log(`snapshot: ${themes.length} themes, ${snapshot.people.length} people, ${snapshot.routes[`${API}/v2/items/partial`].length} items, ${dupes.length} dupes`)

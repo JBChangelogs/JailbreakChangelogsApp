@@ -1,6 +1,7 @@
 // Drives the real app in the iframe: moves a fake cursor, clicks, types and scrolls through each feature.
 // Targets are found by label, placeholder or text, so the tour follows the app as long as those stay put.
 import type { preview as Controls } from './app/mock'
+import themes from './app/themes.json'
 
 const $ = <T extends Element = HTMLElement>(s: string, r: ParentNode = document): T => r.querySelector(s) as T
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -306,14 +307,14 @@ function markChapter(i: number, ms: number): void {
 
 /* ---------- Run loop: every pass starts from a freshly loaded app ---------- */
 
-const APP_THEMES: Record<string, string> = { light: 'light', 'catppuccin-latte': 'light', amoled: 'amoled' }
-let siteTheme = 'dark'
+const DEFAULT_THEME = (themes.find((t) => t.is_default) ?? themes[0])?.slug ?? 'dark'
+let siteTheme = DEFAULT_THEME
 
 // Loads a fresh app already on the given tab, hidden behind the visible one, and resolves once it has drawn.
 async function loadApp(tab: string, g: number): Promise<HTMLIFrameElement> {
   const next = frame.cloneNode() as HTMLIFrameElement
   next.style.visibility = 'hidden'
-  next.src = `app.html?theme=${APP_THEMES[siteTheme] ?? 'dark'}&tab=${tab}`
+  next.src = `app.html?theme=${siteTheme}&tab=${tab}`
   frame.after(next)
   try {
     for (let end = Date.now() + 8000; Date.now() < end && !next.contentDocument?.querySelector('button.bg-button-info'); ) await sleep(100, g)
@@ -351,18 +352,44 @@ async function run(from: number): Promise<void> {
 }
 tabs.forEach((b, i) => b.addEventListener('click', () => run(i)))
 
-/* ---------- Site theme (tabs + backdrop) ----------
-   1. ?theme=dark|light|amoled|halloween|catppuccin|catppuccin-latte on the iframe URL
+/* ---------- Site theme (tabs + backdrop, and the app itself) ----------
+   Any theme the site's /v2/themes had when the preview was built (preview:snapshot saves them):
+   1. ?theme=<slug> on the iframe URL
    2. parent.postMessage-style: iframe.contentWindow.postMessage({ type: 'jbcl-theme', theme: 'light' }, '*')
-   3. same-origin embed: follows the `light` / `amoled` / `halloween` / `catppuccin` / `catppuccin-latte` class on the parent page's <html> automatically */
-const THEMES = ['dark', 'light', 'amoled', 'halloween', 'catppuccin', 'catppuccin-latte']
+   3. same-origin embed: follows the theme's class on the parent page's <html> automatically */
+const SLUGS = themes.map((t) => t.slug)
+
+// The tabs and backdrop use the theme's own colors, as the site's matching tokens.
+function paintTheme(slug: string): void {
+  const vars = (themes.find((t) => t.slug === slug)?.vars ?? {}) as Record<string, string>
+  const color = (key: string): string | undefined => {
+    const value = vars[key]
+    return vars[value?.match(/^var\((--[a-z0-9-]+)\)$/)?.[1] ?? ''] ?? value
+  }
+  const button = color('--color-button-info')
+  const tokens: Record<string, string | undefined> = {
+    '--stage': color('--color-primary-bg'),
+    '--tab-bg': color('--color-secondary-bg'),
+    '--tab-active': color('--color-tertiary-bg'),
+    '--tab-hover': color('--color-quaternary-bg'),
+    '--tab-text': color('--color-secondary-text'),
+    '--tab-text-active': color('--color-primary-text'),
+    '--tab-border': color('--color-border-card'),
+    '--tab-fill': button && `color-mix(in srgb, ${button} 20%, transparent)`,
+    '--tab-accent': color('--color-link')
+  }
+  const root = document.documentElement.style
+  for (const [key, value] of Object.entries(tokens)) value ? root.setProperty(key, value) : root.removeProperty(key)
+}
+
 function setSiteTheme(theme: string | null): void {
-  if (!theme || !THEMES.includes(theme) || theme === siteTheme) return
-  const appChanged = (APP_THEMES[theme] ?? 'dark') !== (APP_THEMES[siteTheme] ?? 'dark')
+  if (!theme || !SLUGS.includes(theme) || theme === siteTheme) return
   siteTheme = theme
   document.documentElement.dataset.siteTheme = theme
-  if (appChanged && gen > 0) run(SCENES.findIndex((_, i) => tabs[i].dataset.state === 'active'))
+  paintTheme(theme)
+  if (gen > 0) run(SCENES.findIndex((_, i) => tabs[i].dataset.state === 'active'))
 }
+paintTheme(siteTheme)
 setSiteTheme(new URLSearchParams(location.search).get('theme'))
 window.addEventListener('message', (e) => {
   if (e.data && e.data.type === 'jbcl-theme') setSiteTheme(e.data.theme)
@@ -370,7 +397,7 @@ window.addEventListener('message', (e) => {
 try {
   const parentRoot = window.parent !== window && window.parent.document.documentElement
   if (parentRoot) {
-    const sync = (): void => setSiteTheme(['halloween', 'catppuccin-latte', 'catppuccin', 'light', 'amoled'].find((t) => parentRoot.classList.contains(t)) || 'dark')
+    const sync = (): void => setSiteTheme(SLUGS.find((t) => parentRoot.classList.contains(t)) ?? DEFAULT_THEME)
     sync()
     new MutationObserver(sync).observe(parentRoot, { attributes: true, attributeFilter: ['class'] })
   }

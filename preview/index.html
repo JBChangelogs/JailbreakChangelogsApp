@@ -204,8 +204,8 @@
     opacity: 1;
   }
 
-  /* Tabs + backdrop follow the embedding site's theme (set by setSiteTheme below).
-     Values are the site's dark / light / amoled tokens from main.css. */
+  /* Tabs + backdrop follow the embedding site's theme: tour.ts sets these from the theme's colors.
+     The values here are the dark theme's, for before it runs. */
   :root {
     --tab-bg: #17181d;
     --tab-active: #1c1e24;
@@ -217,67 +217,6 @@
     --tab-accent: hsl(210, 100%, 70%);
   }
 
-  :root[data-site-theme="light"] {
-    --stage: #ffffff;
-    --tab-bg: hsl(240, 5%, 94%);
-    --tab-active: hsl(220, 8%, 91%);
-    --tab-hover: hsl(0, 0%, 94%);
-    --tab-text: hsl(214, 16%, 36%);
-    --tab-text-active: hsl(240, 8%, 9%);
-    --tab-border: hsl(214, 7%, 86%);
-    --tab-fill: hsl(210 99% 35% / .2);
-    --tab-accent: hsl(210, 99%, 40%);
-  }
-
-  :root[data-site-theme="amoled"] {
-    --stage: #000000;
-    --tab-bg: #0a0a0a;
-    --tab-active: #111111;
-    --tab-hover: hsl(0, 0%, 12%);
-    --tab-text: hsl(214, 16%, 64%);
-    --tab-text-active: hsl(60, 100%, 100%);
-    --tab-border: hsl(214, 8%, 20%);
-    --tab-fill: hsl(210 80% 32% / .2);
-  }
-
-  :root[data-site-theme="dark"] {
-    --stage: #121317;
-  }
-
-  /* Seasonal: dark theme with the site's :root.halloween overrides */
-  :root[data-site-theme="halloween"] {
-    --stage: #140f10;
-    --tab-bg: #1d1517;
-    --tab-active: #261b1e;
-    --tab-border: #3b292d;
-    --tab-fill: rgb(187 13 0 / .2);
-    --tab-accent: #ff877d;
-  }
-
-  /* Catppuccin Mocha and Latte (site :root.catppuccin / :root.catppuccin-latte) */
-  :root[data-site-theme="catppuccin"] {
-    --stage: #1e1e2e;
-    --tab-bg: #181825;
-    --tab-active: #313244;
-    --tab-hover: #45475a;
-    --tab-text: #bac2de;
-    --tab-text-active: #cdd6f4;
-    --tab-border: #45475a;
-    --tab-fill: rgb(203 166 247 / .2);
-    --tab-accent: #cba6f7;
-  }
-
-  :root[data-site-theme="catppuccin-latte"] {
-    --stage: #eff1f5;
-    --tab-bg: #e6e9ef;
-    --tab-active: #dce0e8;
-    --tab-hover: #dce0e8;
-    --tab-text: #5c5f77;
-    --tab-text-active: #4c4f69;
-    --tab-border: #bcc0cc;
-    --tab-fill: rgb(136 57 239 / .2);
-    --tab-accent: color-mix(in srgb, #8839ef 98%, black);
-  }
 
   .chapters {
     width: 100%;

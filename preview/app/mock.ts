@@ -1,6 +1,7 @@
 // Stands in for everything outside the renderer: the Electron preload bridge, the API and the sockets.
 // Public data comes from snapshot.json (npm run preview:snapshot); signed-in data is the example below.
 import snapshot from './snapshot.json'
+import themes from './themes.json'
 import type { UserProfile } from '@shared/user'
 import type { MessageItem } from '@shared/messages'
 import type { Item } from '@shared/item'
@@ -33,7 +34,7 @@ document.head.insertAdjacentHTML('beforeend', '<style>:focus-visible { outline: 
 localStorage.clear()
 const params = new URLSearchParams(location.search)
 const theme = params.get('theme')
-if (theme === 'light' || theme === 'amoled') localStorage.setItem('theme', theme)
+if (theme && themes.some((t) => t.slug === theme)) localStorage.setItem('theme', theme)
 // The tour opens the app straight on the chapter's tab.
 localStorage.setItem('jbcl:last-active-tab', params.get('tab') ?? 'messages')
 
@@ -42,6 +43,7 @@ localStorage.setItem('jbcl:last-active-tab', params.get('tab') ?? 'messages')
 const people = snapshot.people as unknown as UserProfile[]
 const [me, sencha, smyke, kas, pika, flik, trevor] = people
 const routes = snapshot.routes as Record<string, unknown>
+routes[`${API}/v2/themes`] = themes
 const items = routes[`${API}/v2/items/partial`] as Item[]
 const online = new Set([me, sencha, smyke, flik].map((p) => p.id))
 for (const p of people) p.presence = { status: online.has(p.id) ? 'Online' : 'Offline', last_updated: now }

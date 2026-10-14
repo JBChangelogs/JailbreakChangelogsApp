@@ -1268,7 +1268,7 @@ export function ConversationThread({
             <div
               style={{
                 backgroundImage:
-                  'linear-gradient(in srgb to top, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 35%, rgba(0,0,0,0.9) 50%, rgba(0,0,0,0.65) 65%, rgba(0,0,0,0.35) 78%, rgba(0,0,0,0.12) 90%, rgba(0,0,0,0) 100%)'
+                  'linear-gradient(in srgb to top, var(--color-primary-bg) 35%, color-mix(in srgb, var(--color-primary-bg) 90%, transparent) 50%, color-mix(in srgb, var(--color-primary-bg) 65%, transparent) 65%, color-mix(in srgb, var(--color-primary-bg) 35%, transparent) 78%, color-mix(in srgb, var(--color-primary-bg) 12%, transparent) 90%, transparent 100%)'
               }}
               className={`pointer-events-none absolute inset-x-0 bottom-0 transition-[height] duration-300 ease-in-out ${isScrolledUp && recipientIsTyping ? (pendingReplyTo ? 'h-40' : 'h-28') : 'h-18'
                 }`}

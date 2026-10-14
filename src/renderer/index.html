@@ -16,7 +16,7 @@
       align-items: center;
       justify-content: center;
       gap: 16px;
-      background: #121317;
+      background: var(--color-primary-bg, #121317);
       z-index: 9999;
       opacity: 1;
       transition: opacity 0.25s ease;
@@ -60,13 +60,13 @@
         -apple-system,
         sans-serif;
       font-size: 13px;
-      color: rgba(255, 255, 255, 0.45);
+      color: var(--color-tertiary-text, rgba(255, 255, 255, 0.45));
       text-decoration: none;
       cursor: pointer;
     }
 
     #splash .splash-links a:hover {
-      color: rgba(255, 255, 255, 0.75);
+      color: var(--color-primary-text, rgba(255, 255, 255, 0.75));
       text-decoration: underline;
     }
   </style>

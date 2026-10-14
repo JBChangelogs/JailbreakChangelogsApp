@@ -244,7 +244,7 @@ export function ConversationList({
               }}
               title={recipient_id}
               className={`group flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2 py-1.5 text-left transition-colors ${isSelected
-                ? 'bg-button-secondary/45 text-form-button-text'
+                ? 'bg-button-secondary/45 text-primary-text'
                 : 'hover:bg-quaternary-bg'
                 }`}
             >
@@ -261,10 +261,7 @@ export function ConversationList({
 
               <div className="min-w-0 flex-1">
                 {label ? (
-                  <span
-                    className={`block truncate text-[15px] font-medium ${isSelected ? 'text-form-button-text' : 'text-primary-text'
-                      }`}
-                  >
+                  <span className="block truncate text-[15px] font-medium text-primary-text">
                     {label}
                   </span>
                 ) : (
@@ -284,7 +281,7 @@ export function ConversationList({
                   >
                     <span
                       className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-semibold ${isSelected
-                        ? 'bg-form-button-text/20 text-form-button-text'
+                        ? 'bg-primary-text/20 text-primary-text'
                         : 'bg-card-tag-bg text-card-tag-text'
                         }`}
                     >
@@ -302,7 +299,7 @@ export function ConversationList({
                       }}
                       aria-label={`Hide conversation with ${label ?? 'this user'}`}
                       className={`flex h-7 w-7 items-center justify-center rounded-md opacity-0 transition-all group-hover:opacity-100 ${isSelected
-                        ? 'text-form-button-text hover:bg-black/10'
+                        ? 'text-primary-text hover:bg-black/10'
                         : 'text-tertiary-text hover:bg-black/10 hover:text-primary-text'
                         }`}
                     >

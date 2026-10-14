@@ -1,0 +1,39 @@
+name: Preview
+
+# Run manually from the Actions tab to rebuild the animated preview from the current app code and today's values.
+on:
+  workflow_dispatch:
+
+concurrency: pages
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: 1
+
+      - run: npm run preview:snapshot
+
+      - run: npm run preview:build
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: preview/dist
+
+      - id: deploy
+        uses: actions/deploy-pages@v4

@@ -8,3 +8,5 @@ out
 electron.vite.config.*.mjs
 screenshots/
 openapi.json
+preview/preview.html
+preview/app/snapshot.json

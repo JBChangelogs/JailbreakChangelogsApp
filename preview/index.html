@@ -1,0 +1,429 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jailbreak Changelogs Preview</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --primary-bg: #121317;
+    --secondary-bg: #17181d;
+    --tertiary-bg: #1c1e24;
+    --quaternary-bg: hsl(225, 4%, 25%);
+    --primary-text: hsl(60, 5%, 97%);
+    --secondary-text: hsl(214, 16%, 64%);
+    --tertiary-text: hsl(214, 12%, 45%);
+    --quaternary-text: hsl(214, 8%, 35%);
+    --border-primary: hsl(214, 8%, 20%);
+    --border-card: hsl(214, 8%, 22%);
+    --border-focus: hsl(210, 99%, 50%);
+    --link: hsl(210, 100%, 70%);
+    --button-info: hsl(210, 99%, 35%);
+    --button-danger: hsl(0, 81%, 62%);
+    --button-secondary: hsl(212, 14%, 22%);
+    --form-button-text: hsl(60, 100%, 100%);
+    --status-success: hsl(155, 61%, 30%);
+    --status-success-vibrant: hsl(120, 61%, 50%);
+    --status-warning: hsl(38, 100%, 61%);
+    --status-error: hsl(0, 81%, 45%);
+    --card-tag-bg: hsl(210, 99%, 50%);
+    --status-info: hsl(210, 99%, 50%);
+    --stage: #0b0c0f;
+    --sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+    --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    min-height: 100%;
+    background: var(--stage);
+  }
+
+  body {
+    margin: 0;
+    background: var(--stage);
+    color: var(--primary-text);
+    font-family: var(--sans);
+    padding: 32px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+
+  button {
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: default;
+  }
+
+  svg {
+    display: block;
+  }
+
+  /* flex-shrink: 0 everywhere in the column, or a short iframe squeezes the
+     stage below the scaled window and the text below draws over it */
+  body > * {
+    flex-shrink: 0;
+  }
+
+  .stage {
+    width: 100%;
+    max-width: 1280px;
+    position: relative;
+  }
+
+  .stage::before {
+    content: "";
+    position: absolute;
+    inset: 8% 10%;
+    background: radial-gradient(closest-side, hsl(210 99% 50% / .22), transparent);
+    filter: blur(40px);
+    pointer-events: none;
+  }
+
+  /* The real app runs in this iframe at its native 1280x800 and is scaled to fit */
+  .win {
+    width: 1280px;
+    height: 800px;
+    transform-origin: 0 0;
+    position: absolute;
+    top: 0;
+    left: 0;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border-primary);
+    background: var(--primary-bg);
+  }
+
+  /* Stacked, so the next app can load hidden under the visible one */
+  .win iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    display: block;
+    pointer-events: none;
+  }
+
+  .cursor {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 12px;
+    height: 19px;
+    z-index: 50;
+    pointer-events: none;
+    overflow: visible;
+    transition: transform .7s cubic-bezier(.45, .05, .25, 1);
+    filter: drop-shadow(1px 1px 1px rgba(0, 0, 0, .35));
+  }
+
+  .ripple {
+    position: absolute;
+    width: 28px;
+    height: 28px;
+    margin: -14px 0 0 -14px;
+    border-radius: 99px;
+    border: 2px solid hsl(210 99% 60%);
+    z-index: 49;
+    pointer-events: none;
+    animation: ripple .45s ease-out forwards;
+  }
+
+  @keyframes ripple {
+    from {
+      transform: scale(.3);
+      opacity: 1
+    }
+
+    to {
+      transform: scale(1.4);
+      opacity: 0
+    }
+  }
+
+  .tip {
+    position: absolute;
+    z-index: 48;
+    background: var(--tertiary-bg);
+    border: 1px solid var(--border-card);
+    border-radius: 8px;
+    padding: 4px 8px;
+    font-size: 12px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .15s;
+  }
+
+  .tip.on {
+    opacity: 1;
+  }
+
+  /* Tabs + backdrop follow the embedding site's theme (set by setSiteTheme below).
+     Values are the site's dark / light / amoled tokens from main.css. */
+  :root {
+    --tab-bg: #17181d;
+    --tab-active: #1c1e24;
+    --tab-hover: hsl(225, 4%, 25%);
+    --tab-text: hsl(214, 16%, 64%);
+    --tab-text-active: hsl(60, 100%, 100%);
+    --tab-border: hsl(214, 8%, 22%);
+    --tab-fill: hsl(210 99% 35% / .2);
+    --tab-accent: hsl(210, 100%, 70%);
+  }
+
+  :root[data-site-theme="light"] {
+    --stage: #ffffff;
+    --tab-bg: hsl(240, 5%, 94%);
+    --tab-active: hsl(220, 8%, 91%);
+    --tab-hover: hsl(0, 0%, 94%);
+    --tab-text: hsl(214, 16%, 36%);
+    --tab-text-active: hsl(240, 8%, 9%);
+    --tab-border: hsl(214, 7%, 86%);
+    --tab-fill: hsl(210 99% 35% / .2);
+    --tab-accent: hsl(210, 99%, 40%);
+  }
+
+  :root[data-site-theme="amoled"] {
+    --stage: #000000;
+    --tab-bg: #0a0a0a;
+    --tab-active: #111111;
+    --tab-hover: hsl(0, 0%, 12%);
+    --tab-text: hsl(214, 16%, 64%);
+    --tab-text-active: hsl(60, 100%, 100%);
+    --tab-border: hsl(214, 8%, 20%);
+    --tab-fill: hsl(210 80% 32% / .2);
+  }
+
+  :root[data-site-theme="dark"] {
+    --stage: #121317;
+  }
+
+  /* Seasonal: dark theme with the site's :root.halloween overrides */
+  :root[data-site-theme="halloween"] {
+    --stage: #140f10;
+    --tab-bg: #1d1517;
+    --tab-active: #261b1e;
+    --tab-border: #3b292d;
+    --tab-fill: rgb(187 13 0 / .2);
+    --tab-accent: #ff877d;
+  }
+
+  /* Catppuccin Mocha and Latte (site :root.catppuccin / :root.catppuccin-latte) */
+  :root[data-site-theme="catppuccin"] {
+    --stage: #1e1e2e;
+    --tab-bg: #181825;
+    --tab-active: #313244;
+    --tab-hover: #45475a;
+    --tab-text: #bac2de;
+    --tab-text-active: #cdd6f4;
+    --tab-border: #45475a;
+    --tab-fill: rgb(203 166 247 / .2);
+    --tab-accent: #cba6f7;
+  }
+
+  :root[data-site-theme="catppuccin-latte"] {
+    --stage: #eff1f5;
+    --tab-bg: #e6e9ef;
+    --tab-active: #dce0e8;
+    --tab-hover: #dce0e8;
+    --tab-text: #5c5f77;
+    --tab-text-active: #4c4f69;
+    --tab-border: #bcc0cc;
+    --tab-fill: rgb(136 57 239 / .2);
+    --tab-accent: color-mix(in srgb, #8839ef 98%, black);
+  }
+
+  .chapters {
+    width: 100%;
+    max-width: 1280px;
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    border-radius: 16px;
+    border: 1px solid var(--tab-border);
+    background: var(--tab-bg);
+    padding: 4px;
+    color: var(--tab-text);
+  }
+
+  .chapters button {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    flex: 1 1 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    padding: 10px 16px;
+    font-size: 14px;
+    line-height: 20px;
+    font-weight: 500;
+    white-space: nowrap;
+    color: var(--tab-text);
+    background: transparent;
+    cursor: pointer;
+    transition: color .2s, background-color .2s;
+  }
+
+  .chapters button:hover {
+    background: var(--tab-hover);
+    color: var(--tab-text-active);
+  }
+
+  .chapters button:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--border-focus);
+  }
+
+  .chapters button[data-state="active"] {
+    background: var(--tab-active);
+    color: var(--tab-text-active);
+  }
+
+  .chapters .fill {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--tab-fill);
+    transform-origin: left;
+    opacity: 0;
+    transition: opacity .3s;
+  }
+
+  .chapters button[data-state="active"] .fill {
+    opacity: 1;
+  }
+
+  /* Feature copy under the preview, swapped with the active tab */
+  .feature {
+    width: 100%;
+    max-width: 1280px;
+    display: grid;
+    gap: 12px 48px;
+    padding: 8px 4px 0;
+    color: var(--tab-text);
+  }
+
+  /* Staggered entrance on every tab switch: heading, description, then each point */
+  .feature h3,
+  .feature > div > p,
+  .feature li {
+    animation: feature-in .45s cubic-bezier(.2, .8, .2, 1) both;
+    animation-delay: calc(var(--i, 0) * 70ms);
+  }
+
+  @keyframes feature-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+      filter: blur(2px);
+    }
+  }
+
+  .feature[hidden] {
+    display: none;
+  }
+
+  .feature h3 {
+    margin: 0;
+    font-size: 22px;
+    line-height: 1.3;
+    font-weight: 700;
+    color: var(--tab-text-active);
+    text-wrap: balance;
+  }
+
+  .feature > div > p {
+    margin: 8px 0 0;
+    font-size: 15px;
+    line-height: 1.6;
+    max-width: 60ch;
+  }
+
+  .feature ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .feature li {
+    display: flex;
+    gap: 10px;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .feature li svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    margin-top: 3px;
+    color: var(--tab-accent);
+  }
+
+  @media (min-width: 900px) {
+    .feature {
+      grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    }
+  }
+
+  @keyframes app-preview-progress {
+    from {
+      transform: scaleX(0)
+    }
+
+    to {
+      transform: scaleX(1)
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .chapters {
+      flex-wrap: nowrap;
+    }
+
+    .chapters button {
+      flex: 1 1 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+
+    .cursor,
+    .ripple {
+      display: none;
+    }
+
+    * {
+      animation-duration: 0s !important;
+      transition-duration: 0s !important;
+    }
+  }
+</style>
+
+<div class="chapters" id="chapters" role="tablist" aria-label="App features"></div>
+
+<div class="stage" id="stage">
+  <div class="win" id="win">
+    <iframe id="app" title="Jailbreak Changelogs desktop app" tabindex="-1"></iframe>
+    <svg class="cursor" id="cursor" width="12" height="19" viewBox="0 0 12 19" shape-rendering="crispEdges"></svg>
+    <div class="tip" id="tip"></div>
+  </div>
+</div>
+
+<section class="feature" id="feature" aria-live="polite"></section>
+
+<script type="module" src="./tour.ts"></script>

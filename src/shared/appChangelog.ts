@@ -9,6 +9,27 @@ export interface AppChangelogEntry {
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.5.15',
+    date: '2026-10-14',
+    added: [
+      'Make Offer now asks whether to send a Quick Offer (exactly what the ad asks for) or build a Custom Offer',
+      "Shortcuts for the calculator's Clear button: Shift + click clears both sides, Ctrl + click clears Offering and Ctrl + right-click clears Requesting. They're listed at the bottom of the calculator sidebar"
+    ],
+    changed: [
+      "Custom offers are made on their own page with the full item picker instead of a cramped popup, and Back returns you to wherever you started the offer",
+      "Creating a trade ad and making an offer now show their title and Back button in the page header, like a trade ad's own page",
+      'Pick how long a trade ad lasts from the timer button next to Post Trade Ad',
+      "The calculator's offering and requesting totals stay pinned under the header while you scroll, in a more compact form",
+      "Calculator item cards now show demand and trend for items that have no value or can't be traded",
+      'The clean, duped or OG dropdown on calculator items now sits next to the item name',
+      'Custom offers need at least one item before they can be sent'
+    ],
+    fixed: [
+      'The Value Calculator header now lines up with the navigation bar and stays in place while you scroll',
+      'Adding the first item to either side of the calculator no longer makes the page jump'
+    ]
+  },
+  {
     version: '0.5.14',
     date: '2026-10-06',
     added: [

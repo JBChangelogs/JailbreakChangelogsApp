@@ -192,7 +192,7 @@ const SCENES: { chapter: string; id: string; tab: string; dur: number; play: (g:
     }
   },
   {
-    chapter: 'Calculator', id: 'calculator', tab: 'Value Calculator', dur: 14000,
+    chapter: 'Calculator', id: 'calculator', tab: 'Value Calculator', dur: 19000,
     async play(g) {
       const search = await find('input[placeholder="Search items..."]', g) as HTMLInputElement
       await sleep(800, g)
@@ -204,7 +204,12 @@ const SCENES: { chapter: string; id: string; tab: string; dur: number; play: (g:
         await moveTo(add, g); await click(add, g)
         await sleep(500, g)
       }
-      await sleep(3000, g)
+      // Clear the search and browse, so the totals stick to the top while the list scrolls under them.
+      const clear = await find('button[aria-label="Clear search"]', g)
+      await moveTo(clear, g); await click(clear, g)
+      await sleep(900, g)
+      await scrollThrough(g)
+      await sleep(800, g)
     }
   },
   {

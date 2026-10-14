@@ -7,6 +7,7 @@ import { UpdateBanner } from '@renderer/components/UpdateBanner'
 import { HomeScreen } from '@renderer/components/HomeScreen'
 import { ToastViewport } from '@renderer/components/notifications/ToastViewport'
 import { SettingsPage } from '@renderer/components/settings/SettingsPage'
+import { ThemeCursor } from '@renderer/components/ThemeCursor'
 import { useAuth } from '@renderer/contexts/AuthContext'
 import { useSettingsPage } from '@renderer/contexts/SettingsPageContext'
 import { useRealtimePreferences } from '@renderer/hooks/useRealtimePreferences'
@@ -69,7 +70,8 @@ function App(): React.JSX.Element {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-primary-bg text-primary-text">
       <UpdateBanner />
-      <TitleBar />
+      <ThemeCursor />
+      <TitleBar canOpenSettings={hasAccess} />
 
       <div className="relative flex flex-1 overflow-hidden">
         {isChecking ? null : !isAuthenticated ? (

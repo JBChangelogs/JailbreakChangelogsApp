@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useAuth } from '@renderer/contexts/AuthContext'
 import { useTheme, type Theme } from '@renderer/contexts/ThemeContext'
+import { isThemeSlug } from '@renderer/lib/themes'
 import {
   usePreferences,
   RICH_PRESENCE_PREFERENCE_KEYS,
@@ -8,11 +9,8 @@ import {
 } from '@renderer/contexts/PreferencesContext'
 import { useRealtime, type RealtimeMessage } from '@renderer/contexts/RealtimeContext'
 
-const VALID_THEMES: readonly string[] = ['dark', 'amoled', 'light'] satisfies Theme[]
-
-function isTheme(value: unknown): value is Theme {
-  return typeof value === 'string' && VALID_THEMES.includes(value)
-}
+// Any theme the website has; ThemeContext shows the default until the list includes it.
+const isTheme = isThemeSlug
 
 function isRichPresenceKey(key: unknown): key is RichPresencePreferenceKey {
   return typeof key === 'string' && (RICH_PRESENCE_PREFERENCE_KEYS as readonly string[]).includes(key)

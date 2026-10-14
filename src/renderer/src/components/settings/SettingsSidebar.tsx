@@ -49,6 +49,21 @@ function SparklesIcon({ className }: { className?: string }): React.JSX.Element 
   )
 }
 
+function PaletteIcon({ className }: { className?: string }): React.JSX.Element {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M12 22a10 10 0 1 1 10-10c0 2.8-2.2 4-4 4h-1.8a1.7 1.7 0 0 0-1.2 2.9 1.7 1.7 0 0 1-1.2 3.1H12Z"
+      />
+      <circle cx="7.5" cy="11" r="1" fill="currentColor" stroke="none" />
+      <circle cx="10.5" cy="7" r="1" fill="currentColor" stroke="none" />
+      <circle cx="15.5" cy="7.5" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
 function BackIcon({ className }: { className?: string }): React.JSX.Element {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -83,6 +98,7 @@ function GiftIcon({ className }: { className?: string }): React.JSX.Element {
 
 const SECTIONS: { id: SettingsSectionId; label: string; icon: (props: { className?: string }) => React.JSX.Element }[] = [
   { id: 'account', label: 'Account', icon: UserIcon },
+  { id: 'display', label: 'Display', icon: PaletteIcon },
   { id: 'privacy', label: 'Privacy', icon: ShieldIcon },
   { id: 'notifications', label: 'Notifications', icon: BellIcon },
   { id: 'richPresence', label: 'Rich Presence', icon: GamepadIcon },

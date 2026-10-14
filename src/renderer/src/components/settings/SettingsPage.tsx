@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSettingsPage } from '@renderer/contexts/SettingsPageContext'
 import { SettingsSidebar } from './SettingsSidebar'
 import { AccountSettingsSection } from './sections/AccountSettingsSection'
+import { DisplaySettingsSection } from './sections/DisplaySettingsSection'
 import { PrivacySettingsSection } from './sections/PrivacySettingsSection'
 import { NotificationsSettingsSection } from './sections/NotificationsSettingsSection'
 import { RichPresenceSettingsSection } from './sections/RichPresenceSettingsSection'
@@ -46,6 +47,7 @@ export function SettingsPage(): React.JSX.Element | null {
       <SettingsSidebar />
       <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable_both-edges]">
         {section === 'account' && <AccountSettingsSection />}
+        {section === 'display' && <DisplaySettingsSection />}
         {section === 'privacy' && <PrivacySettingsSection />}
         {section === 'notifications' && <NotificationsSettingsSection />}
         {section === 'richPresence' && <RichPresenceSettingsSection />}

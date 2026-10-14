@@ -47,7 +47,8 @@ function capitalize(str) {
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 }
 
-export function TitleBar(): React.JSX.Element {
+/** canOpenSettings: Display settings need a signed-in account with app access. */
+export function TitleBar({ canOpenSettings }: { canOpenSettings: boolean }): React.JSX.Element {
   const [isMaximized, setIsMaximized] = useState(false)
   const { location } = useRealtime()
   const isMac = window.electron.process.platform === 'darwin'
@@ -63,7 +64,7 @@ export function TitleBar(): React.JSX.Element {
       style={DRAG}
     >
       <div className={`flex items-center gap-2 px-3 text-xs font-semibold text-secondary-text ${isMac ? 'pl-20' : ''}`}>
-        <img src={appIcon} alt="" className="h-6 w-6 shrink-0" draggable={false} />
+        <img src={appIcon} alt="" className="header-logo h-6 w-6 shrink-0" draggable={false} />
         <span className="text-primary-text">Jailbreak Changelogs</span>
       </div>
       {location && (
@@ -75,6 +76,7 @@ export function TitleBar(): React.JSX.Element {
         <NotificationsPopover />
         <AnimatedThemeToggler
           size="sm"
+          canOpenSettings={canOpenSettings}
           className="h-full w-11 rounded-none border-0 bg-transparent hover:bg-quaternary-bg hover:text-primary-text"
         />
 

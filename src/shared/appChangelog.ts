@@ -9,6 +9,22 @@ export interface AppChangelogEntry {
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.5.16',
+    date: '2026-10-14',
+    added: [
+      "Every theme from the website is now in the app, including Halloween, OG, Future Tone and Catppuccin, and your theme stays in sync with the website",
+      'A new Display section in Settings to pick your theme, turn on the theme cursor and show or hide the theme button in the title bar'
+    ],
+    changed: [
+      'The theme button in the title bar now opens Display settings',
+      'The Use Twemoji setting moved from Account to Display'
+    ],
+    fixed: [
+      'The selected conversation name is readable on light themes',
+      'The fade behind the message box matches the theme instead of always being black'
+    ]
+  },
+  {
     version: '0.5.15',
     date: '2026-10-14',
     added: [

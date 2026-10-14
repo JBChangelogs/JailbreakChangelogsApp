@@ -1,6 +1,5 @@
 name: Preview
 
-# Run manually from the Actions tab to rebuild the animated preview from the current app code and today's values.
 on:
   workflow_dispatch:
 
@@ -31,7 +30,7 @@ jobs:
 
       - run: npm run preview:build
 
-      - name: Record preview.gif
+      - name: Record preview video and GIF
         run: |
           command -v ffmpeg || (sudo apt-get update && sudo apt-get install -y ffmpeg)
           node preview/record.mjs

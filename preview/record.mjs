@@ -1,14 +1,15 @@
-// Records one loop of the built preview tour (preview/dist) and saves it as dist/preview.gif for link embeds.
-// Needs Chrome and ffmpeg (both preinstalled on GitHub's Ubuntu runners). CHROME_PATH overrides the browser.
+// Records one loop of the built preview tour (preview/dist) for link embeds: dist/preview.mp4 (full size, used by
+// Discord) and dist/preview.gif (smaller, the Open Graph image elsewhere).
+// Needs Chrome and ffmpeg; CHROME_PATH and FFMPEG_PATH override where they're found.
 import { spawn, spawnSync } from 'node:child_process'
 import { createServer } from 'node:http'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { extname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const dist = new URL('dist/', import.meta.url)
-const WIDTH = 640 // GIF width; the app is recorded at 1280x800 and scaled down
-const FPS = 10
+const CAPTURE_FPS = 30 // frames kept from Chrome; the video uses all of them
 const MAX_MS = 4 * 60 * 1000
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
@@ -45,7 +46,6 @@ const wsUrl = await new Promise((resolve, reject) => {
   chrome.once('exit', () => reject(new Error(`Chrome exited:\n${log}`)))
 })
 
-// Talk to the page over the DevTools protocol.
 const browser = new WebSocket(wsUrl)
 await new Promise((r) => (browser.onopen = r))
 let nextId = 0
@@ -76,20 +76,17 @@ await sleep(1500)
 
 const box = await evaluate(`(() => { const r = document.querySelector('#win').getBoundingClientRect(); return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) } })()`)
 
-// Chrome only sends a frame when the page changes, each with a timestamp; ffmpeg turns them into a steady frame
-// rate. The progress bars change every frame, so keep at most twice the GIF's rate.
 const frames = []
 const dir = mkdtempSync(join(tmpdir(), 'preview-frames-'))
 listeners.set('Page.screencastFrame', ({ data, metadata, sessionId: frameId }) => {
   void page('Page.screencastFrameAck', { sessionId: frameId })
-  if (frames.length && metadata.timestamp - frames.at(-1).time < 1 / (FPS * 2)) return
+  if (frames.length && metadata.timestamp - frames.at(-1).time < 1 / CAPTURE_FPS) return
   const file = join(dir, `${String(frames.length).padStart(5, '0')}.jpg`)
   writeFileSync(file, Buffer.from(data, 'base64'))
   frames.push({ file, time: metadata.timestamp })
 })
 await page('Page.startScreencast', { format: 'jpeg', quality: 85 })
 
-// Stop once the tour has been through every chapter and comes back to the first.
 const activeChapter = `[...document.querySelectorAll('#chapters button')].findIndex((b) => b.dataset.state === 'active')`
 const chapters = await evaluate(`document.querySelectorAll('#chapters button').length`)
 const started = Date.now()
@@ -105,25 +102,27 @@ browser.close()
 chrome.kill()
 server.close()
 
-if (process.argv.includes('--frames-only')) {
-  console.log(`frames in ${dir}`)
-  process.exit(0)
-}
-
 // concat list: show each frame until the next one arrived.
+const slash = (path) => path.replaceAll('\\', '/')
 const list = frames
-  .map((f, i) => `file '${f.file.replace(/\\/g, '/')}'\nduration ${((frames[i + 1]?.time ?? f.time + 1 / FPS) - f.time).toFixed(3)}`)
+  .map((f, i) => `file '${slash(f.file)}'\nduration ${((frames[i + 1]?.time ?? f.time + 1 / CAPTURE_FPS) - f.time).toFixed(3)}`)
   .join('\n')
-writeFileSync(join(dir, 'list.txt'), `${list}\nfile '${frames.at(-1).file.replace(/\\/g, '/')}'\n`)
+writeFileSync(join(dir, 'list.txt'), `${list}\nfile '${slash(frames.at(-1).file)}'\n`)
+const crop = `crop=${box.w}:${box.h}:${box.x}:${box.y}`
+console.log(`frames in ${dir} (${crop})`)
+if (process.argv.includes('--frames-only')) process.exit(0)
 
-const out = new URL('preview.gif', dist)
-const filters = [
-  `crop=${box.w}:${box.h}:${box.x}:${box.y}`,
-  `fps=${FPS}`,
-  `scale=${WIDTH}:-1:flags=lanczos`,
-  'split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle'
-].join(',')
-const ffmpeg = spawnSync('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', join(dir, 'list.txt'), '-vf', filters, '-loop', '0', out.pathname.replace(/^\/(\w:)/, '$1')], { stdio: 'inherit' })
+// Settings picked by comparing frames: CRF 26 looks the same as 22 at three quarters of the size, and a GIF
+// can't hold its own at full size, so it's 800px at 10fps with one shared palette (~10MB).
+const ffmpeg = (...args) => {
+  const run = spawnSync(process.env.FFMPEG_PATH ?? 'ffmpeg', ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', join(dir, 'list.txt'), ...args], { stdio: 'inherit' })
+  if (run.status !== 0) process.exit(run.status ?? 1)
+}
+const outPath = (name) => fileURLToPath(new URL(name, dist))
+ffmpeg('-vf', `${crop},fps=30,format=yuv420p`, '-c:v', 'libx264', '-preset', 'slow', '-crf', '26', '-tune', 'stillimage', '-movflags', '+faststart', '-an', outPath('preview.mp4'))
+ffmpeg(
+  '-vf', `${crop},fps=10,scale=800:-1:flags=lanczos,split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle`,
+  '-loop', '0', outPath('preview.gif')
+)
 rmSync(dir, { recursive: true, force: true })
-if (ffmpeg.status !== 0) process.exit(ffmpeg.status ?? 1)
-console.log(`preview.gif ${(statSync(out).size / 1e6).toFixed(1)}MB`)
+for (const name of ['preview.mp4', 'preview.gif']) console.log(`${name} ${(statSync(outPath(name)).size / 1e6).toFixed(1)}MB`)

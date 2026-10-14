@@ -276,6 +276,8 @@ export const preview = {
     threads.set(from.id, [...conversation(from.id), m])
     realtime('message_received', m)
   },
+  // Switches theme in place, the way the app follows a theme change on the website.
+  theme: (slug: string) => realtime('preferences_update', { key: 'theme', value: slug }),
   robloxActivity: (placeId: string | null, jobId: string | null = null) =>
     subscribers.get('onRobloxActivityChanged')?.forEach((cb) => cb({ placeId, jobId, game: placeId ? 'Jailbreak' : null }))
 }

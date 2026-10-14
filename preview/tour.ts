@@ -323,10 +323,13 @@ async function loadApp(tab: string, g: number): Promise<HTMLIFrameElement> {
     next.remove()
     throw e
   }
+  // The site's theme may have changed while it loaded.
+  setAppTheme(next)
   return next
 }
 
 function show(next: HTMLIFrameElement): void {
+  $('#splash')?.remove()
   frame.remove()
   next.style.visibility = ''
   frame = next
@@ -369,6 +372,11 @@ function paintTheme(slug: string): void {
   const button = color('--color-button-info')
   const tokens: Record<string, string | undefined> = {
     '--stage': color('--color-primary-bg'),
+    // The app window and its loading screen
+    '--primary-bg': color('--color-primary-bg'),
+    '--primary-text': color('--color-primary-text'),
+    '--border-primary': color('--color-border-primary'),
+    '--status-info': color('--color-status-info'),
     '--tab-bg': color('--color-secondary-bg'),
     '--tab-active': color('--color-tertiary-bg'),
     '--tab-hover': color('--color-quaternary-bg'),
@@ -387,7 +395,11 @@ function setSiteTheme(theme: string | null): void {
   siteTheme = theme
   document.documentElement.dataset.siteTheme = theme
   paintTheme(theme)
-  if (gen > 0) run(SCENES.findIndex((_, i) => tabs[i].dataset.state === 'active'))
+  setAppTheme(frame)
+}
+// Switches the running app in place, so the tour carries on without reloading it.
+function setAppTheme(f: HTMLIFrameElement): void {
+  (f.contentWindow as (Window & { preview?: typeof Controls }) | null)?.preview?.theme(siteTheme)
 }
 paintTheme(siteTheme)
 setSiteTheme(new URLSearchParams(location.search).get('theme'))

@@ -45,6 +45,8 @@ import type { VipServerWithOwner } from '@shared/servers'
 import { track } from '@renderer/lib/analytics'
 
 const AVATAR_GROUP_GAP_MS = 5 * 60 * 1000
+// Below this width (chat + member list), the member list stops taking room from the chat.
+const MEMBERS_SIDEBAR_MIN_ROW_WIDTH = 900
 
 const MAX_LENGTH = 350
 const TEXTAREA_MIN_HEIGHT = 41
@@ -1037,7 +1039,23 @@ export function ConversationThread({
   const isGroup = target?.kind === 'group'
   const isGroupOwner = isGroup && currentUser !== null && group?.owner_id === currentUser.id
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [showMembers, setShowMembers] = useState(true)
+  // The member list sits beside the chat when there's room. Narrower, it hides on its own and the
+  // members button opens it over the chat instead, like Discord.
+  const [membersPinned, setMembersPinned] = useState(true)
+  const [membersOverlayOpen, setMembersOverlayOpen] = useState(false)
+  const [chatRow, setChatRow] = useState<HTMLDivElement | null>(null)
+  const [chatRowWidth, setChatRowWidth] = useState(0)
+  useEffect(() => {
+    if (!chatRow) return undefined
+    const observer = new ResizeObserver(([entry]) => setChatRowWidth(entry.contentRect.width))
+    observer.observe(chatRow)
+    return () => observer.disconnect()
+  }, [chatRow])
+  const membersNarrow = chatRowWidth > 0 && chatRowWidth < MEMBERS_SIDEBAR_MIN_ROW_WIDTH
+  const showMembers = membersNarrow ? membersOverlayOpen : membersPinned
+  const toggleMembers = (): void =>
+    membersNarrow ? setMembersOverlayOpen((open) => !open) : setMembersPinned((pinned) => !pinned)
+  useEffect(() => setMembersOverlayOpen(false), [recipientId, membersNarrow])
   const [inviteOpen, setInviteOpen] = useState(false)
   const canInvite = isGroupOwner && group !== undefined && group.member_ids.length < MAX_GROUP_MEMBERS
   const {
@@ -1351,7 +1369,7 @@ export function ConversationThread({
                 <TooltipTrigger asChild>
                   <button
                     type="button"
-                    onClick={() => setShowMembers((v) => !v)}
+                    onClick={toggleMembers}
                     aria-label={showMembers ? 'Hide members' : 'Show members'}
                     aria-pressed={showMembers}
                     className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-quaternary-bg hover:text-primary-text ${showMembers ? 'text-primary-text' : 'text-secondary-text'}`}
@@ -1396,7 +1414,7 @@ export function ConversationThread({
               </Tooltip>
             </div>
           )}
-          <div className="flex min-h-0 flex-1">
+          <div ref={setChatRow} className="relative flex min-h-0 flex-1">
             <div className="flex min-w-0 flex-1 flex-col">
               <div className="relative min-h-0 flex-1">
                 <div ref={setScrollRef} className="absolute inset-0 overflow-y-auto pt-1 pb-5">
@@ -1637,13 +1655,21 @@ export function ConversationThread({
               </div>
             </div>
             {isGroup && group && showMembers && (
-              <GroupMembersSidebar
-                group={group}
-                currentUserId={currentUser?.id ?? null}
-                profiles={profiles}
-                onUpdated={onGroupUpdated}
-                onInvite={canInvite ? () => setInviteOpen(true) : null}
-              />
+              <div
+                className={
+                  membersNarrow
+                    ? 'absolute inset-y-0 right-0 z-20 flex shadow-2xl animate-in slide-in-from-right-4 fade-in-0 duration-150'
+                    : 'flex'
+                }
+              >
+                <GroupMembersSidebar
+                  group={group}
+                  currentUserId={currentUser?.id ?? null}
+                  profiles={profiles}
+                  onUpdated={onGroupUpdated}
+                  onInvite={canInvite ? () => setInviteOpen(true) : null}
+                />
+              </div>
             )}
           </div>
         </>

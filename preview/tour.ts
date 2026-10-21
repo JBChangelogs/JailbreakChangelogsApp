@@ -3,6 +3,9 @@
 import type { preview as Controls } from './app/mock'
 import themes from './app/themes.json'
 
+// The example group chat in app/mock.ts. Not imported from there: that module installs the mocks.
+const GROUP_NAME = 'Trade crew'
+
 const $ = <T extends Element = HTMLElement>(s: string, r: ParentNode = document): T => r.querySelector(s) as T
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
 
@@ -129,7 +132,7 @@ const JOB = 'b6f2c1e0-3f5a-4c1e-9a77-2d8e5c4f1a90'
 
 const SCENES: { chapter: string; id: string; tab: string; dur: number; play: (g: number) => Promise<void> }[] = [
   {
-    chapter: 'Messages', id: 'messages', tab: 'Messages', dur: 17500,
+    chapter: 'Messages', id: 'messages', tab: 'Messages', dur: 26000,
     async play(g) {
       const box = await find('textarea[placeholder^="Message"]', g) as HTMLTextAreaElement
       await sleep(900, g)
@@ -157,6 +160,17 @@ const SCENES: { chapter: string; id: string; tab: string; dur: number; play: (g:
       preview.receive(preview.sencha, 'omw')
       await sleep(2600, g)
       preview.robloxActivity(null)
+      // Group chats sit in the same list. Opening one shows its member list beside the chat.
+      const groupRow = await find(
+        () => [...doc().querySelectorAll<HTMLElement>('[role="button"]')].find((row) => row.textContent?.includes(GROUP_NAME)),
+        g
+      )
+      await moveTo(groupRow, g); await click(groupRow, g)
+      await sleep(1800, g)
+      preview.groupTyping(preview.smyke); preview.groupTyping(preview.flik)
+      await sleep(2200, g)
+      preview.groupReceive(preview.smyke, 'trade crew stays winning')
+      await sleep(2600, g)
     }
   },
   {
@@ -234,8 +248,9 @@ const SCENES: { chapter: string; id: string; tab: string; dur: number; play: (g:
 const FEATURES: Record<string, { title: string; description: string; points: string[] }> = {
   Messages: {
     title: 'Agree on the trade, then meet in-game',
-    description: 'Direct messages with unread counts, online status and replies.',
+    description: 'Direct messages and group chats with unread counts, online status and replies.',
     points: [
+      'Group chats of up to 10 people sit right alongside your DMs, with a member list showing who is online.',
       'Accepted trade offers appear in the chat, showing the items and values on each side.',
       'Send a game invite and the other person can join your server straight from the conversation. Detecting your Roblox session is Windows only.'
     ]

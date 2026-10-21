@@ -99,6 +99,28 @@ const threads = new Map<string, MessageItem[]>([
   [trevor.id, [msg(trevor, me, 3 * 86400, 'are you selling the Arachnid?', { read_at: null })]]
 ])
 
+// A group chat alongside the DMs. Newer than the open DM, so it sits at the top of the list.
+const GROUP_ID = '7300000000000000001'
+const GROUP_NAME = 'Trade crew' // preview/tour.ts finds the group by this name
+const group = {
+  id: GROUP_ID,
+  name: GROUP_NAME,
+  owner_id: me.id,
+  created_at: ago(5 * 3600),
+  member_ids: [me, sencha, smyke, flik, kas].map((p) => p.id)
+}
+let groupUnread = 2
+const groupMsg = (from: UserProfile, secondsAgo: number, content: string, metadata: Record<string, unknown> | null = null): MessageItem =>
+  ({ ...msg(from, me, secondsAgo, content, { metadata }), receiver_id: GROUP_ID, group_id: GROUP_ID } as MessageItem)
+const groupThread: MessageItem[] = [
+  groupMsg(me, 5 * 3600, '', { type: 'members_added', user_ids: [sencha.id, smyke.id, flik.id, kas.id] }),
+  groupMsg(smyke, 4 * 3600, 'who has a spare Torpedo?'),
+  groupMsg(flik, 3.9 * 3600, 'me, but it costs you a HyperRed'),
+  groupMsg(sencha, 330, 'just got a Javelin, gg everyone'),
+  groupMsg(kas, 300, 'nice, gg')
+]
+const groupSummary = (): unknown => ({ ...group, unread_count: groupUnread, message: groupThread[groupThread.length - 1] })
+
 function wire(name: string): TradeItemWire {
   const it = byName(name)
   return { id: String(it.id), name: it.name, type: it.type, info: { cash_value: it.cash_value, duped_value: it.duped_value, trend: it.trend, demand: it.demand } }
@@ -157,7 +179,7 @@ const handlers: [string, RegExp, Handler][] = [
     })).sort((a, b) => b.message.created_at - a.message.created_at)
     return { conversations, total_conversations: conversations.length }
   }],
-  ['GET', /^\/v2\/conversations\/unread-count$/, () => ({ unread: [...threads.values()].flat().filter((m) => m.sender_id !== me.id && !m.read_at).length })],
+  ['GET', /^\/v2\/conversations\/unread-count$/, () => ({ unread: [...threads.values()].flat().filter((m) => m.sender_id !== me.id && !m.read_at).length + groupUnread })],
   ['GET', /^\/v2\/conversations\/(\d+)\/messages$/, (_, __, m) => {
     const list = conversation(m[1])
     for (const x of list) x.read_at ??= now
@@ -167,6 +189,22 @@ const handlers: [string, RegExp, Handler][] = [
     const { content, parent_id = null, metadata = null } = body as Partial<MessageItem>
     const sent: MessageItem = { id: String(nextId++), sender_id: me.id, receiver_id: m[1], content: content ?? '', parent_id, metadata, created_at: Math.floor(Date.now() / 1000), read_at: null }
     threads.set(m[1], [...conversation(m[1]), sent])
+    return { success: true, message: sent }
+  }],
+  ['GET', /^\/v2\/group-chats$/, () => ({ groups: [groupSummary()], total_groups: 1 })],
+  ['GET', /^\/v2\/group-chats\/(\d+)$/, (_, __, m) => (m[1] === GROUP_ID ? group : undefined)],
+  // No generated icon in the preview: the app falls back to the members' avatars.
+  ['GET', /^\/v2\/group-chats\/(\d+)\/icon$/, () => undefined],
+  ['GET', /^\/v2\/group-chats\/(\d+)\/messages$/, (_, __, m) => {
+    if (m[1] !== GROUP_ID) return undefined
+    groupUnread = 0
+    return { items: [...groupThread].reverse(), total: groupThread.length, page: 1, total_pages: 1, size: 50 }
+  }],
+  ['POST', /^\/v2\/group-chats\/(\d+)\/messages$/, (_, body, m) => {
+    if (m[1] !== GROUP_ID) return undefined
+    const { content, parent_id = null, metadata = null } = body as Partial<MessageItem>
+    const sent = { ...groupMsg(me, 0, content ?? '', metadata), parent_id }
+    groupThread.push(sent)
     return { success: true, message: sent }
   }],
   ['GET', /^\/v2\/notifications\/unread-count$/, () => ({ unread_count: 0 })],
@@ -288,6 +326,15 @@ const realtime = (action: string, data: unknown): void => {
 export const preview = {
   me,
   sencha,
+  smyke,
+  flik,
+  // Someone typing in the group chat; several at once show as "X and Y are typing".
+  groupTyping: (from: UserProfile) => realtime('typing', { user_id: from.id, group_id: GROUP_ID }),
+  groupReceive(from: UserProfile, content: string) {
+    const m = groupMsg(from, 0, content)
+    groupThread.push(m)
+    realtime('group_message_received', m)
+  },
   // The other side of the open conversation: a typing indicator, then a reply.
   typing: (from: UserProfile) => realtime('typing', { user_id: from.id }),
   receive(from: UserProfile, content: string, metadata: Record<string, unknown> | null = null) {

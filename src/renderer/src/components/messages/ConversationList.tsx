@@ -248,7 +248,7 @@ export function ConversationList({
                 <GroupAvatar
                   groupId={group.id}
                   memberIds={group.member_ids}
-                  fallbackIds={others.slice(0, 2)}
+                  fallbackIds={others.slice(0, 4)}
                   profiles={profiles}
                   className="h-8 w-8"
                 />

@@ -1331,7 +1331,7 @@ export function ConversationThread({
                 <GroupAvatar
                   groupId={recipientId}
                   memberIds={group?.member_ids ?? []}
-                  fallbackIds={groupOthers.slice(0, 2)}
+                  fallbackIds={groupOthers.slice(0, 4)}
                   profiles={profiles}
                   className="h-8 w-8"
                 />

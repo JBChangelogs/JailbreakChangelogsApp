@@ -95,10 +95,30 @@ function useGroupIcon(groupId: string, memberIds: string[]): string | null {
   return src
 }
 
+// Where each member sits while there's no generated icon, matching the API's icon layouts:
+// two overlap diagonally, three are one on top and two below, four make a 2x2 cluster.
+const FALLBACK_LAYOUTS: Record<number, React.CSSProperties[]> = {
+  2: [
+    { top: 0, left: 0, width: '62%', height: '62%' },
+    { right: 0, bottom: 0, width: '62%', height: '62%' }
+  ],
+  3: [
+    { top: 0, left: '22%', width: '56%', height: '56%' },
+    { bottom: 0, left: 0, width: '56%', height: '56%' },
+    { bottom: 0, right: 0, width: '56%', height: '56%' }
+  ],
+  4: [
+    { top: 0, left: 0, width: '54%', height: '54%' },
+    { top: 0, right: 0, width: '54%', height: '54%' },
+    { bottom: 0, left: 0, width: '54%', height: '54%' },
+    { bottom: 0, right: 0, width: '54%', height: '54%' }
+  ]
+}
+
 interface GroupAvatarProps {
   groupId: string
   memberIds: string[]
-  // Shown as two overlapping avatars while the icon loads or if it fails.
+  // Up to four of these are shown while the icon loads or if it fails.
   fallbackIds: string[]
   profiles: Map<string, UserProfile>
   className?: string
@@ -116,14 +136,21 @@ export function GroupAvatar({
     // The icon is already circles on a transparent background, so it's drawn as-is.
     return <img src={icon} alt="" draggable={false} className={`${className} shrink-0`} />
   }
-  const [first, second] = fallbackIds
-  if (!second) return <UserAvatar id={first ?? ''} profile={profiles.get(first)} className={className} />
+  const shown = fallbackIds.slice(0, 4)
+  if (shown.length <= 1) return <UserAvatar id={shown[0] ?? ''} profile={profiles.get(shown[0])} className={className} />
+  const slots = FALLBACK_LAYOUTS[shown.length]
   return (
     <div className={`${className} relative shrink-0`}>
-      <UserAvatar id={first} profile={profiles.get(first)} className="absolute top-0 left-0 h-[62%] w-[62%]" />
-      <div className="absolute right-0 bottom-0 h-[62%] w-[62%] rounded-full ring-2 ring-secondary-bg">
-        <UserAvatar id={second} profile={profiles.get(second)} className="h-full w-full" />
-      </div>
+      {shown.map((id, i) => (
+        // Later avatars sit on top, cut out from the ones behind by a ring in the background color.
+        <div
+          key={id}
+          className={`absolute ${i > 0 ? 'ring-2 ring-secondary-bg' : ''} ${avatarShapeClass(profiles.get(id))}`}
+          style={slots[i]}
+        >
+          <UserAvatar id={id} profile={profiles.get(id)} className="h-full w-full" />
+        </div>
+      ))}
     </div>
   )
 }

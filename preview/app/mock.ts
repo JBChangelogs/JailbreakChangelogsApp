@@ -35,6 +35,24 @@ localStorage.clear()
 const params = new URLSearchParams(location.search)
 const theme = params.get('theme')
 if (theme && themes.some((t) => t.slug === theme)) localStorage.setItem('theme', theme)
+
+// A website custom theme (share code + colors drawn over the site theme). The tour page holds the one in
+// use and the app reads it here, so a freshly loaded app draws in it from the first frame.
+interface PreviewCustomTheme {
+  share_code: string
+  [key: string]: unknown
+}
+// Answers the app's GET /v2/themes/shared/CODE, or it would drop the theme as deleted.
+const customThemes = new Map<string, PreviewCustomTheme>()
+try {
+  const initial = (window.parent as Window & { jbclCustomTheme?: PreviewCustomTheme | null }).jbclCustomTheme
+  if (initial) {
+    customThemes.set(initial.share_code, initial)
+    localStorage.setItem('custom_theme', JSON.stringify(initial))
+  }
+} catch {
+  // Opened on its own or cross-origin: no custom theme.
+}
 // The tour opens the app straight on the chapter's tab.
 localStorage.setItem('jbcl:last-active-tab', params.get('tab') ?? 'messages')
 
@@ -125,6 +143,7 @@ const robberies = [
 type Handler = (url: URL, body: unknown, match: RegExpMatchArray) => unknown
 const conversation = (id: string): MessageItem[] => threads.get(id) ?? []
 const handlers: [string, RegExp, Handler][] = [
+  ['GET', /^\/v2\/themes\/shared\/([A-Z0-9]+)$/i, (_url, _body, match) => customThemes.get(match[1].toUpperCase())],
   ['GET', /^\/v2\/users\/me$/, () => me],
   ['GET', /^\/v2\/users\/me\/experiments$/, () => ({ experiments: { app_available: 'treatment' } })],
   ['GET', /^\/v2\/users\/me\/blocked-users$/, () => ({ blocked_users: [] })],
@@ -278,6 +297,14 @@ export const preview = {
   },
   // Switches theme in place, the way the app follows a theme change on the website.
   theme: (slug: string) => realtime('preferences_update', { key: 'theme', value: slug }),
+  // Same for a custom theme (or none), synced as its share code like the website does.
+  customTheme(custom: PreviewCustomTheme | null) {
+    if (custom) customThemes.set(custom.share_code, custom)
+    realtime(
+      'preferences_update',
+      custom ? { action: 'set', key: 'custom_theme', value: custom.share_code } : { action: 'delete', key: 'custom_theme' }
+    )
+  },
   robloxActivity: (placeId: string | null, jobId: string | null = null) =>
     subscribers.get('onRobloxActivityChanged')?.forEach((cb) => cb({ placeId, jobId, game: placeId ? 'Jailbreak' : null }))
 }

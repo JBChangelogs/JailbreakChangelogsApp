@@ -359,12 +359,33 @@ tabs.forEach((b, i) => b.addEventListener('click', () => run(i)))
    Any theme the site's /v2/themes had when the preview was built (preview:snapshot saves them):
    1. ?theme=<slug> on the iframe URL
    2. parent.postMessage-style: iframe.contentWindow.postMessage({ type: 'jbcl-theme', theme: 'light' }, '*')
-   3. same-origin embed: follows the theme's class on the parent page's <html> automatically */
+   3. same-origin embed: follows the theme's class on the parent page's <html> automatically
+
+   A website custom theme draws over the site theme, the same three ways:
+   1. ?customTheme=<share code>, looked up live (rate-limited by the API, so prefer 2 or 3)
+   2. postMessage({ type: 'jbcl-theme', theme, customTheme: { share_code, label, scheme, vars, logo_filter } | null })
+   3. same-origin embed: follows the parent's data-custom-theme and reads the theme from its localStorage */
 const SLUGS = themes.map((t) => t.slug)
+
+interface CustomTheme {
+  share_code: string
+  vars: Record<string, string>
+  [key: string]: unknown
+}
+const isCustomTheme = (value: unknown): value is CustomTheme => {
+  const t = value as CustomTheme | null
+  return !!t && typeof t.share_code === 'string' && /^[A-Z0-9]{8}$/i.test(t.share_code) && !!t.vars && typeof t.vars === 'object'
+}
+// The custom theme in use, or null. Freshly loaded apps read it from here (app/mock.ts).
+let customTheme: CustomTheme | null = null
+Object.assign(window, { jbclCustomTheme: null })
 
 // The tabs and backdrop use the theme's own colors, as the site's matching tokens.
 function paintTheme(slug: string): void {
-  const vars = (themes.find((t) => t.slug === slug)?.vars ?? {}) as Record<string, string>
+  const vars = {
+    ...(themes.find((t) => t.slug === slug)?.vars ?? {}),
+    ...(customTheme?.vars ?? {})
+  } as Record<string, string>
   const color = (key: string): string | undefined => {
     const value = vars[key]
     return vars[value?.match(/^var\((--[a-z0-9-]+)\)$/)?.[1] ?? ''] ?? value
@@ -397,23 +418,54 @@ function setSiteTheme(theme: string | null): void {
   paintTheme(theme)
   setAppTheme(frame)
 }
+function setCustomTheme(next: unknown): void {
+  const theme = isCustomTheme(next) ? next : null
+  if (JSON.stringify(theme) === JSON.stringify(customTheme)) return
+  customTheme = theme
+  Object.assign(window, { jbclCustomTheme: theme })
+  if (theme) document.documentElement.dataset.customTheme = theme.share_code
+  else delete document.documentElement.dataset.customTheme
+  paintTheme(siteTheme)
+  setAppTheme(frame)
+}
 // Switches the running app in place, so the tour carries on without reloading it.
 function setAppTheme(f: HTMLIFrameElement): void {
-  (f.contentWindow as (Window & { preview?: typeof Controls }) | null)?.preview?.theme(siteTheme)
+  const controls = (f.contentWindow as (Window & { preview?: typeof Controls }) | null)?.preview
+  controls?.theme(siteTheme)
+  controls?.customTheme(customTheme)
 }
 paintTheme(siteTheme)
-setSiteTheme(new URLSearchParams(location.search).get('theme'))
+const query = new URLSearchParams(location.search)
+setSiteTheme(query.get('theme'))
+const sharedCode = query.get('customTheme')?.toUpperCase()
+if (sharedCode && /^[A-Z0-9]{8}$/.test(sharedCode)) {
+  fetch(`https://api.jailbreakchangelogs.com/v2/themes/shared/${sharedCode}`)
+    .then((res) => (res.ok ? res.json() : null))
+    .then((theme) => theme && !customTheme && setCustomTheme(theme))
+    .catch(() => { /* no custom theme then */ })
+}
 window.addEventListener('message', (e) => {
-  if (e.data && e.data.type === 'jbcl-theme') setSiteTheme(e.data.theme)
+  if (!e.data || e.data.type !== 'jbcl-theme') return
+  setSiteTheme(e.data.theme)
+  if ('customTheme' in e.data) setCustomTheme(e.data.customTheme)
 })
 try {
-  const parentRoot = window.parent !== window && window.parent.document.documentElement
-  if (parentRoot) {
-    const sync = (): void => setSiteTheme(SLUGS.find((t) => parentRoot.classList.contains(t)) ?? DEFAULT_THEME)
+  const parentWindow = window.parent !== window ? window.parent : null
+  const parentRoot = parentWindow?.document.documentElement
+  if (parentWindow && parentRoot) {
+    const sync = (): void => {
+      setSiteTheme(SLUGS.find((t) => parentRoot.classList.contains(t)) ?? DEFAULT_THEME)
+      // The website keeps the whole custom theme in localStorage and marks <html> with its code.
+      let saved: unknown = null
+      try {
+        saved = parentRoot.dataset.customTheme ? JSON.parse(parentWindow.localStorage.getItem('custom_theme') ?? 'null') : null
+      } catch { /* unreadable: treat as none */ }
+      setCustomTheme(saved)
+    }
     sync()
-    new MutationObserver(sync).observe(parentRoot, { attributes: true, attributeFilter: ['class'] })
+    new MutationObserver(sync).observe(parentRoot, { attributes: true, attributeFilter: ['class', 'data-custom-theme'] })
   }
-} catch { /* cross-origin parent: rely on ?theme= or postMessage */ }
+} catch { /* cross-origin parent: rely on ?theme= / ?customTheme= or postMessage */ }
 
 /* Tell the embedding page our height so it can size the iframe with no inner scrollbar:
    window.addEventListener('message', (e) => { if (e.data?.type === 'jbcl-preview-height') iframe.style.height = e.data.height + 'px' }) */

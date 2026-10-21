@@ -9,6 +9,29 @@ export interface AppChangelogEntry {
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.5.17',
+    date: '2026-10-21',
+    added: [
+      'Group chats: start one from the new + next to Messages by picking more than one person. Groups sit in your conversation list alongside DMs',
+      'Group chats have a member list on the right that shows who is online, an Invite to Group button, and a generated group icon. The owner can rename the group by clicking its name and remove members',
+      'Leave or delete a group from the X on its row in your conversation list',
+      'Messages now have day dividers, and group changes (people joining, leaving, being removed, or the group being renamed) show in the chat with clickable names',
+      'Custom themes from the website: pick your own, or paste a theme code or share link to try it on before using it. Your custom theme stays in sync with the website',
+      'Your mouse back and forward buttons now move between tabs, chats and settings pages',
+      'Dupe Finder cards now have a Dupe check that compares the copy with the original, plus Compare histories and History buttons'
+    ],
+    changed: [
+      'User profiles now open as a Discord-style card with their banner, description and badges, and always open beside what you clicked',
+      'Supporter III avatars are shown as rounded squares everywhere, like on the website',
+      "The Value Calculator's You give and You receive panels now use the same item cards as the website, with season and level badges, notes, and a quantity stepper",
+      "Trade ads now list their items like the website, with each item's value and the Total, Cash and Duped totals for each side",
+      'Dupe Finder cards now match the website and show the original owner',
+      'Display settings were reorganized, and themes are now picked from a Change theme panel',
+      'Switching between tabs is now instant after the first visit, and each tab keeps its filters and scroll position',
+      'The Values list and the calculator scroll smoothly, even with every item loaded'
+    ]
+  },
+  {
     version: '0.5.16',
     date: '2026-10-14',
     added: [

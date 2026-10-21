@@ -214,7 +214,8 @@ function GiftFlyoutContent({ gifts, error: loadError, onSend, onGiftUsed }: Gift
 }
 
 interface ComposerActionsMenuProps {
-  recipientId: string
+  // null in group chats, where gifts aren't offered.
+  recipientId: string | null
   onSendMessage: (content: string, parentId: string | null, metadata?: OutgoingMessageMetadata) => Promise<void>
 }
 
@@ -270,7 +271,7 @@ export function ComposerActionsMenu({ recipientId, onSendMessage }: ComposerActi
   }
 
   const handleSendGift = async (gift: SupporterGift): Promise<void> => {
-    if (!token) return
+    if (!token || !recipientId) return
     await giftsApi.redeem(token, gift.share_id, recipientId)
   }
 
@@ -315,19 +316,21 @@ export function ComposerActionsMenu({ recipientId, onSendMessage }: ComposerActi
           <VipServerFlyoutContent servers={servers} error={serversError} onConfirm={handleSendVipServer} />
         </FlyoutMenuItem>
 
-        <FlyoutMenuItem
-          icon={<GiftIcon className="h-4.5 w-4.5 shrink-0 text-tertiary-text" />}
-          label="Send Gift"
-          open={giftOpen}
-          onOpenChange={setGiftOpen}
-        >
-          <GiftFlyoutContent
-            gifts={gifts}
-            error={giftsError}
-            onSend={handleSendGift}
-            onGiftUsed={(shareId) => setGifts((prev) => (prev ? prev.filter((g) => g.share_id !== shareId) : prev))}
-          />
-        </FlyoutMenuItem>
+        {recipientId && (
+          <FlyoutMenuItem
+            icon={<GiftIcon className="h-4.5 w-4.5 shrink-0 text-tertiary-text" />}
+            label="Send Gift"
+            open={giftOpen}
+            onOpenChange={setGiftOpen}
+          >
+            <GiftFlyoutContent
+              gifts={gifts}
+              error={giftsError}
+              onSend={handleSendGift}
+              onGiftUsed={(shareId) => setGifts((prev) => (prev ? prev.filter((g) => g.share_id !== shareId) : prev))}
+            />
+          </FlyoutMenuItem>
+        )}
       </PopoverContent>
     </Popover>
   )

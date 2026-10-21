@@ -1,10 +1,17 @@
 import { useState } from 'react'
 import { Popover, PopoverContent, PopoverTrigger } from '@renderer/components/ui/popover'
 import { UserAvatar } from '@renderer/components/messages/UserAvatar'
+import { PresenceDot } from '@renderer/components/messages/PresenceDot'
 import { UserBadges } from '@renderer/components/user/UserBadges'
 import { useAuth } from '@renderer/contexts/AuthContext'
 import { useCurrentUser } from '@renderer/hooks/useCurrentUser'
 import { usersApi } from '@renderer/lib/usersApi'
+import {
+  avatarShapeClass,
+  hidesPresence,
+  isProfilePrivate,
+  profileBanner
+} from '@renderer/lib/profileLook'
 import type { UserProfile } from '@shared/user'
 
 function DiscordIcon({ className }: { className?: string }): React.JSX.Element {
@@ -23,80 +30,189 @@ function RobloxIcon({ className }: { className?: string }): React.JSX.Element {
   )
 }
 
+const NO_DESCRIPTION = 'No description provided'
+
+interface FullProfile {
+  profile: UserProfile
+  description: string | null
+}
+
+// The batch lookups that feed lists don't carry everything the card shows, so it loads the
+// full user and their description once per user per session.
+const fullProfiles = new Map<string, Promise<FullProfile>>()
+
+function loadFullProfile(token: string, userId: string): Promise<FullProfile> {
+  let pending = fullProfiles.get(userId)
+  if (!pending) {
+    pending = Promise.all([
+      usersApi.get(token, userId),
+      usersApi.description(token, userId).catch(() => null)
+    ]).then(([profile, description]) => ({
+      profile,
+      description: description && description !== NO_DESCRIPTION ? description : null
+    }))
+    pending.catch(() => fullProfiles.delete(userId))
+    fullProfiles.set(userId, pending)
+  }
+  return pending
+}
+
+// Plain text like the website: combining marks stripped (they stack into "zalgo"), links clickable.
+const URL_PATTERN = /(https?:\/\/[^\s]+)/g
+
+function Description({ text }: { text: string }): React.JSX.Element {
+  return (
+    <p className="mt-3 line-clamp-5 text-sm break-words whitespace-pre-wrap text-primary-text/90">
+      {text
+        .replace(/\p{M}+/gu, '')
+        .split(URL_PATTERN)
+        .map((part, i) =>
+          i % 2 === 1 ? (
+            <button
+              key={i}
+              type="button"
+              onClick={() => void window.api.openExternal(part)}
+              className="text-link hover:text-link-hover hover:underline"
+            >
+              {part}
+            </button>
+          ) : (
+            part
+          )
+        )}
+    </p>
+  )
+}
+
+function Banner({
+  userId,
+  profile,
+  isPrivate
+}: {
+  userId: string
+  profile: UserProfile
+  isPrivate: boolean
+}): React.JSX.Element {
+  const { primary, fallback } = profileBanner(userId, profile, isPrivate)
+  const [failed, setFailed] = useState(false)
+  const src = primary && !failed ? primary : fallback
+  return (
+    <img
+      src={src}
+      alt=""
+      draggable={false}
+      onError={src === primary ? () => setFailed(true) : undefined}
+      className="h-24 w-full object-cover"
+    />
+  )
+}
+
 interface UserProfilePopoverProps {
   userId: string
   profile?: UserProfile
-  align?: 'start' | 'center' | 'end'
   children: React.ReactNode
 }
 
-export function UserProfilePopover({
-  userId,
-  profile,
-  align = 'start',
-  children
-}: UserProfilePopoverProps): React.JSX.Element {
+export function UserProfilePopover({ userId, profile, children }: UserProfilePopoverProps): React.JSX.Element {
   const { token } = useAuth()
   const { user: currentUser } = useCurrentUser()
-  const [fetched, setFetched] = useState<UserProfile | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [full, setFull] = useState<FullProfile | null>(null)
   const [error, setError] = useState(false)
 
-  const displayProfile = profile ?? fetched
-
   const handleOpenChange = (open: boolean): void => {
-    if (!open || profile || fetched || loading || !token) return
-    setLoading(true)
+    if (!open || full || !token) return
     setError(false)
-    usersApi
-      .get(token, userId)
-      .then(setFetched)
+    loadFullProfile(token, userId)
+      .then(setFull)
       .catch(() => setError(true))
-      .finally(() => setLoading(false))
   }
 
+  // Live presence comes from the passed profile; the rest from the full one once loaded.
+  const displayProfile = full ? { ...full.profile, presence: profile?.presence ?? full.profile.presence } : profile
   const label = displayProfile?.global_name || displayProfile?.username || displayProfile?.name
-  const settings = displayProfile?.settings as { profile_public?: boolean } | undefined
-  const isPrivate = settings?.profile_public === false && currentUser?.id !== userId
+  const isPrivate = displayProfile ? isProfilePrivate(displayProfile, currentUser?.id) : false
+  const showPresence = displayProfile && !isPrivate && !hidesPresence(displayProfile)
 
   return (
     <Popover modal onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild onClick={(e: React.MouseEvent) => e.stopPropagation()}>
         {children}
       </PopoverTrigger>
+      {/* Always beside what was clicked (flipping sides near an edge), never over it. */}
       <PopoverContent
-        align={align}
-        className="w-64 p-3"
+        side="right"
+        align="start"
+        sideOffset={12}
+        collisionPadding={12}
+        className="w-80 overflow-hidden p-0"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         {!displayProfile ? (
-          <p className="py-3 text-center text-xs text-quaternary-text">
+          <p className="py-6 text-center text-xs text-quaternary-text">
             {error ? 'Failed to load profile.' : 'Loading…'}
           </p>
         ) : (
-          <div className="flex gap-2.5">
-            <UserAvatar id={userId} profile={displayProfile} className="h-11 w-11 shrink-0" />
-            <div className="min-w-0 flex-1">
-              <h3 className="truncate text-sm font-semibold text-primary-text">{label}</h3>
-              <p className="truncate text-xs text-secondary-text">@{displayProfile.username}</p>
-
-              <div className="mt-1.5">
+          <>
+            <Banner
+              key={`${userId}:${displayProfile.custom_banner ?? displayProfile.banner}:${isPrivate}`}
+              userId={userId}
+              profile={displayProfile}
+              isPrivate={isPrivate}
+            />
+            <div className="relative px-4">
+              {/* Overlaps the banner with a ring cut out in the card's color, like Discord. */}
+              <div className="relative -mt-11 w-fit">
+                <div className={`bg-primary-bg p-1 ${avatarShapeClass(displayProfile, true)}`}>
+                  <UserAvatar id={userId} profile={displayProfile} className="h-20 w-20" />
+                </div>
+                {showPresence && (
+                  <PresenceDot
+                    presence={displayProfile.presence}
+                    className="absolute right-1 bottom-1 h-5 w-5 ring-4! ring-primary-bg!"
+                  />
+                )}
+              </div>
+            </div>
+            <div className="px-4 pt-2 pb-4">
+              <h3 className="truncate text-xl leading-tight font-bold text-primary-text">{label}</h3>
+              <p className="mt-0.5 truncate text-sm text-secondary-text">{displayProfile.username}</p>
+              <div className="mt-2">
                 <UserBadges
                   usernumber={displayProfile.usernumber}
                   premiumType={displayProfile.premiumtype}
                   flags={displayProfile.flags}
-                  primaryGuild={displayProfile.primary_guild}
                   size="sm"
                 />
               </div>
 
-              <div className="mt-1.5 flex flex-wrap items-center gap-1">
+              {isPrivate ? (
+                <p className="mt-3 text-xs text-secondary-text italic">Profile is private</p>
+              ) : (
+                <>
+                  {full?.description && <Description text={full.description} />}
+                  {displayProfile.usernumber != null && displayProfile.created_at && (
+                    <div className="mt-3">
+                      <p className="text-xs font-bold text-secondary-text">Member Since</p>
+                      <p className="mt-0.5 text-sm text-primary-text/90">
+                        {new Date(Number(displayProfile.created_at) * 1000).toLocaleDateString(undefined, {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })}
+                        <span className="text-tertiary-text"> · Member #{displayProfile.usernumber}</span>
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+
+              <div className="mt-3 flex flex-wrap items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => void window.api.openExternal(`https://discord.com/users/${userId}`)}
-                  className="inline-flex items-center gap-1 rounded-md border border-border-card bg-tertiary-bg px-1.5 py-1 text-[11px] font-medium text-primary-text transition-colors hover:bg-quaternary-bg/60"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-border-card bg-tertiary-bg px-2 py-1 text-xs font-medium text-primary-text transition-colors hover:bg-quaternary-bg/60"
                 >
-                  <DiscordIcon className="h-3 w-3" />
+                  <DiscordIcon className="h-3.5 w-3.5" />
                   Discord
                 </button>
                 {displayProfile.roblox &&
@@ -108,34 +224,16 @@ export function UserProfilePopover({
                         onClick={() =>
                           void window.api.openExternal(`https://www.roblox.com/users/${roblox.roblox_id}/profile`)
                         }
-                        className="inline-flex items-center gap-1 rounded-md border border-border-card bg-tertiary-bg px-1.5 py-1 text-[11px] font-medium text-primary-text transition-colors hover:bg-quaternary-bg/60"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-border-card bg-tertiary-bg px-2 py-1 text-xs font-medium text-primary-text transition-colors hover:bg-quaternary-bg/60"
                       >
-                        <RobloxIcon className="h-3 w-3" />
+                        <RobloxIcon className="h-3.5 w-3.5" />
                         Roblox
                       </button>
                     )
                   })()}
               </div>
-
-              <div className="mt-1.5 text-xs">
-                {isPrivate ? (
-                  <p className="text-secondary-text italic">Profile is private</p>
-                ) : (
-                  displayProfile.usernumber != null &&
-                  displayProfile.created_at && (
-                    <p className="text-secondary-text">
-                      Member #{displayProfile.usernumber} since{' '}
-                      {new Date(Number(displayProfile.created_at) * 1000).toLocaleDateString(undefined, {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })}
-                    </p>
-                  )
-                )}
-              </div>
             </div>
-          </div>
+          </>
         )}
       </PopoverContent>
     </Popover>

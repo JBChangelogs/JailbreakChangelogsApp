@@ -16,7 +16,9 @@ export const AnimatedThemeToggler = ({
   canOpenSettings = false,
   ...props
 }: AnimatedThemeTogglerProps): React.JSX.Element | null => {
-  const { applied, shortcutHidden } = useTheme()
+  const { applied, customTheme, shortcutHidden } = useTheme()
+  const label = customTheme?.label ?? applied.label
+  const icon = customTheme ? (customTheme.icon ?? 'lucide:palette') : applied.icon
   const { open: openSettings } = useSettingsPage()
   if (shortcutHidden || !canOpenSettings) return null
 
@@ -29,12 +31,12 @@ export const AnimatedThemeToggler = ({
         size === 'sm' ? 'h-8 w-8' : 'h-10 w-10',
         className
       )}
-      aria-label={`Change theme (current: ${applied.label})`}
+      aria-label={`Change theme (current: ${label})`}
       title="Display settings"
       {...props}
     >
       <ThemeIcon
-        icon={applied.icon}
+        icon={icon}
         className={cn('text-primary-text', size === 'sm' ? 'h-4 w-4' : 'h-5 w-5')}
       />
     </button>

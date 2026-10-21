@@ -29,3 +29,21 @@ export interface ConversationPage {
   total_pages: number
   size: number
 }
+
+export interface GroupChat {
+  id: string
+  name: string
+  owner_id: string
+  created_at: number
+  member_ids: string[]
+}
+
+export interface GroupChatSummary extends GroupChat {
+  unread_count: number
+  message: MessageItem | null
+}
+
+export interface GroupChatsResponse {
+  groups: GroupChatSummary[]
+  total_groups: number
+}

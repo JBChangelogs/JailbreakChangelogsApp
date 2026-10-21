@@ -3,6 +3,9 @@ import { useAuth } from '@renderer/contexts/AuthContext'
 import { useRealtime } from '@renderer/contexts/RealtimeContext'
 import {
   messagesApi,
+  chatKey,
+  chatPath,
+  type ChatTarget,
   type MessageItem,
   type RawSentMessage,
   type OutgoingMessageMetadata
@@ -13,6 +16,7 @@ interface RealtimeMessagePayload {
   parent_id?: string | null
   sender_id?: string
   user_id?: string
+  group_id?: string
   receiver_id?: string
   recipient_id?: string
   content?: string
@@ -60,7 +64,7 @@ function normalizeSentMessage(
 }
 
 export function useConversation(
-  recipientId: string | null,
+  target: ChatTarget | null,
   currentUserId: string | null = null,
   onRead?: () => void
 ): {
@@ -80,10 +84,16 @@ export function useConversation(
   const { token } = useAuth()
   const { subscribe, send } = useRealtime()
 
+  // recipientId is the chat id: the other user for a DM, the group id for a group.
+  const recipientId = target?.id ?? null
+  const isGroup = target?.kind === 'group'
+  const key = target ? chatKey(target) : null
+  const path = target ? chatPath(target) : null
+
   const notifyTyping = useCallback(() => {
     if (!recipientId) return
-    send({ type: 'typing', recipient_id: recipientId })
-  }, [recipientId, send])
+    send(isGroup ? { type: 'typing', group_id: recipientId } : { type: 'typing', recipient_id: recipientId })
+  }, [recipientId, isGroup, send])
 
   const cacheRef = useRef<Map<string, ConversationCacheEntry>>(new Map())
 
@@ -98,20 +108,20 @@ export function useConversation(
 
   const updateItems = useCallback(
     (updater: (prev: DisplayMessage[]) => DisplayMessage[]) => {
-      if (!recipientId) return
+      if (!key) return
       setItems((prev) => {
         const next = updater(prev)
-        cacheRef.current.set(recipientId, { items: next, page, totalPages })
+        cacheRef.current.set(key, { items: next, page, totalPages })
         return next
       })
     },
-    [recipientId, page, totalPages]
+    [key, page, totalPages]
   )
 
   useEffect(() => {
     setError(null)
 
-    if (!recipientId) {
+    if (!key || !path) {
       setItems([])
       setPage(1)
       setTotalPages(1)
@@ -119,7 +129,7 @@ export function useConversation(
       return
     }
 
-    const cached = cacheRef.current.get(recipientId)
+    const cached = cacheRef.current.get(key)
     setItems(cached?.items ?? [])
     setPage(cached?.page ?? 1)
     setTotalPages(cached?.totalPages ?? 1)
@@ -130,11 +140,11 @@ export function useConversation(
     setLoading(true)
 
     messagesApi
-      .getConversation(token, recipientId, 1)
+      .getConversation(token, path, 1)
       .then((res) => {
         if (cancelled) return
         const freshItems = [...res.items].reverse()
-        cacheRef.current.set(recipientId, {
+        cacheRef.current.set(key, {
           items: freshItems,
           page: 1,
           totalPages: res.total_pages
@@ -155,18 +165,18 @@ export function useConversation(
     return () => {
       cancelled = true
     }
-  }, [token, recipientId])
+  }, [token, key, path])
 
   const loadOlder = useCallback(() => {
-    if (!token || !recipientId || loading || page >= totalPages) return
+    if (!token || !key || !path || loading || page >= totalPages) return
     const nextPage = page + 1
     setLoading(true)
     messagesApi
-      .getConversation(token, recipientId, nextPage)
+      .getConversation(token, path, nextPage)
       .then((res) => {
         setItems((prev) => {
           const merged = [...[...res.items].reverse(), ...prev]
-          cacheRef.current.set(recipientId, {
+          cacheRef.current.set(key, {
             items: merged,
             page: nextPage,
             totalPages: res.total_pages
@@ -180,7 +190,7 @@ export function useConversation(
         setError(err instanceof Error ? err.message : 'Failed to load messages')
       })
       .finally(() => setLoading(false))
-  }, [token, recipientId, page, totalPages, loading])
+  }, [token, key, path, page, totalPages, loading])
 
   const attemptSend = useCallback(
     async (
@@ -189,9 +199,9 @@ export function useConversation(
       parentId: string | null,
       metadata?: OutgoingMessageMetadata
     ) => {
-      if (!token || !recipientId) return
+      if (!token || !recipientId || !path) return
       try {
-        const raw = await messagesApi.sendMessage(token, recipientId, content, parentId, metadata)
+        const raw = await messagesApi.sendMessage(token, path, content, parentId, metadata)
         const sent = normalizeSentMessage(raw, {
           senderId: currentUserId ?? '',
           receiverId: recipientId,
@@ -209,7 +219,7 @@ export function useConversation(
         throw err
       }
     },
-    [token, recipientId, currentUserId, updateItems]
+    [token, recipientId, path, currentUserId, updateItems]
   )
 
   const sendMessage = useCallback(
@@ -259,11 +269,11 @@ export function useConversation(
 
   const editMessage = useCallback(
     async (messageId: string, content: string) => {
-      if (!token || !recipientId) return
+      if (!token || !recipientId || !path) return
       const existing = items.find((m) => m.id === messageId)
       const raw = await messagesApi.editMessage(
         token,
-        recipientId,
+        path,
         messageId,
         content,
         existing?.parent_id ?? null
@@ -278,28 +288,62 @@ export function useConversation(
       }
       updateItems((prev) => prev.map((m) => (m.id === messageId ? updated : m)))
     },
-    [token, recipientId, items, currentUserId, updateItems]
+    [token, recipientId, path, items, currentUserId, updateItems]
   )
 
   const deleteMessage = useCallback(
     async (messageId: string) => {
-      if (!token || !recipientId) return
-      await messagesApi.deleteMessage(token, recipientId, messageId)
+      if (!token || !path) return
+      await messagesApi.deleteMessage(token, path, messageId)
       updateItems((prev) => prev.filter((m) => m.id !== messageId))
     },
-    [token, recipientId, updateItems]
+    [token, path, updateItems]
   )
 
   const reportMessage = useCallback(
     async (messageId: string, reason: string) => {
-      if (!token || !recipientId) return
-      await messagesApi.reportMessage(token, recipientId, messageId, reason)
+      if (!token || !path) return
+      await messagesApi.reportMessage(token, path, messageId, reason)
     },
-    [token, recipientId]
+    [token, path]
   )
 
   useEffect(() => {
     if (!recipientId) return
+
+    if (isGroup) {
+      return subscribe((message) => {
+        const data = message.data as RealtimeMessagePayload | undefined
+        if (!data || typeof data.id !== 'string' || data.group_id !== recipientId) return
+
+        if (message.action === 'group_message_received' || message.action === 'group_message_sent') {
+          const normalized: MessageItem = {
+            id: data.id,
+            parent_id: data.parent_id ?? null,
+            sender_id: data.sender_id ?? '',
+            receiver_id: recipientId,
+            content: data.content ?? '',
+            metadata: data.metadata ?? null,
+            created_at: data.created_at ?? Math.floor(Date.now() / 1000),
+            read_at: null
+          }
+          updateItems((prev) => (prev.some((m) => m.id === normalized.id) ? prev : [...prev, normalized]))
+          if (message.action === 'group_message_received') {
+            send({ type: 'group_mark_read', group_id: recipientId })
+          }
+        } else if (message.action === 'group_message_edited') {
+          updateItems((prev) =>
+            prev.map((m) =>
+              m.id === data.id
+                ? { ...m, content: data.content ?? m.content, updated_at: data.updated_at ?? Math.floor(Date.now() / 1000) }
+                : m
+            )
+          )
+        } else if (message.action === 'group_message_deleted') {
+          updateItems((prev) => prev.filter((m) => m.id !== data.id))
+        }
+      })
+    }
 
     return subscribe((message) => {
       if (message.action === 'messages_read') {
@@ -354,7 +398,7 @@ export function useConversation(
         updateItems((prev) => prev.filter((m) => m.id !== data.id))
       }
     })
-  }, [recipientId, subscribe, updateItems])
+  }, [recipientId, isGroup, subscribe, send, updateItems])
 
   return {
     items,

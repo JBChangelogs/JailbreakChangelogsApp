@@ -1,7 +1,13 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useAuth } from '@renderer/contexts/AuthContext'
 import { useTheme, type Theme } from '@renderer/contexts/ThemeContext'
 import { isThemeSlug } from '@renderer/lib/themes'
+import {
+  SHARE_CODE,
+  ThemeNotFoundError,
+  fetchSharedTheme,
+  parseRecentThemes
+} from '@renderer/lib/customThemes'
 import {
   usePreferences,
   RICH_PRESENCE_PREFERENCE_KEYS,
@@ -18,7 +24,7 @@ function isRichPresenceKey(key: unknown): key is RichPresencePreferenceKey {
 
 export function useRealtimePreferences(): void {
   const { token } = useAuth()
-  const { theme, setTheme } = useTheme()
+  const { theme, setSyncedTheme: setTheme, customTheme, setCustomTheme, recentThemes, setRecentThemes } = useTheme()
   const { twemojiEnabled, setTwemojiEnabled, richPresence, setRichPresence } = usePreferences()
   const { send, subscribe } = useRealtime()
 
@@ -26,10 +32,53 @@ export function useRealtimePreferences(): void {
   const lastServerTwemojiRef = useRef<boolean | null>(null)
   const lastServerRichPresenceRef = useRef<Partial<Record<RichPresencePreferenceKey, boolean>>>({})
 
+  // Custom themes only sync once the server's preferences have arrived, so a device that hasn't
+  // heard them yet can't clear the custom theme everywhere else.
+  const syncedRef = useRef(false)
+  const lastServerCustomRef = useRef<string | null>(null)
+  const lastServerRecentRef = useRef<string>('')
+  const customCodeRef = useRef(customTheme?.share_code ?? null)
+  customCodeRef.current = customTheme?.share_code ?? null
+  const customLoadRef = useRef(0)
+
+  const applyServerCustomTheme = useCallback(
+    (value: unknown) => {
+      const code = typeof value === 'string' && SHARE_CODE.test(value) ? value : null
+      lastServerCustomRef.current = code
+      const load = ++customLoadRef.current
+      if (code === customCodeRef.current) return
+      if (!code) {
+        setCustomTheme(null)
+        return
+      }
+      fetchSharedTheme(code)
+        .then((fetched) => {
+          if (load === customLoadRef.current) setCustomTheme(fetched)
+        })
+        .catch((err: unknown) => {
+          // Deleted by its owner: stop using it (the effect below clears it everywhere).
+          if (load === customLoadRef.current && err instanceof ThemeNotFoundError) setCustomTheme(null)
+        })
+    },
+    [setCustomTheme]
+  )
+
+  const applyServerRecentThemes = useCallback(
+    (value: unknown) => {
+      const codes = parseRecentThemes(value)
+      lastServerRecentRef.current = codes.join(',')
+      setRecentThemes(codes)
+    },
+    [setRecentThemes]
+  )
+
   useEffect(() => {
     return subscribe((message: RealtimeMessage) => {
       if (message.action === 'preferences_sync' || message.action === 'preferences') {
         const data = message.data as Record<string, unknown> | undefined
+        syncedRef.current = true
+        applyServerCustomTheme(data?.custom_theme)
+        applyServerRecentThemes(data?.recent_custom_themes)
         if (data && isTheme(data.theme)) {
           lastServerThemeRef.current = data.theme
           setTheme(data.theme)
@@ -47,7 +96,10 @@ export function useRealtimePreferences(): void {
           }
         }
       } else if (message.action === 'preferences_update') {
-        const update = message.data as { key?: string; value?: unknown } | undefined
+        const update = message.data as { action?: string; key?: string; value?: unknown } | undefined
+        const value = update?.action === 'delete' ? null : update?.value
+        if (update?.key === 'custom_theme') applyServerCustomTheme(value)
+        if (update?.key === 'recent_custom_themes') applyServerRecentThemes(value)
         if (update?.key === 'theme' && isTheme(update.value)) {
           lastServerThemeRef.current = update.value
           setTheme(update.value)
@@ -63,7 +115,29 @@ export function useRealtimePreferences(): void {
         }
       }
     })
-  }, [subscribe, setTheme, setTwemojiEnabled, setRichPresence])
+  }, [subscribe, setTheme, setTwemojiEnabled, setRichPresence, applyServerCustomTheme, applyServerRecentThemes])
+
+  useEffect(() => {
+    const code = customTheme?.share_code ?? null
+    if (!token || !syncedRef.current || lastServerCustomRef.current === code) return
+    lastServerCustomRef.current = code
+    send(
+      code
+        ? { type: 'set_preference', key: 'custom_theme', value: code }
+        : { type: 'delete_preference', key: 'custom_theme' }
+    )
+  }, [customTheme, token, send])
+
+  useEffect(() => {
+    const joined = recentThemes.join(',')
+    if (!token || !syncedRef.current || lastServerRecentRef.current === joined) return
+    lastServerRecentRef.current = joined
+    send(
+      joined
+        ? { type: 'set_preference', key: 'recent_custom_themes', value: joined }
+        : { type: 'delete_preference', key: 'recent_custom_themes' }
+    )
+  }, [recentThemes, token, send])
 
   useEffect(() => {
     if (!token) return

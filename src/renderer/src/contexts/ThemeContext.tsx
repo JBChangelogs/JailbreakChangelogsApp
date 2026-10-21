@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useLayoutEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useState } from 'react'
 import {
   applyThemesCss,
   defaultThemeSlug,
@@ -6,6 +6,17 @@ import {
   getCachedThemes,
   type SiteTheme
 } from '@renderer/lib/themes'
+import {
+  RECENT_THEMES_LIMIT,
+  ThemeNotFoundError,
+  applyCustomThemeCss,
+  fetchSharedTheme,
+  getSavedCustomTheme,
+  getSavedRecentThemes,
+  saveCustomTheme,
+  saveRecentThemes,
+  type CustomTheme
+} from '@renderer/lib/customThemes'
 
 /** A theme slug; the website's dashboard manages the list. */
 export type Theme = string
@@ -20,10 +31,23 @@ interface ThemeContextValue {
    */
   theme: Theme
   setTheme: (theme: Theme) => void
+  /** Sets the site theme from another device's sync, leaving any custom theme on. */
+  setSyncedTheme: (theme: Theme) => void
   /** The theme on screen: the chosen one, or the default if the list doesn't have it. */
   applied: SiteTheme
   /** Every enabled theme, in picker order. */
   themes: SiteTheme[]
+  /** A custom theme from the website, drawn on top of the site theme; null when off. */
+  customTheme: CustomTheme | null
+  /** Turns a custom theme on (or off, with null). Picking a site theme turns it off too. */
+  setCustomTheme: (theme: CustomTheme | null) => void
+  /** Share codes of shared themes used here, newest first; synced with the website. */
+  recentThemes: string[]
+  /** A theme being tried on (drawn instead of the one in use, saved nowhere); null to stop. */
+  setPreviewTheme: (theme: CustomTheme | null) => void
+  setRecentThemes: (codes: string[]) => void
+  rememberSharedTheme: (code: string) => void
+  forgetSharedTheme: (code: string) => void
   cursorEnabled: boolean
   setCursorEnabled: (enabled: boolean) => void
   /** Whether the title bar's theme button is turned off. */
@@ -54,11 +78,46 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
   const [chosen, setChosen] = useState(() => localStorage.getItem('theme'))
   const [cursorEnabled, setCursorEnabledState] = useState(() => readFlag(CURSOR_KEY))
   const [shortcutHidden, setShortcutHiddenState] = useState(() => readFlag(SHORTCUT_HIDDEN_KEY))
+  const [customTheme, setCustomThemeState] = useState(getSavedCustomTheme)
+  const [recentThemes, setRecentThemesState] = useState(getSavedRecentThemes)
+  const [previewTheme, setPreviewTheme] = useState<CustomTheme | null>(null)
+
+  const setCustomTheme = useCallback((next: CustomTheme | null) => {
+    setCustomThemeState(next)
+    saveCustomTheme(next)
+  }, [])
+
+  const setRecentThemes = useCallback((codes: string[]) => {
+    setRecentThemesState(codes)
+    saveRecentThemes(codes)
+  }, [])
+
+  const rememberSharedTheme = useCallback(
+    (code: string) =>
+      setRecentThemes([code, ...recentThemes.filter((c) => c !== code)].slice(0, RECENT_THEMES_LIMIT)),
+    [recentThemes, setRecentThemes]
+  )
+
+  const forgetSharedTheme = useCallback(
+    (code: string) => setRecentThemes(recentThemes.filter((c) => c !== code)),
+    [recentThemes, setRecentThemes]
+  )
 
   const defaultSlug = defaultThemeSlug(themes)
   const theme = chosen ?? defaultSlug
   const applied =
     themes.find((t) => t.slug === theme) ?? themes.find((t) => t.slug === defaultSlug) ?? themes[0]
+
+  // The saved copy may be stale: its owner can edit or delete it on the website.
+  useEffect(() => {
+    const saved = getSavedCustomTheme()
+    if (!saved) return
+    fetchSharedTheme(saved.share_code)
+      .then((fresh) => setCustomThemeState((current) => (current?.share_code === fresh.share_code ? fresh : current)))
+      .catch((err: unknown) => {
+        if (err instanceof ThemeNotFoundError) setCustomTheme(null)
+      })
+  }, [setCustomTheme])
 
   useEffect(() => {
     fetchThemes()
@@ -75,8 +134,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
     const root = document.documentElement
     root.classList.remove(...themes.map((t) => t.slug))
     root.classList.add(applied.slug)
-    root.dataset.scheme = applied.scheme
-  }, [themes, applied])
+    const shown = previewTheme ?? customTheme
+    applyCustomThemeCss(shown)
+    root.dataset.scheme = shown?.scheme ?? applied.scheme
+  }, [themes, applied, customTheme, previewTheme])
+
+  useEffect(() => {
+    if (customTheme) saveCustomTheme(customTheme)
+  }, [customTheme])
 
   useEffect(() => {
     if (chosen) localStorage.setItem('theme', chosen)
@@ -88,9 +153,20 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
 
   const value: ThemeContextValue = {
     theme,
-    setTheme: setChosen,
+    setTheme: (next) => {
+      setCustomTheme(null)
+      setChosen(next)
+    },
+    setSyncedTheme: setChosen,
     applied,
     themes,
+    customTheme,
+    setCustomTheme,
+    recentThemes,
+    setRecentThemes,
+    setPreviewTheme,
+    rememberSharedTheme,
+    forgetSharedTheme,
     cursorEnabled,
     setCursorEnabled: (enabled) => {
       setCursorEnabledState(enabled)

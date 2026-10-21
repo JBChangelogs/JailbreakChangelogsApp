@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { currentOwnerId, useDupeFinder } from '@renderer/contexts/DupeFinderContext'
+import { originalOwnerId, useDupeFinder } from '@renderer/contexts/DupeFinderContext'
 import { DupeItemCard } from '@renderer/components/dupefinder/DupeItemCard'
 import { DupeCompareModal } from '@renderer/components/dupefinder/DupeCompareModal'
 import { userDisplay } from '@renderer/lib/dupeDisplay'
@@ -8,7 +8,7 @@ import type { Item } from '@shared/item'
 const PAGE_SIZE = 20
 
 export function DupeFinderScreen(): React.JSX.Element {
-  const { state, sortedData, duplicateCounts, duplicateOrders, itemsMap, ownerProfiles, selectItem } = useDupeFinder()
+  const { state, sortedData, duplicateCounts, duplicateOrders, itemsMap, ownerProfiles, selectItem, openCompare } = useDupeFinder()
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const scrollRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
@@ -81,10 +81,10 @@ export function DupeFinderScreen(): React.JSX.Element {
             <>
               <div className="grid grid-cols-[repeat(auto-fit,minmax(275px,1fr))] gap-4">
                 {visibleItems.map((item) => {
-                  const itemData = itemsMap.get(item.item_id) as Item
+                  const itemData = itemsMap.get(item.item_id) as Item | undefined
                   const key = `${item.categoryTitle}-${item.title}`
                   const isDuplicate = (duplicateCounts.get(key) ?? 0) > 1
-                  const ownerId = currentOwnerId(item, state.robloxId)
+                  const ownerId = originalOwnerId(item, state.robloxId)
                   return (
                     <DupeItemCard
                       key={item.id}
@@ -93,7 +93,8 @@ export function DupeFinderScreen(): React.JSX.Element {
                       ownerId={ownerId}
                       ownerName={userDisplay(ownerProfiles[ownerId], ownerId)}
                       duplicateNumber={isDuplicate ? duplicateOrders.get(item.id) : undefined}
-                      onClick={() => selectItem(item)}
+                      onHistory={() => selectItem(item)}
+                      onCompare={() => openCompare(item.id)}
                     />
                   )
                 })}

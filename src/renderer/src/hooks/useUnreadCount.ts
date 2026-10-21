@@ -21,7 +21,7 @@ export function useUnreadCount(): { unread: number; refresh: () => void } {
 
   useEffect(() => {
     return subscribe((message) => {
-      if (message.action === 'message_received') {
+      if (message.action === 'message_received' || message.action === 'group_message_received') {
         refresh()
       }
     })

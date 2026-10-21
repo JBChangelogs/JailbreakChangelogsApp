@@ -2,6 +2,10 @@ import { useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRealtime } from '@renderer/contexts/RealtimeContext'
 import { useConversations } from '@renderer/hooks/useConversations'
+import { useGroupChats } from '@renderer/hooks/useGroupChats'
+import { useNavigationHistory } from '@renderer/hooks/useNavigationHistory'
+import { useSettingsPage, type SettingsSectionId } from '@renderer/contexts/SettingsPageContext'
+import { parseChatKey } from '@renderer/lib/messagesApi'
 import { useUnreadCount } from '@renderer/hooks/useUnreadCount'
 import { useCurrentUser } from '@renderer/hooks/useCurrentUser'
 import { useMessageToasts } from '@renderer/hooks/useMessageToasts'
@@ -89,10 +93,49 @@ export function HomeScreen(): React.JSX.Element {
     setLastSelectedConversationId(id)
   }
 
+  const selectedTarget = parseChatKey(selectedId)
+  const selectedGroupId = selectedTarget?.kind === 'group' ? selectedTarget.id : null
+  const {
+    groups,
+    loading: groupsLoading,
+    error: groupsError,
+    upsertGroup,
+    removeGroup,
+    markGroupRead
+  } = useGroupChats(activeTab === 'messages' ? selectedGroupId : null)
+
+  // Drop a selected group once it's gone (deleted, left, or removed from it).
+  useEffect(() => {
+    if (selectedGroupId && !groupsLoading && !groupsError && !groups.some((g) => g.id === selectedGroupId)) {
+      setSelectedId(null)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedGroupId, groups, groupsLoading, groupsError])
+
   const [sidebarSlot, setSidebarSlot] = useState<HTMLDivElement | null>(null)
 
-  const handleConversationRead = (recipientId: string): void => {
-    markConversationRead(recipientId)
+  // Mouse back/forward step through tabs, chats and settings pages like a browser.
+  const settingsPage = useSettingsPage()
+  useNavigationHistory(
+    {
+      tab: activeTab,
+      trackerView,
+      chat: selectedId,
+      settings: settingsPage.isOpen ? settingsPage.section : null
+    },
+    (state: { tab: HomeTab; trackerView: TrackerView; chat: string | null; settings: SettingsSectionId | null }) => {
+      setActiveTab(state.tab)
+      setTrackerView(state.trackerView)
+      setSelectedId(state.chat)
+      if (state.settings) settingsPage.open(state.settings)
+      else settingsPage.close()
+    }
+  )
+
+  const handleConversationRead = (): void => {
+    if (!selectedTarget) return
+    if (selectedTarget.kind === 'group') markGroupRead(selectedTarget.id)
+    else markConversationRead(selectedTarget.id)
     refreshUnread()
   }
 
@@ -116,12 +159,16 @@ export function HomeScreen(): React.JSX.Element {
     activeTab === 'messages' ? (
       <ConversationList
         conversations={conversations}
-        loading={loading}
-        error={error}
+        groups={groups}
+        currentUserId={currentUser?.id ?? null}
+        loading={loading || groupsLoading}
+        error={error ?? groupsError}
         selectedId={selectedId}
         onSelect={setSelectedId}
         onHide={handleHide}
         onUnhide={unhideConversation}
+        onGroupCreated={upsertGroup}
+        onGroupRemoved={removeGroup}
       />
     ) : activeTab === 'tracker' ? (
       trackerView === 'robberies' ? (
@@ -142,9 +189,12 @@ export function HomeScreen(): React.JSX.Element {
   const mainContent =
     activeTab === 'messages' ? (
       <ConversationThread
-        recipientId={selectedId}
+        target={selectedTarget}
+        group={selectedGroupId ? groups.find((g) => g.id === selectedGroupId) : undefined}
         currentUser={currentUser}
-        onRead={() => selectedId && handleConversationRead(selectedId)}
+        suggestedUserIds={conversations.map((c) => c.recipient_id)}
+        onRead={handleConversationRead}
+        onGroupUpdated={upsertGroup}
       />
     ) : activeTab === 'tracker' ? (
       trackerView === 'robberies' ? (

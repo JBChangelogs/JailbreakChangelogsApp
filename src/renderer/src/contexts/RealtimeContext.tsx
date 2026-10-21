@@ -14,6 +14,12 @@ export interface RealtimeMessage {
   data?: unknown
 }
 
+// Group typing shares typingUserIds with DMs under a per-group key, so a user
+// typing in a group doesn't show as typing in their DM.
+export function groupTypingKey(groupId: string, userId: string): string {
+  return `group:${groupId}:${userId}`
+}
+
 type RealtimeListener = (message: RealtimeMessage) => void
 
 interface RealtimeContextValue {
@@ -136,12 +142,15 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }): R
         }
 
         if (message.action === 'typing') {
-          const userId = (message.data as { user_id?: string } | undefined)?.user_id
-          if (userId) markTyping(userId)
+          const data = message.data as { user_id?: string; group_id?: string } | undefined
+          if (data?.user_id) markTyping(data.group_id ? groupTypingKey(data.group_id, data.user_id) : data.user_id)
         } else if (message.action === 'message_received' || message.action === 'message_sent') {
           const data = message.data as { sender_id?: string; user_id?: string } | undefined
           const senderId = data?.sender_id ?? data?.user_id
           if (senderId) clearTyping(senderId)
+        } else if (message.action === 'group_message_received') {
+          const data = message.data as { sender_id?: string; group_id?: string } | undefined
+          if (data?.sender_id && data.group_id) clearTyping(groupTypingKey(data.group_id, data.sender_id))
         } else if (message.action === 'presence_update') {
           const data = message.data as { user_id?: string; status?: string } | undefined
           if (data?.user_id && data.status) applyPresenceUpdate(data.user_id, data.status)

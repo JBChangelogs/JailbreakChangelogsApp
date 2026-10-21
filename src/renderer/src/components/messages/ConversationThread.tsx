@@ -1,20 +1,30 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import { Button } from '@renderer/components/ui/button'
 import { MessagesIcon } from '@renderer/components/NavBar'
 import { useConversation, type DisplayMessage } from '@renderer/hooks/useConversation'
 import { useBlockedUsers } from '@renderer/hooks/useBlockedUsers'
-import { useRealtime } from '@renderer/contexts/RealtimeContext'
+import { groupTypingKey, useRealtime } from '@renderer/contexts/RealtimeContext'
 import { useUserProfiles } from '@renderer/hooks/useUserProfiles'
 import { useEmojis } from '@renderer/hooks/useEmojis'
 import {
   formatMessageTimestamp,
   formatTimeOnly,
+  formatDayDivider,
   describeMetadata,
   normalizeToMs
 } from '@renderer/lib/messageFormatting'
 import { EmojiPicker } from '@renderer/components/messages/EmojiPicker'
 import { Emoji, EmojiText } from '@renderer/components/messages/Emoji'
-import { UserAvatar, UserAvatarWithPresence } from '@renderer/components/messages/UserAvatar'
+import { GroupAvatar, UserAvatar, UserAvatarWithPresence } from '@renderer/components/messages/UserAvatar'
+import {
+  GroupMembersSidebar,
+  RenameGroupDialog,
+  MAX_GROUP_MEMBERS,
+  UserPickerDialog,
+  UserPlusIcon
+} from '@renderer/components/messages/GroupChatDialogs'
+import { groupChatsApi } from '@renderer/lib/messagesApi'
+import { groupTypingLabel } from '@renderer/components/messages/ConversationList'
 import { UserNameSkeleton } from '@renderer/components/messages/UserNameSkeleton'
 import { UserProfilePopover } from '@renderer/components/user/UserProfilePopover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
@@ -25,7 +35,7 @@ import { ComposerActionsMenu } from '@renderer/components/messages/ComposerActio
 import { serversApi } from '@renderer/lib/serversApi'
 import { buildRobloxGameDeepLink } from '@renderer/lib/robberyUtils'
 import { FLOATING_PANEL_SURFACE } from '@renderer/lib/floatingPanelSurface'
-import type { MessageItem } from '@renderer/lib/messagesApi'
+import type { ChatTarget, GroupChat, MessageItem } from '@renderer/lib/messagesApi'
 import { useAuth } from '@renderer/contexts/AuthContext'
 import { tradesApi } from '@renderer/lib/tradesApi'
 import { ItemSide } from '@renderer/components/trading/TradeAdDetailScreen'
@@ -135,6 +145,30 @@ function BlockIcon({ className }: { className?: string }): React.JSX.Element {
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
       <circle cx="12" cy="12" r="9" />
       <path strokeLinecap="round" d="m5.6 5.6 12.8 12.8" />
+    </svg>
+  )
+}
+
+function ArrowIcon({ className, left = false }: { className?: string; left?: boolean }): React.JSX.Element {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d={left ? 'M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18' : 'M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3'}
+      />
+    </svg>
+  )
+}
+
+function UsersIcon({ className }: { className?: string }): React.JSX.Element {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"
+      />
     </svg>
   )
 }
@@ -365,6 +399,74 @@ function OfferAcceptedCard({
   )
 }
 
+const GROUP_EVENT_TYPES = new Set(['group_renamed', 'members_added', 'member_removed', 'member_left'])
+
+function metadataUserIds(metadata: Record<string, unknown> | null): string[] {
+  if (!metadata) return []
+  const ids = Array.isArray(metadata.user_ids) ? metadata.user_ids : []
+  return [...ids, metadata.user_id, metadata.new_owner_id].filter((id): id is string => typeof id === 'string')
+}
+
+function GroupEventText({
+  message,
+  metadata,
+  profiles
+}: {
+  message: DisplayMessage
+  metadata: Record<string, unknown>
+  profiles: Map<string, UserProfile>
+}): React.JSX.Element {
+  const name = (id: unknown): React.JSX.Element => {
+    if (typeof id !== 'string') return <span className="font-semibold text-primary-text">Someone</span>
+    const profile = profiles.get(id)
+    return (
+      <UserProfilePopover userId={id} profile={profile}>
+        <button type="button" className="font-semibold text-primary-text hover:underline">
+          {profile?.username || profile?.name || `User #${id.slice(-6)}`}
+        </button>
+      </UserProfilePopover>
+    )
+  }
+  const sender = name(message.sender_id)
+
+  switch (metadata.type) {
+    case 'group_renamed':
+      return (
+        <>
+          {sender} changed the group name: <span className="font-semibold text-primary-text">{String(metadata.new_name ?? '')}</span>
+        </>
+      )
+    case 'members_added': {
+      const ids = Array.isArray(metadata.user_ids) ? metadata.user_ids : []
+      return (
+        <>
+          {sender} added{' '}
+          {ids.map((id, i) => (
+            <span key={String(id)}>
+              {i > 0 && (i === ids.length - 1 ? ' and ' : ', ')}
+              {name(id)}
+            </span>
+          ))}{' '}
+          to the group.
+        </>
+      )
+    }
+    case 'member_removed':
+      return (
+        <>
+          {sender} removed {name(metadata.user_id)} from the group.
+        </>
+      )
+    default:
+      return (
+        <>
+          {name(metadata.user_id ?? message.sender_id)} left the group.
+          {typeof metadata.new_owner_id === 'string' && <> {name(metadata.new_owner_id)} is now the owner.</>}
+        </>
+      )
+  }
+}
+
 function SystemMessageText({ metadata }: { metadata: Record<string, unknown> }): React.JSX.Element {
   if (metadata.type === 'offer_accepted' && metadata.trade) {
     return (
@@ -379,12 +481,14 @@ function SystemMessageText({ metadata }: { metadata: Record<string, unknown> }):
 
 function MessageActionsMenu({
   isMine,
+  canDelete,
   onReply,
   onEdit,
   onDelete,
   onReport
 }: {
   isMine: boolean
+  canDelete: boolean
   onReply: () => void
   onEdit: () => void
   onDelete: () => void
@@ -450,12 +554,9 @@ function MessageActionsMenu({
         onCloseAutoFocus={(e) => e.preventDefault()}
       >
         {item('reply', <ReplyIcon className="h-4 w-4" />, 'Reply', onReply)}
-        {isMine
-          ? [
-            item('edit', <EditIcon className="h-4 w-4" />, 'Edit', onEdit, false),
-            item('delete', <DeleteIcon className="h-4 w-4" />, 'Delete', onDelete, true)
-          ]
-          : item('report', <ReportIcon className="h-4 w-4" />, 'Report', onReport, true)}
+        {isMine && item('edit', <EditIcon className="h-4 w-4" />, 'Edit', onEdit, false)}
+        {canDelete && item('delete', <DeleteIcon className="h-4 w-4" />, 'Delete', onDelete, true)}
+        {!isMine && item('report', <ReportIcon className="h-4 w-4" />, 'Report', onReport, true)}
       </PopoverContent>
     </Popover>
   )
@@ -466,7 +567,9 @@ function MessageRow({
   showSenderInfo,
   senderId,
   senderProfile,
+  profiles,
   isMine,
+  canDelete,
   parentMessage,
   parentSenderProfile,
   onReply,
@@ -484,7 +587,9 @@ function MessageRow({
   showSenderInfo: boolean
   senderId: string
   senderProfile?: UserProfile
+  profiles: Map<string, UserProfile>
   isMine: boolean
+  canDelete: boolean
   parentMessage?: MessageItem
   parentSenderProfile?: UserProfile
   onReply: (message: MessageItem) => void
@@ -531,6 +636,26 @@ function MessageRow({
             tradeId={metadata.trade}
             offerId={typeof metadata.offer === 'number' ? metadata.offer : null}
           />
+        </div>
+      )
+    }
+
+    if (typeof metaType === 'string' && GROUP_EVENT_TYPES.has(metaType)) {
+      const icon =
+        metaType === 'members_added' ? (
+          <ArrowIcon className="h-4.5 w-4.5 text-[color-mix(in_srgb,var(--color-status-success)_70%,black)]" />
+        ) : metaType === 'group_renamed' ? (
+          <EditIcon className="h-4.5 w-4.5 text-tertiary-text" />
+        ) : (
+          <ArrowIcon left className="h-4.5 w-4.5 text-[color-mix(in_srgb,var(--color-status-error)_70%,black)]" />
+        )
+      return (
+        <div className="group mt-2 flex items-center gap-3 rounded px-5 py-1 hover:bg-secondary-bg/60">
+          <div className="flex w-9 shrink-0 justify-center">{icon}</div>
+          <p className="min-w-0 flex-1 text-sm text-tertiary-text">
+            <GroupEventText message={message} metadata={metadata} profiles={profiles} />{' '}
+            <span className="text-xs text-quaternary-text">{formatMessageTimestamp(message.created_at)}</span>
+          </p>
         </div>
       )
     }
@@ -766,6 +891,7 @@ function MessageRow({
           <div className="absolute top-0 right-2 -translate-y-1/2">
             <MessageActionsMenu
               isMine={isMine}
+              canDelete={canDelete}
               onReply={() => onReply(message)}
               onEdit={() => setIsEditing(true)}
               onDelete={handleDelete}
@@ -855,18 +981,19 @@ function MessageRow({
             <ReplyIcon className="h-4 w-4" />
             Reply
           </ContextMenuItem>
-          {isMine ? (
-            <>
-              <ContextMenuItem onClick={() => setIsEditing(true)}>
-                <EditIcon className="h-4 w-4" />
-                Edit
-              </ContextMenuItem>
-              <ContextMenuItem destructive onClick={handleDelete}>
-                <DeleteIcon className="h-4 w-4" />
-                Delete
-              </ContextMenuItem>
-            </>
-          ) : (
+          {isMine && (
+            <ContextMenuItem onClick={() => setIsEditing(true)}>
+              <EditIcon className="h-4 w-4" />
+              Edit
+            </ContextMenuItem>
+          )}
+          {canDelete && (
+            <ContextMenuItem destructive onClick={handleDelete}>
+              <DeleteIcon className="h-4 w-4" />
+              Delete
+            </ContextMenuItem>
+          )}
+          {!isMine && (
             <ContextMenuItem destructive onClick={handleReport}>
               <ReportIcon className="h-4 w-4" />
               Report
@@ -887,16 +1014,32 @@ function emojiQueryAtCursor(text: string, cursor: number): string | null {
 }
 
 interface ConversationThreadProps {
-  recipientId: string | null
+  target: ChatTarget | null
+  group?: GroupChat
   currentUser: UserProfile | null
+  /** People to suggest in the Invite to Group modal, e.g. your DM partners. */
+  suggestedUserIds: string[]
   onRead?: () => void
+  onGroupUpdated: (group: GroupChat) => void
 }
 
 export function ConversationThread({
-  recipientId,
+  target,
+  group,
   currentUser,
-  onRead
+  suggestedUserIds,
+  onRead,
+  onGroupUpdated
 }: ConversationThreadProps): React.JSX.Element {
+  const { token } = useAuth()
+  // recipientId is the chat id: the other user for a DM, the group id for a group.
+  const recipientId = target?.id ?? null
+  const isGroup = target?.kind === 'group'
+  const isGroupOwner = isGroup && currentUser !== null && group?.owner_id === currentUser.id
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [showMembers, setShowMembers] = useState(true)
+  const [inviteOpen, setInviteOpen] = useState(false)
+  const canInvite = isGroupOwner && group !== undefined && group.member_ids.length < MAX_GROUP_MEMBERS
   const {
     items,
     loading,
@@ -910,12 +1053,32 @@ export function ConversationThread({
     deleteMessage,
     reportMessage,
     notifyTyping
-  } = useConversation(recipientId, currentUser?.id ?? null, onRead)
+  } = useConversation(target, currentUser?.id ?? null, onRead)
   const { typingUserIds } = useRealtime()
-  const recipientIsTyping = recipientId !== null && typingUserIds.has(recipientId)
-  const profiles = useUserProfiles(recipientId ? [recipientId] : [])
+  const typerIds = !recipientId
+    ? []
+    : isGroup
+      ? (group?.member_ids ?? []).filter(
+        (id) => id !== currentUser?.id && typingUserIds.has(groupTypingKey(recipientId, id))
+      )
+      : typingUserIds.has(recipientId)
+        ? [recipientId]
+        : []
+  const recipientIsTyping = typerIds.length > 0
+  // Groups also need senders who have since left, so their old messages keep a name.
+  const profileIds = !recipientId
+    ? []
+    : isGroup
+      ? [
+        ...new Set([
+          ...(group?.member_ids ?? []),
+          ...items.flatMap((m) => [m.sender_id, ...metadataUserIds(m.metadata)])
+        ])
+      ]
+      : [recipientId]
+  const profiles = useUserProfiles(profileIds)
   const { isBlocked, block, unblock } = useBlockedUsers()
-  const blocked = recipientId !== null && isBlocked(recipientId)
+  const blocked = !isGroup && recipientId !== null && isBlocked(recipientId)
   const [blockConfirmOpen, setBlockConfirmOpen] = useState(false)
 
   const handleToggleBlock = async (): Promise<void> => {
@@ -1115,10 +1278,14 @@ export function ConversationThread({
     }
   }
 
-  const recipientProfile = recipientId ? profiles.get(recipientId) : undefined
-  const recipientLabel = recipientId
-    ? recipientProfile?.username || recipientProfile?.name || `User #${recipientId.slice(-6)}`
-    : ''
+  const recipientProfile = recipientId && !isGroup ? profiles.get(recipientId) : undefined
+  const recipientLabel = !recipientId
+    ? ''
+    : isGroup
+      ? group?.name ?? 'Group'
+      : recipientProfile?.username || recipientProfile?.name || `User #${recipientId.slice(-6)}`
+  const typerProfile = typerIds[0] ? profiles.get(typerIds[0]) : undefined
+  const groupOthers = (group?.member_ids ?? []).filter((id) => id !== currentUser?.id)
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col bg-transparent">
@@ -1136,251 +1303,376 @@ export function ConversationThread({
         </div>
       ) : (
         <>
-          <div className="flex items-center gap-2.5 border-b border-border-primary px-5 py-2.5">
-            <UserProfilePopover userId={recipientId} profile={recipientProfile}>
-              <button type="button" className="rounded-full">
-                <UserAvatarWithPresence id={recipientId} profile={recipientProfile} className="h-8 w-8" />
-              </button>
-            </UserProfilePopover>
-            <UserProfilePopover userId={recipientId} profile={recipientProfile}>
+          {isGroup ? (
+            <div className="flex items-center gap-2.5 border-b border-border-primary px-5 py-2.5">
               <button
                 type="button"
-                title={recipientId}
-                className="min-w-0 flex-1 truncate text-left text-sm font-semibold text-primary-text hover:underline"
+                onClick={() => isGroupOwner && setSettingsOpen(true)}
+                className={`rounded-full ${isGroupOwner ? '' : 'cursor-default'}`}
               >
-                {recipientLabel}
+                <GroupAvatar
+                  groupId={recipientId}
+                  memberIds={group?.member_ids ?? []}
+                  fallbackIds={groupOthers.slice(0, 2)}
+                  profiles={profiles}
+                  className="h-8 w-8"
+                />
               </button>
-            </UserProfilePopover>
-            <Tooltip>
-              <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => isGroupOwner && setSettingsOpen(true)}
+                aria-label={isGroupOwner ? 'Edit group name' : undefined}
+                className={`group/name flex min-w-0 flex-1 items-center gap-2 text-left ${isGroupOwner ? '' : 'cursor-default'}`}
+              >
+                <span className="truncate text-sm font-semibold text-primary-text">{recipientLabel}</span>
+                {isGroupOwner && (
+                  <EditIcon className="h-3.5 w-3.5 shrink-0 text-tertiary-text opacity-0 transition-opacity group-hover/name:opacity-100" />
+                )}
+                {group && (
+                  <span className="shrink-0 text-xs text-tertiary-text">{group.member_ids.length} members</span>
+                )}
+              </button>
+              {canInvite && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => setInviteOpen(true)}
+                      aria-label="Invite to group"
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-secondary-text transition-colors hover:bg-quaternary-bg hover:text-primary-text"
+                    >
+                      <UserPlusIcon className="h-4.5 w-4.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">Invite to group</TooltipContent>
+                </Tooltip>
+              )}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => setShowMembers((v) => !v)}
+                    aria-label={showMembers ? 'Hide members' : 'Show members'}
+                    aria-pressed={showMembers}
+                    className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-quaternary-bg hover:text-primary-text ${showMembers ? 'text-primary-text' : 'text-secondary-text'}`}
+                  >
+                    <UsersIcon className="h-4.5 w-4.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">{showMembers ? 'Hide members' : 'Show members'}</TooltipContent>
+              </Tooltip>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2.5 border-b border-border-primary px-5 py-2.5">
+              <UserProfilePopover userId={recipientId} profile={recipientProfile}>
+                <button type="button" className="rounded-full">
+                  <UserAvatarWithPresence id={recipientId} profile={recipientProfile} className="h-8 w-8" />
+                </button>
+              </UserProfilePopover>
+              <UserProfilePopover userId={recipientId} profile={recipientProfile}>
                 <button
                   type="button"
-                  onClick={() => void handleToggleBlock()}
-                  aria-label={blocked ? 'Unblock user' : 'Block user'}
-                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors ${blocked
-                    ? 'text-status-error hover:bg-status-error/10'
-                    : 'text-secondary-text hover:bg-quaternary-bg hover:text-primary-text'
-                    }`}
+                  title={recipientId}
+                  className="min-w-0 flex-1 truncate text-left text-sm font-semibold text-primary-text hover:underline"
                 >
-                  <BlockIcon className="h-4 w-4" />
+                  {recipientLabel}
                 </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">{blocked ? 'Unblock' : 'Block'}</TooltipContent>
-            </Tooltip>
-          </div>
-          <div className="relative min-h-0 flex-1">
-            <div ref={setScrollRef} className="absolute inset-0 overflow-y-auto pt-1 pb-5">
-              {hasMore && (
-                <div className="flex justify-center">
-                  <Button variant="ghost" size="sm" onClick={loadOlder} disabled={loading}>
-                    {loading ? 'Loading…' : 'Load older messages'}
-                  </Button>
-                </div>
-              )}
-
-              {error && <p className="text-center text-sm text-form-error">{error}</p>}
-
-              {loading && items.length === 0 && !error && (
-                <div className="flex flex-1 items-center justify-center py-10">
-                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-border-primary border-t-status-info" />
-                </div>
-              )}
-
-              {!loading && items.length === 0 && !error && (
-                <p className="text-center text-sm text-quaternary-text">No messages yet - say hello.</p>
-              )}
-
-              {(() => {
-                let lastMineIndex = -1
-                if (currentUser) {
-                  for (let i = items.length - 1; i >= 0; i--) {
-                    if (items[i].sender_id === currentUser.id) {
-                      lastMineIndex = i
-                      break
-                    }
-                  }
-                }
-                return items.map((message, index) => {
-                  const prev = items[index - 1]
-                  const showSenderInfo =
-                    !prev ||
-                    prev.sender_id !== message.sender_id ||
-                    Boolean(prev.metadata) ||
-                    Boolean(message.metadata) ||
-                    normalizeToMs(message.created_at) - normalizeToMs(prev.created_at) > AVATAR_GROUP_GAP_MS
-                  const senderProfile =
-                    currentUser && message.sender_id === currentUser.id ? currentUser : profiles.get(message.sender_id)
-                  const isMine = currentUser !== null && message.sender_id === currentUser.id
-                  const parentMessage = message.parent_id
-                    ? items.find((m) => m.id === message.parent_id)
-                    : undefined
-                  const parentSenderProfile = parentMessage
-                    ? currentUser && parentMessage.sender_id === currentUser.id
-                      ? currentUser
-                      : profiles.get(parentMessage.sender_id)
-                    : undefined
-                  return (
-                    <MessageRow
-                      key={message.id}
-                      message={message}
-                      showSenderInfo={showSenderInfo}
-                      senderId={message.sender_id}
-                      senderProfile={senderProfile}
-                      isMine={isMine}
-                      parentMessage={parentMessage}
-                      parentSenderProfile={parentSenderProfile}
-                      onReply={setReplyTo}
-                      onEdit={editMessage}
-                      onDelete={deleteMessage}
-                      onReport={reportMessage}
-                      onRetry={retrySend}
-                      onDiscard={discardFailedSend}
-                      onJumpToMessage={handleJumpToMessage}
-                      isHighlighted={message.id === highlightedId}
-                      registerRef={registerMessageRef}
-                      showReadReceipt={index === lastMineIndex}
-                    />
-                  )
-                })
-              })()}
+              </UserProfilePopover>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => void handleToggleBlock()}
+                    aria-label={blocked ? 'Unblock user' : 'Block user'}
+                    className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors ${blocked
+                      ? 'text-status-error hover:bg-status-error/10'
+                      : 'text-secondary-text hover:bg-quaternary-bg hover:text-primary-text'
+                      }`}
+                  >
+                    <BlockIcon className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">{blocked ? 'Unblock' : 'Block'}</TooltipContent>
+              </Tooltip>
             </div>
-
-            <div
-              className={`pointer-events-none absolute inset-x-0 z-10 grid transition-[grid-template-rows,bottom] duration-200 ease-out ${recipientIsTyping ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
-                } ${pendingReplyTo ? 'bottom-8' : 'bottom-0'}`}
-            >
-              <div className="flex items-center gap-2 overflow-hidden px-4 text-xs text-tertiary-text">
-                <span className="flex h-3 shrink-0 items-center gap-[2px]">
-                  <span className="h-1 w-1 animate-typing-dot rounded-full bg-tertiary-text [animation-delay:-0.3s]" />
-                  <span className="h-1 w-1 animate-typing-dot rounded-full bg-tertiary-text [animation-delay:-0.15s]" />
-                  <span className="h-1 w-1 animate-typing-dot rounded-full bg-tertiary-text" />
-                </span>
-                <UserAvatar id={recipientId ?? ''} profile={recipientProfile} className="h-4 w-4 shrink-0" />
-                <span className="truncate py-1.5">
-                  <span className="font-semibold text-secondary-text">{recipientLabel}</span> is typing…
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="relative flex flex-col justify-center border-border-primary bg-primary-bg px-2 pb-2">
-
-            <div
-              style={{
-                backgroundImage:
-                  'linear-gradient(in srgb to top, var(--color-primary-bg) 35%, color-mix(in srgb, var(--color-primary-bg) 90%, transparent) 50%, color-mix(in srgb, var(--color-primary-bg) 65%, transparent) 65%, color-mix(in srgb, var(--color-primary-bg) 35%, transparent) 78%, color-mix(in srgb, var(--color-primary-bg) 12%, transparent) 90%, transparent 100%)'
-              }}
-              className={`pointer-events-none absolute inset-x-0 bottom-0 transition-[height] duration-300 ease-in-out ${isScrolledUp && recipientIsTyping ? (pendingReplyTo ? 'h-40' : 'h-28') : 'h-18'
-                }`}
-            />
-
-            {pendingReplyTo && (
-              <div
-                className={`absolute inset-x-2 bottom-full flex items-center gap-2 rounded-t-xl border-x border-t border-border-card bg-tertiary-bg px-3 py-1.5 transition-all duration-200 ease-out starting:translate-y-1 starting:opacity-0 ${replyTo ? 'translate-y-0 opacity-100' : 'translate-y-1 opacity-0'
-                  }`}
-              >
-                <ReplyIcon className="h-3.5 w-3.5 shrink-0 -scale-x-100 text-tertiary-text" />
-                <p className="min-w-0 flex-1 truncate text-xs text-tertiary-text">
-                  Replying to{' '}
-                  <span className="font-semibold text-secondary-text">
-                    {(currentUser && pendingReplyTo.sender_id === currentUser.id
-                      ? currentUser
-                      : profiles.get(pendingReplyTo.sender_id)
-                    )?.username || `User #${pendingReplyTo.sender_id.slice(-6)}`}
-                  </span>
-                  {pendingReplyTo.content && (
-                    <>
-                      : <EmojiText text={pendingReplyTo.content} />
-                    </>
+          )}
+          <div className="flex min-h-0 flex-1">
+            <div className="flex min-w-0 flex-1 flex-col">
+              <div className="relative min-h-0 flex-1">
+                <div ref={setScrollRef} className="absolute inset-0 overflow-y-auto pt-1 pb-5">
+                  {hasMore && (
+                    <div className="flex justify-center">
+                      <Button variant="ghost" size="sm" onClick={loadOlder} disabled={loading}>
+                        {loading ? 'Loading…' : 'Load older messages'}
+                      </Button>
+                    </div>
                   )}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setReplyTo(null)}
-                  aria-label="Cancel reply"
-                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-tertiary-text hover:bg-quaternary-bg hover:text-primary-text"
-                >
-                  <XIcon className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            )}
-            {draft.length >= MAX_LENGTH * 0.75 && (
-              <p
-                className={`mb-1 text-xs ${draft.length >= MAX_LENGTH * 0.95
-                  ? 'text-status-error'
-                  : draft.length >= MAX_LENGTH * 0.85
-                    ? 'text-status-warning'
-                    : 'text-tertiary-text'
-                  }`}
-              >
-                {draft.length}/{MAX_LENGTH}
-              </p>
-            )}
 
-            <div className="relative">
-              {emojiQuery !== null && suggestions.length > 0 && (
-                <div className={`absolute right-0 bottom-full left-0 mb-2 overflow-hidden ${FLOATING_PANEL_SURFACE}`}>
-                  <div className="border-b border-border-primary px-3 py-2 text-[10px] font-bold tracking-wide text-tertiary-text uppercase">
-                    Emojis matching :{emojiQuery}
-                  </div>
-                  <div className="max-h-48 overflow-y-auto p-1">
-                    {suggestions.map(([name, emoji], index) => (
-                      <button
-                        key={name}
-                        type="button"
-                        onMouseEnter={() => setActiveSuggestion(index)}
-                        onClick={() => acceptSuggestion(emoji)}
-                        className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors ${index === activeSuggestion ? 'bg-quaternary-bg' : ''
-                          }`}
-                      >
-                        <span className="text-lg">
-                          <Emoji emoji={emoji} />
-                        </span>
-                        <span className="text-primary-text">:{name}:</span>
-                      </button>
-                    ))}
+                  {error && <p className="text-center text-sm text-form-error">{error}</p>}
+
+                  {loading && items.length === 0 && !error && (
+                    <div className="flex flex-1 items-center justify-center py-10">
+                      <div className="h-6 w-6 animate-spin rounded-full border-2 border-border-primary border-t-status-info" />
+                    </div>
+                  )}
+
+                  {!loading && items.length === 0 && !error && (
+                    <p className="text-center text-sm text-quaternary-text">No messages yet - say hello.</p>
+                  )}
+
+                  {(() => {
+                    let lastMineIndex = -1
+                    if (currentUser) {
+                      for (let i = items.length - 1; i >= 0; i--) {
+                        if (items[i].sender_id === currentUser.id) {
+                          lastMineIndex = i
+                          break
+                        }
+                      }
+                    }
+                    return items.map((message, index) => {
+                      const prev = items[index - 1]
+                      const newDay =
+                        !prev ||
+                        new Date(normalizeToMs(prev.created_at)).toDateString() !==
+                          new Date(normalizeToMs(message.created_at)).toDateString()
+                      const showSenderInfo =
+                        newDay ||
+                        prev.sender_id !== message.sender_id ||
+                        Boolean(prev.metadata) ||
+                        Boolean(message.metadata) ||
+                        normalizeToMs(message.created_at) - normalizeToMs(prev.created_at) > AVATAR_GROUP_GAP_MS
+                      const senderProfile =
+                        currentUser && message.sender_id === currentUser.id ? currentUser : profiles.get(message.sender_id)
+                      const isMine = currentUser !== null && message.sender_id === currentUser.id
+                      const canDelete = isMine || isGroupOwner
+                      const parentMessage = message.parent_id
+                        ? items.find((m) => m.id === message.parent_id)
+                        : undefined
+                      const parentSenderProfile = parentMessage
+                        ? currentUser && parentMessage.sender_id === currentUser.id
+                          ? currentUser
+                          : profiles.get(parentMessage.sender_id)
+                        : undefined
+                      return (
+                        <Fragment key={message.id}>
+                          {newDay && (
+                            <div role="separator" className="mx-5 mt-4 mb-1 flex items-center gap-2">
+                              <span className="h-px flex-1 bg-border-primary" />
+                              <span className="text-xs font-semibold text-tertiary-text">
+                                {formatDayDivider(message.created_at)}
+                              </span>
+                              <span className="h-px flex-1 bg-border-primary" />
+                            </div>
+                          )}
+                          <MessageRow
+                            message={message}
+                            showSenderInfo={showSenderInfo}
+                            senderId={message.sender_id}
+                            senderProfile={senderProfile}
+                            isMine={isMine}
+                            canDelete={canDelete}
+                            profiles={profiles}
+                            parentMessage={parentMessage}
+                            parentSenderProfile={parentSenderProfile}
+                            onReply={setReplyTo}
+                            onEdit={editMessage}
+                            onDelete={deleteMessage}
+                            onReport={reportMessage}
+                            onRetry={retrySend}
+                            onDiscard={discardFailedSend}
+                            onJumpToMessage={handleJumpToMessage}
+                            isHighlighted={message.id === highlightedId}
+                            registerRef={registerMessageRef}
+                            showReadReceipt={index === lastMineIndex}
+                          />
+                        </Fragment>
+                      )
+                    })
+                  })()}
+                </div>
+
+                <div
+                  className={`pointer-events-none absolute inset-x-0 z-10 grid transition-[grid-template-rows,bottom] duration-200 ease-out ${recipientIsTyping ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+                    } ${pendingReplyTo ? 'bottom-8' : 'bottom-0'}`}
+                >
+                  <div className="flex items-center gap-2 overflow-hidden px-4 text-xs text-tertiary-text">
+                    <span className="flex h-3 shrink-0 items-center gap-[2px]">
+                      <span className="h-1 w-1 animate-typing-dot rounded-full bg-tertiary-text [animation-delay:-0.3s]" />
+                      <span className="h-1 w-1 animate-typing-dot rounded-full bg-tertiary-text [animation-delay:-0.15s]" />
+                      <span className="h-1 w-1 animate-typing-dot rounded-full bg-tertiary-text" />
+                    </span>
+                    <UserAvatar id={typerIds[0] ?? ''} profile={typerProfile} className="h-4 w-4 shrink-0" />
+                    <span className="truncate py-1.5">
+                      {isGroup ? (
+                        groupTypingLabel(typerIds, profiles)
+                      ) : (
+                        <>
+                          <span className="font-semibold text-secondary-text">{recipientLabel}</span> is typing…
+                        </>
+                      )}
+                    </span>
                   </div>
                 </div>
-              )}
+              </div>
 
-              <div
-                className={`focus-within:border-border-focus flex w-full min-h-[64px] items-center gap-2 rounded-xl border border-border-card bg-tertiary-bg px-1 py-2 text-primary-text transition-[border-radius] duration-200 ease-out ${pendingReplyTo ? 'rounded-t-none' : ''
-                  }`}
-              >
-                {recipientId && <ComposerActionsMenu recipientId={recipientId} onSendMessage={sendMessage} />}
-                <div className="relative min-w-0 flex-1 flex">
-                  <textarea
-                    ref={textareaRef}
-                    value={draft}
-                    onChange={handleChange}
-                    onKeyDown={handleKeyDown}
-                    placeholder={`Message ${recipientLabel}...`}
-                    rows={1}
-                    maxLength={MAX_LENGTH}
-                    className="box-border w-full resize-none overflow-y-auto border-none bg-transparent py-2 pl-3 pr-20 text-base leading-6 text-primary-text placeholder-secondary-text shadow-none placeholder:whitespace-nowrap focus:outline-none"
-                  />
-                  <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1">
-                    <EmojiPicker onSelect={insertAtCursor} />
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          aria-label="Send message"
-                          onClick={handleSend}
-                          disabled={!draft.trim() || draft.length > MAX_LENGTH}
-                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-primary-text transition-colors hover:bg-secondary-bg disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          <SendIcon className="h-4 w-4" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>Send message</TooltipContent>
-                    </Tooltip>
+              <div className="relative flex flex-col justify-center border-border-primary bg-primary-bg px-2 pb-2">
+
+                <div
+                  style={{
+                    backgroundImage:
+                      'linear-gradient(in srgb to top, var(--color-primary-bg) 35%, color-mix(in srgb, var(--color-primary-bg) 90%, transparent) 50%, color-mix(in srgb, var(--color-primary-bg) 65%, transparent) 65%, color-mix(in srgb, var(--color-primary-bg) 35%, transparent) 78%, color-mix(in srgb, var(--color-primary-bg) 12%, transparent) 90%, transparent 100%)'
+                  }}
+                  className={`pointer-events-none absolute inset-x-0 bottom-0 transition-[height] duration-300 ease-in-out ${isScrolledUp && recipientIsTyping ? (pendingReplyTo ? 'h-40' : 'h-28') : 'h-18'
+                    }`}
+                />
+
+                {pendingReplyTo && (
+                  <div
+                    className={`absolute inset-x-2 bottom-full flex items-center gap-2 rounded-t-xl border-x border-t border-border-card bg-tertiary-bg px-3 py-1.5 transition-all duration-200 ease-out starting:translate-y-1 starting:opacity-0 ${replyTo ? 'translate-y-0 opacity-100' : 'translate-y-1 opacity-0'
+                      }`}
+                  >
+                    <ReplyIcon className="h-3.5 w-3.5 shrink-0 -scale-x-100 text-tertiary-text" />
+                    <p className="min-w-0 flex-1 truncate text-xs text-tertiary-text">
+                      Replying to{' '}
+                      <span className="font-semibold text-secondary-text">
+                        {(currentUser && pendingReplyTo.sender_id === currentUser.id
+                          ? currentUser
+                          : profiles.get(pendingReplyTo.sender_id)
+                        )?.username || `User #${pendingReplyTo.sender_id.slice(-6)}`}
+                      </span>
+                      {pendingReplyTo.content && (
+                        <>
+                          : <EmojiText text={pendingReplyTo.content} />
+                        </>
+                      )}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setReplyTo(null)}
+                      aria-label="Cancel reply"
+                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-tertiary-text hover:bg-quaternary-bg hover:text-primary-text"
+                    >
+                      <XIcon className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )}
+                {draft.length >= MAX_LENGTH * 0.75 && (
+                  <p
+                    className={`mb-1 text-xs ${draft.length >= MAX_LENGTH * 0.95
+                      ? 'text-status-error'
+                      : draft.length >= MAX_LENGTH * 0.85
+                        ? 'text-status-warning'
+                        : 'text-tertiary-text'
+                      }`}
+                  >
+                    {draft.length}/{MAX_LENGTH}
+                  </p>
+                )}
+
+                <div className="relative">
+                  {emojiQuery !== null && suggestions.length > 0 && (
+                    <div className={`absolute right-0 bottom-full left-0 mb-2 overflow-hidden ${FLOATING_PANEL_SURFACE}`}>
+                      <div className="border-b border-border-primary px-3 py-2 text-[10px] font-bold tracking-wide text-tertiary-text uppercase">
+                        Emojis matching :{emojiQuery}
+                      </div>
+                      <div className="max-h-48 overflow-y-auto p-1">
+                        {suggestions.map(([name, emoji], index) => (
+                          <button
+                            key={name}
+                            type="button"
+                            onMouseEnter={() => setActiveSuggestion(index)}
+                            onClick={() => acceptSuggestion(emoji)}
+                            className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors ${index === activeSuggestion ? 'bg-quaternary-bg' : ''
+                              }`}
+                          >
+                            <span className="text-lg">
+                              <Emoji emoji={emoji} />
+                            </span>
+                            <span className="text-primary-text">:{name}:</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div
+                    className={`focus-within:border-border-focus flex w-full min-h-[64px] items-center gap-2 rounded-xl border border-border-card bg-tertiary-bg px-1 py-2 text-primary-text transition-[border-radius] duration-200 ease-out ${pendingReplyTo ? 'rounded-t-none' : ''
+                      }`}
+                  >
+                    {recipientId && (
+                      <ComposerActionsMenu recipientId={isGroup ? null : recipientId} onSendMessage={sendMessage} />
+                    )}
+                    <div className="relative min-w-0 flex-1 flex">
+                      <textarea
+                        ref={textareaRef}
+                        value={draft}
+                        onChange={handleChange}
+                        onKeyDown={handleKeyDown}
+                        placeholder={`Message ${recipientLabel}...`}
+                        rows={1}
+                        maxLength={MAX_LENGTH}
+                        className="box-border w-full resize-none overflow-y-auto border-none bg-transparent py-2 pl-3 pr-20 text-base leading-6 text-primary-text placeholder-secondary-text shadow-none placeholder:whitespace-nowrap focus:outline-none"
+                      />
+                      <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1">
+                        <EmojiPicker onSelect={insertAtCursor} />
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              aria-label="Send message"
+                              onClick={handleSend}
+                              disabled={!draft.trim() || draft.length > MAX_LENGTH}
+                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-primary-text transition-colors hover:bg-secondary-bg disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              <SendIcon className="h-4 w-4" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>Send message</TooltipContent>
+                        </Tooltip>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
+            {isGroup && group && showMembers && (
+              <GroupMembersSidebar
+                group={group}
+                currentUserId={currentUser?.id ?? null}
+                profiles={profiles}
+                onUpdated={onGroupUpdated}
+                onInvite={canInvite ? () => setInviteOpen(true) : null}
+              />
+            )}
           </div>
         </>
+      )}
+
+      {isGroup && group && (
+        <UserPickerDialog
+          open={inviteOpen}
+          onOpenChange={setInviteOpen}
+          title={`Invite to ${group.name}`}
+          subtitle={`Group chats can have up to ${MAX_GROUP_MEMBERS} members.`}
+          confirmLabel="Invite"
+          suggestedIds={suggestedUserIds}
+          excludeIds={group.member_ids}
+          maxSelect={MAX_GROUP_MEMBERS - group.member_ids.length}
+          onConfirm={async (users) => {
+            if (!token) return
+            onGroupUpdated(await groupChatsApi.addMembers(token, group.id, users.map((u) => u.id)))
+          }}
+        />
+      )}
+
+      {isGroup && group && (
+        <RenameGroupDialog
+          open={settingsOpen}
+          onOpenChange={setSettingsOpen}
+          group={group}
+          onUpdated={onGroupUpdated}
+        />
       )}
 
       <Dialog open={blockConfirmOpen} onOpenChange={(open) => !open && setBlockConfirmOpen(false)}>

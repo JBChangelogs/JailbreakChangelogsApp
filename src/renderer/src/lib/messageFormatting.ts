@@ -16,6 +16,14 @@ export function formatTimeOnly(timestamp: number): string {
   return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
 }
 
+export function formatDayDivider(timestamp: number): string {
+  return new Date(normalizeToMs(timestamp)).toLocaleDateString(undefined, {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric'
+  })
+}
+
 const DAY_MS = 24 * 60 * 60 * 1000
 
 export function formatMessageTimestamp(timestamp: number): string {

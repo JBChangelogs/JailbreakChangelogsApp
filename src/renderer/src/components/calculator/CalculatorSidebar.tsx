@@ -35,13 +35,13 @@ export function CalculatorSidebar(): React.JSX.Element {
 
       <div className="flex flex-col gap-2 px-3 pb-3">
         {user?.roblox?.roblox_id && (
-          <div className="grid grid-cols-2 gap-1 rounded-xl border border-border-card bg-tertiary-bg p-1">
+          <div className="grid grid-cols-2 gap-1 rounded-2xl border border-border-card bg-tertiary-bg p-1">
             {(['catalog', 'inventory'] as const).map((source) => (
               <button
                 key={source}
                 type="button"
                 onClick={() => browse.setSource(source)}
-                className={`rounded-lg py-1.5 text-xs font-medium transition-colors ${
+                className={`rounded-xl py-1.5 text-xs font-medium transition-colors ${
                   browse.source === source
                     ? 'bg-button-info text-form-button-text'
                     : 'text-secondary-text hover:text-primary-text'

@@ -17,7 +17,9 @@ const PARTIAL_FIELDS = [
   'duped_demand',
   'description',
   'health',
-  'tradable'
+  'tradable',
+  'season',
+  'level'
 ].join(',')
 const ITEMS_PARTIAL_URL = `https://api.jailbreakchangelogs.com/v2/items/partial?fields=${PARTIAL_FIELDS}`
 

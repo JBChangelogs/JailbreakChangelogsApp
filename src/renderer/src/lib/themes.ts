@@ -38,7 +38,7 @@ export const FALLBACK_THEMES: SiteTheme[] = [
 // The API validates these too; they're checked again because the values are written into a
 // <style> tag, where one bad value could break out of it or comment out the rest.
 const SLUG = /^[a-z][a-z0-9-]{0,31}$/
-const ICON = /^[a-z0-9-]+:[a-z0-9-]+$/
+export const ICON = /^[a-z0-9-]+:[a-z0-9-]+$/
 const VAR_KEY = /^--[a-z0-9-]+$/
 const CSS_VALUE = /^[^{};<>\\\u0000-\u001f]{1,200}$/
 const CSS_BANNED = /url\(|expression\(|@import|\/\*/i
@@ -47,7 +47,7 @@ const CURSOR_URL = /^\/[A-Za-z0-9/_.-]+$|^https:\/\/[^\s"'()<>\\]+$/
 export const isThemeSlug = (value: unknown): value is string =>
   typeof value === 'string' && SLUG.test(value)
 
-const safeValue = (value: unknown): value is string =>
+export const safeValue = (value: unknown): value is string =>
   typeof value === 'string' && CSS_VALUE.test(value) && !CSS_BANNED.test(value)
 
 /** Drops themes with bad slugs and any values that aren't safe as raw CSS. */

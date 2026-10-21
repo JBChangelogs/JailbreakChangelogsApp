@@ -18,7 +18,12 @@ export function resolveAvatarUrl(userId: string, avatar: string | null | undefin
 }
 
 function normalize(user: UserProfile): UserProfile {
-  return { ...user, avatar: resolveAvatarUrl(user.id, user.avatar) }
+  return {
+    ...user,
+    avatar: resolveAvatarUrl(user.id, user.avatar),
+    // /users/me names the supporter tier `supporter`; every other user endpoint says `premiumtype`.
+    premiumtype: user.premiumtype ?? user.supporter
+  }
 }
 
 export const usersApi = {
@@ -26,6 +31,12 @@ export const usersApi = {
 
   get: (token: string, id: string) =>
     request<UserProfile>(token, `/v2/users/${encodeURIComponent(id)}`).then(normalize),
+
+  /** Plain text; the API answers "No description provided" when there's none. */
+  description: (token: string, id: string) =>
+    request<{ description?: string }>(token, `/v2/users/${encodeURIComponent(id)}/description`).then(
+      (res) => res.description ?? null
+    ),
 
   getBatch: async (token: string, ids: string[]): Promise<UserProfile[]> => {
     const query = ids.map(encodeURIComponent).join(',')

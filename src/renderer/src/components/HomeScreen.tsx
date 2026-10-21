@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { Fragment, useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRealtime } from '@renderer/contexts/RealtimeContext'
 import { useConversations } from '@renderer/hooks/useConversations'
@@ -155,73 +155,10 @@ export function HomeScreen(): React.JSX.Element {
     await hideConversation(recipientId)
   }
 
-  const sidebarContent =
-    activeTab === 'messages' ? (
-      <ConversationList
-        conversations={conversations}
-        groups={groups}
-        currentUserId={currentUser?.id ?? null}
-        loading={loading || groupsLoading}
-        error={error ?? groupsError}
-        selectedId={selectedId}
-        onSelect={setSelectedId}
-        onHide={handleHide}
-        onUnhide={unhideConversation}
-        onGroupCreated={upsertGroup}
-        onGroupRemoved={removeGroup}
-      />
-    ) : activeTab === 'tracker' ? (
-      trackerView === 'robberies' ? (
-        <RobberySidebarFilters />
-      ) : (
-        <BountySidebarFilters />
-      )
-    ) : activeTab === 'values' ? (
-      <ValuesSidebarFilters />
-    ) : activeTab === 'calculator' ? (
-      <CalculatorSidebar />
-    ) : activeTab === 'dupefinder' ? (
-      <DupeFinderSidebar />
-    ) : activeTab === 'trades' ? (
-      <TradesSidebar />
-    ) : null
-
-  const mainContent =
-    activeTab === 'messages' ? (
-      <ConversationThread
-        target={selectedTarget}
-        group={selectedGroupId ? groups.find((g) => g.id === selectedGroupId) : undefined}
-        currentUser={currentUser}
-        suggestedUserIds={conversations.map((c) => c.recipient_id)}
-        onRead={handleConversationRead}
-        onGroupUpdated={upsertGroup}
-      />
-    ) : activeTab === 'tracker' ? (
-      trackerView === 'robberies' ? (
-        <RobberyTrackerScreen trackerView={trackerView} onChangeView={setTrackerView} />
-      ) : (
-        <BountyTrackerScreen trackerView={trackerView} onChangeView={setTrackerView} />
-      )
-    ) : activeTab === 'values' ? (
-      <ValuesScreen />
-    ) : activeTab === 'calculator' ? (
-      <CalculatorScreen />
-    ) : activeTab === 'dupefinder' ? (
-      <DupeFinderScreen />
-    ) : (
-      <TradesScreen
-        onMessageUser={(userId) => {
-          setActiveTab('messages')
-          setSelectedId(userId)
-        }}
-      />
-    )
-
   const trackerAlerts = useTrackerAlerts()
   const robberyAlertsOn = hasRobberyAlerts(trackerAlerts)
   const bountyAlertsOn = hasBountyAlerts(trackerAlerts)
   const onTracker = activeTab === 'tracker'
-  const trackerMounted = onTracker || robberyAlertsOn || bountyAlertsOn
   const openRobberyTracker = useCallback(() => {
     setActiveTab('tracker')
     setTrackerView('robberies')
@@ -231,30 +168,99 @@ export function HomeScreen(): React.JSX.Element {
     setTrackerView('bounties')
   }, [])
 
-  const tabPane = (
+  // Tabs stay mounted once opened (hidden while inactive), so switching back is instant and keeps
+  // each tab's data, scroll position and filters instead of rebuilding it from scratch.
+  const [visitedTabs, setVisitedTabs] = useState<ReadonlySet<HomeTab>>(() => new Set([activeTab]))
+  if (!visitedTabs.has(activeTab)) setVisitedTabs(new Set(visitedTabs).add(activeTab))
+
+  // Inactive tabs skip rendering but keep their state, scroll position included (display: none can lose it).
+  const HIDDEN_PANE = 'pointer-events-none invisible absolute inset-0 [content-visibility:hidden]'
+  const pane = (tab: HomeTab, sidebar: React.ReactNode, main: React.ReactNode): React.ReactNode => {
+    const active = tab === activeTab
+    return (
+      <Fragment key={tab}>
+        {sidebarSlot &&
+          createPortal(
+            <div aria-hidden={!active} className={`flex min-h-0 flex-1 flex-col ${active ? '' : HIDDEN_PANE}`}>
+              {sidebar}
+            </div>,
+            sidebarSlot
+          )}
+        <div aria-hidden={!active} className={`flex h-full min-h-0 min-w-0 flex-1 ${active ? '' : HIDDEN_PANE}`}>
+          <DeferredMount>{main}</DeferredMount>
+        </div>
+      </Fragment>
+    )
+  }
+
+  const tabs = (
     <>
-      {sidebarSlot && createPortal(sidebarContent, sidebarSlot)}
-      {mainContent}
+      {visitedTabs.has('messages') &&
+        pane(
+          'messages',
+          <ConversationList
+            conversations={conversations}
+            groups={groups}
+            currentUserId={currentUser?.id ?? null}
+            loading={loading || groupsLoading}
+            error={error ?? groupsError}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+            onHide={handleHide}
+            onUnhide={unhideConversation}
+            onGroupCreated={upsertGroup}
+            onGroupRemoved={removeGroup}
+          />,
+          // Closed while another tab is showing, so it doesn't mark new messages read.
+          <ConversationThread
+            target={activeTab === 'messages' ? selectedTarget : null}
+            group={selectedGroupId ? groups.find((g) => g.id === selectedGroupId) : undefined}
+            currentUser={currentUser}
+            suggestedUserIds={conversations.map((c) => c.recipient_id)}
+            onRead={handleConversationRead}
+            onGroupUpdated={upsertGroup}
+          />
+        )}
+      {visitedTabs.has('tracker') &&
+        pane(
+          'tracker',
+          trackerView === 'robberies' ? <RobberySidebarFilters /> : <BountySidebarFilters />,
+          trackerView === 'robberies' ? (
+            <RobberyTrackerScreen trackerView={trackerView} onChangeView={setTrackerView} />
+          ) : (
+            <BountyTrackerScreen trackerView={trackerView} onChangeView={setTrackerView} />
+          )
+        )}
+      {visitedTabs.has('values') && (
+        <ValuesProvider>{pane('values', <ValuesSidebarFilters />, <ValuesScreen />)}</ValuesProvider>
+      )}
+      {visitedTabs.has('calculator') && pane('calculator', <CalculatorSidebar />, <CalculatorScreen />)}
+      {visitedTabs.has('dupefinder') && (
+        <DupeFinderProvider>{pane('dupefinder', <DupeFinderSidebar />, <DupeFinderScreen />)}</DupeFinderProvider>
+      )}
+      {visitedTabs.has('trades') && (
+        <TradesProvider>
+          {pane(
+            'trades',
+            <TradesSidebar />,
+            <TradesScreen
+              onMessageUser={(userId) => {
+                setActiveTab('messages')
+                setSelectedId(userId)
+              }}
+            />
+          )}
+        </TradesProvider>
+      )}
     </>
   )
-
-  const tabContent =
-    activeTab === 'values' ? (
-      <ValuesProvider>{tabPane}</ValuesProvider>
-    ) : activeTab === 'dupefinder' ? (
-      <DupeFinderProvider>{tabPane}</DupeFinderProvider>
-    ) : activeTab === 'trades' ? (
-      <TradesProvider>{tabPane}</TradesProvider>
-    ) : (
-      tabPane
-    )
 
   return (
     <CalculatorProvider>
     <div className="flex h-full flex-1 min-w-0">
       <div className="flex h-full w-64 shrink-0 flex-col border-r border-border-primary bg-secondary-bg">
         <NavBar activeTab={activeTab} onSelect={setActiveTab} unreadCount={unread} />
-        <div ref={setSidebarSlot} className="flex min-h-0 flex-1 flex-col" />
+        <div ref={setSidebarSlot} className="relative flex min-h-0 flex-1 flex-col" />
         <RobloxStatusBar />
         <div
           className={`flex h-[64px] shrink-0 items-center border-t border-border-primary px-1.5 mb-2 border-b rounded-md transition-[border-radius] duration-200 ease-out ${robloxPlaceId ? 'rounded-t-none' : ''
@@ -265,16 +271,33 @@ export function HomeScreen(): React.JSX.Element {
         </div>
       </div>
 
-      {trackerMounted ? (
-        <RobberyTrackerProvider enabled={onTracker || robberyAlertsOn} onAlertClick={openRobberyTracker}>
-          <BountyTrackerProvider enabled={onTracker || bountyAlertsOn} onAlertClick={openBountyTracker}>
-            {tabContent}
-          </BountyTrackerProvider>
-        </RobberyTrackerProvider>
-      ) : (
-        tabContent
-      )}
+      {/* Always mounted, so turning tracker alerts on or off doesn't rebuild every tab under them. */}
+      <RobberyTrackerProvider enabled={onTracker || robberyAlertsOn} onAlertClick={openRobberyTracker}>
+        <BountyTrackerProvider enabled={onTracker || bountyAlertsOn} onAlertClick={openBountyTracker}>
+          <div className="relative flex h-full min-w-0 flex-1">{tabs}</div>
+        </BountyTrackerProvider>
+      </RobberyTrackerProvider>
     </div>
     </CalculatorProvider>
+  )
+}
+
+/** Paints a skeleton on a tab's first open, then mounts it on the next frame, so the tab button responds at once. */
+function DeferredMount({ children }: { children: React.ReactNode }): React.JSX.Element {
+  const [ready, setReady] = useState(false)
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setReady(true))
+    return () => cancelAnimationFrame(frame)
+  }, [])
+  if (ready) return <>{children}</>
+  return (
+    <div className="flex min-w-0 flex-1 flex-col" aria-busy="true">
+      <div className="h-12 shrink-0 border-b border-border-primary" />
+      <div className="grid flex-1 grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] content-start gap-3 p-5">
+        {Array.from({ length: 8 }, (_, i) => (
+          <div key={i} className="h-44 animate-pulse rounded-xl bg-secondary-bg" />
+        ))}
+      </div>
+    </div>
   )
 }

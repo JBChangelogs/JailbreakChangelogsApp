@@ -5,7 +5,40 @@ const INVENTORY_API_URL = 'https://inventories.jailbreakchangelogs.com'
 export class DupeUserNotFoundError extends Error {}
 export class NoDupesFoundError extends Error {}
 
+export interface DupeCheckResult {
+  ratio: number
+  check: boolean
+  is_duped: boolean
+  dupe_logged_at: number
+  original_logged_at: number
+}
+
 export const dupesApi = {
+  /** The website's "Dupe check": compares this copy's ownership history with the original's. */
+  checkDupe: async (originalOwner: string, itemId: number): Promise<DupeCheckResult> => {
+    if (!/^\d+$/.test(originalOwner) || !Number.isInteger(itemId) || itemId <= 0) {
+      throw new Error('Missing original owner or item details.')
+    }
+    const res = await fetch(`${INVENTORY_API_URL}/dupes/check`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: originalOwner, item_id: itemId })
+    })
+    const data = (await res.json().catch(() => null)) as (Partial<DupeCheckResult> & { message?: string; error?: string }) | null
+    if (!res.ok) throw new Error(data?.message ?? data?.error ?? 'Unable to check this dupe. Try again.')
+    if (
+      !data ||
+      typeof data.ratio !== 'number' ||
+      typeof data.check !== 'boolean' ||
+      typeof data.is_duped !== 'boolean' ||
+      typeof data.dupe_logged_at !== 'number' ||
+      typeof data.original_logged_at !== 'number'
+    ) {
+      throw new Error('Unable to check this dupe. Try again.')
+    }
+    return data as DupeCheckResult
+  },
+
   searchOwners: async (query: string, limit = 15, signal?: AbortSignal): Promise<DupeOwnerSearchResult[]> => {
     const res = await fetch(
       `${INVENTORY_API_URL}/dupes/search/owners?query=${encodeURIComponent(query)}&limit=${limit}`,

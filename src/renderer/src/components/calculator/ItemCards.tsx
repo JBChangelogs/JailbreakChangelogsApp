@@ -1,26 +1,16 @@
 import { useState } from 'react'
 import { CategoryIconBadge } from '@renderer/lib/categoryIcons'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger
-} from '@renderer/components/ui/dropdown-menu'
-import {
   formatFullValue,
   getDemandColor,
   getItemImagePath,
   getTrendColor,
-  handleImageError,
-  parseCashValue
+  handleImageError
 } from '@renderer/lib/itemValueUtils'
-import type { TradeItemDraft } from '@renderer/lib/tradeItemDraft'
 import type { Item } from '@shared/item'
 
 export type Condition = 'clean' | 'duped' | 'og'
 
-const conditionOf = (d: { duped: boolean; og: boolean }): Condition => (d.duped ? 'duped' : d.og ? 'og' : 'clean')
 export const conditionFlags = (c: Condition): { duped: boolean; og: boolean } => ({
   duped: c === 'duped',
   og: c === 'og'
@@ -33,37 +23,12 @@ const CONDITION_STYLES: Record<Condition, string> = {
 }
 const CONDITION_LABELS: Record<Condition, string> = { clean: 'Clean', duped: 'Duped', og: 'OG' }
 
-function Icon({ d, className }: { d: string; className?: string }): React.JSX.Element {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d={d} />
-    </svg>
-  )
-}
-
-function Chip({ label, colorClass }: { label: string; colorClass: string }): React.JSX.Element {
-  return (
-    <span className={`inline-flex h-5 max-w-full items-center truncate rounded px-1.5 text-[10px] leading-none font-bold ${colorClass}`}>
-      {label}
-    </span>
-  )
-}
-
 function ValueRow({ label, children }: { label: string; children: React.ReactNode }): React.JSX.Element {
   return (
     <div className="flex items-center justify-between gap-2 rounded-lg bg-secondary-bg p-1.5">
       <span className="shrink-0 text-xs font-medium whitespace-nowrap text-secondary-text">{label}</span>
       {children}
     </div>
-  )
-}
-
-function Labeled({ label, children }: { label: string; children: React.ReactNode }): React.JSX.Element {
-  return (
-    <span className="inline-flex min-w-0 items-center gap-1">
-      <span className="text-[10px] font-medium text-tertiary-text">{label}</span>
-      {children}
-    </span>
   )
 }
 
@@ -76,115 +41,6 @@ function demandFor(item: Item | undefined, duped: boolean): string {
 
 function trendFor(item: Item | undefined): string {
   return item?.trend && item.trend !== 'N/A' ? item.trend : 'Unknown'
-}
-
-// Compact row in the Offering/Requesting panels: fits half-width panels better than tall cards.
-export function SelectedItemCard({
-  draft,
-  item,
-  onAddOne,
-  onRemoveOne,
-  onCondition
-}: {
-  draft: TradeItemDraft
-  item: Item | undefined
-  onAddOne: () => void
-  onRemoveOne: () => void
-  onCondition: (next: Condition) => void
-}): React.JSX.Element {
-  const condition = conditionOf(draft)
-  const unit = draft.duped ? draft.dupedValue : draft.cashValue
-  const unitValue = parseCashValue(unit ?? null)
-  const demand = demandFor(item, draft.duped)
-  const trend = trendFor(item)
-  const step =
-    'flex h-5 w-5 items-center justify-center rounded text-secondary-text transition-colors hover:bg-quaternary-bg hover:text-primary-text'
-
-  return (
-    <div className="flex items-center gap-3 rounded-lg border border-border-card bg-tertiary-bg p-2 transition-colors hover:bg-quaternary-bg/40">
-      <div className="relative h-14 w-24 shrink-0 overflow-hidden rounded-md bg-quaternary-bg/40">
-        <img
-          src={getItemImagePath(draft.type, draft.name)}
-          alt=""
-          onError={handleImageError}
-          className="h-full w-full object-cover"
-          draggable={false}
-        />
-        <div className="pointer-events-none absolute top-0.5 right-0.5 scale-75">
-          <CategoryIconBadge
-            type={draft.type}
-            isLimited={item?.is_limited === 1}
-            isSeasonal={item?.is_seasonal === 1}
-            className="h-3.5 w-3.5"
-          />
-        </div>
-      </div>
-
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-1.5">
-            <p className="truncate text-sm font-semibold text-primary-text" title={draft.name}>
-              {draft.name}
-            </p>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  aria-label={`Condition: ${CONDITION_LABELS[condition]}`}
-                  className={`inline-flex h-5 shrink-0 items-center gap-1 rounded px-1.5 text-[10px] leading-none font-semibold transition-opacity hover:opacity-90 ${CONDITION_STYLES[condition]}`}
-                >
-                  {CONDITION_LABELS[condition]}
-                  <Icon d="m6 9 6 6 6-6" className="h-2.5 w-2.5 opacity-80" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuRadioGroup value={condition} onValueChange={(value) => onCondition(value as Condition)}>
-                  <DropdownMenuRadioItem value="clean">Clean</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="duped">Duped</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="og">OG</DropdownMenuRadioItem>
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-          <p className="shrink-0 text-sm font-bold text-primary-text tabular-nums">
-            {unitValue > 0 ? formatFullValue(String(unitValue * draft.amount)) : formatFullValue(unit ?? null)}
-          </p>
-        </div>
-
-        <div className="mt-0.5 flex items-center justify-between gap-2">
-          <p className="truncate text-[11px] text-tertiary-text">
-            {draft.type}
-            {draft.amount > 1 && unitValue > 0 && ` · ${formatFullValue(unit ?? null)} each`}
-          </p>
-          <div className="flex shrink-0 items-center rounded-md border border-border-card bg-secondary-bg">
-            <button
-              type="button"
-              onClick={onRemoveOne}
-              className={step}
-              aria-label={draft.amount > 1 ? `Remove one ${draft.name}` : `Remove ${draft.name}`}
-            >
-              <Icon d="M5 12h14" className="h-3 w-3" />
-            </button>
-            <span className="min-w-5 text-center text-[11px] font-bold text-primary-text tabular-nums">
-              {draft.amount}
-            </span>
-            <button type="button" onClick={onAddOne} className={step} aria-label={`Add another ${draft.name}`}>
-              <Icon d="M12 5v14m7-7H5" className="h-3 w-3" />
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-          <Labeled label="Demand">
-            <Chip label={demand} colorClass={getDemandColor(demand)} />
-          </Labeled>
-          <Labeled label="Trend">
-            <Chip label={trend} colorClass={getTrendColor(trend)} />
-          </Labeled>
-        </div>
-      </div>
-    </div>
-  )
 }
 
 // Card in the Browse grid. Mirrors the website's item picker card.
@@ -237,6 +93,7 @@ export function BrowseItemCard({
           className="h-full w-full object-cover"
           draggable={false}
           loading="lazy"
+          decoding="async"
         />
         <div className="absolute top-1 right-1">
           <CategoryIconBadge

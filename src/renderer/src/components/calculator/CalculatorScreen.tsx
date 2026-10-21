@@ -10,9 +10,11 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui
 import { filterAndSortItems } from '@renderer/lib/itemBrowse'
 import { formatFullValue } from '@renderer/lib/itemValueUtils'
 import { robloxInventoryApi, type UserInventoryItem } from '@renderer/lib/robloxInventoryApi'
-import { totalCount } from '@renderer/lib/tradeItemDraft'
+import { totalCount, type TradeItemDraft, type TradeItemDraftKey } from '@renderer/lib/tradeItemDraft'
 import type { Item } from '@shared/item'
-import { BrowseItemCard, SelectedItemCard, conditionFlags, type Condition } from './ItemCards'
+import { BrowseItemCard, conditionFlags, type Condition } from './ItemCards'
+import { VirtualGrid } from '@renderer/components/ui/virtual-grid'
+import { TradeSidePanel } from './TradeSidePanel'
 import { ScanControls } from './ScanControls'
 
 function SvgIcon({ d, className }: { d: string; className?: string }): React.JSX.Element {
@@ -25,7 +27,6 @@ function SvgIcon({ d, className }: { d: string; className?: string }): React.JSX
 
 const SWAP_PATH = 'M7 16V4m0 0L3 8m4-4 4 4M17 8v12m0 0 4-4m-4 4-4-4'
 const TRASH_PATH = 'M4 7h16M9 7V4h6v3m-8 0 .867 12.142A2 2 0 0 0 9.862 21h4.276a2 2 0 0 0 1.995-1.858L17 7'
-const MIRROR_PATH = 'M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5'
 
 const format = (n: number): string => (n === 0 ? '0' : formatFullValue(String(n)))
 
@@ -224,77 +225,32 @@ function SummaryBar(): React.JSX.Element {
   )
 }
 
+// The browse grid below is where items get added from.
+const scrollToBrowse = (): void =>
+  document.getElementById('calculator-browse')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+
 function SidePanel({ side, items }: { side: TradeSide; items: Item[] }): React.JSX.Element {
-  const { composer, offeringTotal, requestingTotal } = useCalculator()
-  const isOffering = side === 'offering'
-  const drafts = isOffering ? composer.offering : composer.requesting
-  const total = isOffering ? offeringTotal : requestingTotal
+  const { composer } = useCalculator()
+  const drafts = side === 'offering' ? composer.offering : composer.requesting
   const byId = useMemo(() => new Map(items.map((item) => [String(item.id), item])), [items])
+  const keyOf = (draft: TradeItemDraft): TradeItemDraftKey => ({ id: draft.id, duped: draft.duped, og: draft.og })
 
   return (
-    <section
-      className={`flex min-w-0 flex-col rounded-lg border bg-secondary-bg p-3 ${
-        isOffering ? 'border-status-success' : 'border-status-error'
-      }`}
-    >
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-baseline gap-2">
-          <h3
-            className={`text-xs font-medium tracking-wide uppercase ${isOffering ? 'text-status-success' : 'text-status-error'}`}
-          >
-            {isOffering ? 'Offering' : 'Requesting'}
-          </h3>
-          <span className="text-sm text-secondary-text">({totalCount(drafts)})</span>
-          {total > 0 && <span className="truncate text-sm font-semibold text-primary-text">{format(total)}</span>}
-        </div>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              disabled={drafts.length === 0}
-              onClick={() => composer.setSides(drafts, drafts)}
-            >
-              <SvgIcon d={MIRROR_PATH} className="h-3.5 w-3.5" />
-              Mirror
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Copy to {isOffering ? 'Requesting' : 'Offering'}</TooltipContent>
-        </Tooltip>
-      </div>
-      {/* Empty state and list share a min height of one item row (wrapped rows are 112px), so adding the
-          first item doesn't shift the layout. */}
-      {drafts.length === 0 ? (
-        <div className="flex min-h-28 flex-1 flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-border-card p-3 text-center">
-          <span className="text-xs font-medium text-secondary-text">No items selected</span>
-          <span className="text-xs text-tertiary-text">
-            Use {isOffering ? 'Offer' : 'Request'} on an item below, or scan a trade
-          </span>
-        </div>
-      ) : (
-        <div className="flex min-h-28 max-h-120 flex-col gap-1.5 overflow-y-auto pr-1">
-          {drafts.map((draft) => {
-            const key = { id: draft.id, duped: draft.duped, og: draft.og }
-            const live = byId.get(draft.id)
-            return (
-              <SelectedItemCard
-                key={`${draft.id}:${draft.duped}:${draft.og}`}
-                draft={draft}
-                item={live}
-                onRemoveOne={() => composer.removeAmount(side, key, 1)}
-                onAddOne={() => live && composer.addItem(side, live, draft.duped, draft.og)}
-                onCondition={(next) => composer.setCondition(side, key, conditionFlags(next))}
-              />
-            )
-          })}
-        </div>
-      )}
-    </section>
+    <TradeSidePanel
+      side={side}
+      drafts={drafts}
+      onAddOne={(draft) => {
+        const live = byId.get(draft.id)
+        if (live) composer.addItem(side, live, draft.duped, draft.og)
+      }}
+      onRemoveOne={(draft) => composer.removeAmount(side, keyOf(draft), 1)}
+      onRemoveAll={(draft) => composer.removeAmount(side, keyOf(draft), draft.amount)}
+      onCondition={(draft, next) => composer.setCondition(side, keyOf(draft), conditionFlags(next))}
+      onMirror={() => composer.setSides(drafts, drafts)}
+      onAddClick={scrollToBrowse}
+    />
   )
 }
-
-const PAGE_SIZE = 60
 
 interface BrowseRow {
   item: Item
@@ -302,14 +258,12 @@ interface BrowseRow {
   condition?: Condition
 }
 
-function BrowseGrid({ items }: { items: Item[] }): React.JSX.Element {
+function BrowseGrid({ items, scrollElement }: { items: Item[]; scrollElement: HTMLElement | null }): React.JSX.Element {
   const { composer, browse } = useCalculator()
   const { user } = useCurrentUser()
   const robloxId = user?.roblox?.roblox_id
   const [inventory, setInventory] = useState<UserInventoryItem[] | null>(null)
   const [inventoryError, setInventoryError] = useState<string | null>(null)
-  const [visible, setVisible] = useState(PAGE_SIZE)
-  const sentinelRef = useRef<HTMLDivElement>(null)
   const inventoryMode = browse.source === 'inventory' && !!robloxId
 
   useEffect(() => {
@@ -336,23 +290,8 @@ function BrowseGrid({ items }: { items: Item[] }): React.JSX.Element {
       }))
   }, [items, search, types, demand, trend, sort, inventoryMode, inventory])
 
-  useEffect(() => setVisible(PAGE_SIZE), [rows])
-
-  useEffect(() => {
-    const sentinel = sentinelRef.current
-    if (!sentinel) return undefined
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting) setVisible((v) => Math.min(v + PAGE_SIZE, rows.length))
-      },
-      { rootMargin: '600px' }
-    )
-    observer.observe(sentinel)
-    return () => observer.disconnect()
-  }, [rows.length, visible])
-
   return (
-    <section>
+    <section id="calculator-browse" className="scroll-mt-4">
       <h2 className="mb-3 text-base font-semibold text-primary-text">
         {inventoryMode ? 'Browse Inventory Items' : 'Browse Items'}
         <span className="ml-2 text-sm font-normal text-tertiary-text">{rows.length}</span>
@@ -364,10 +303,14 @@ function BrowseGrid({ items }: { items: Item[] }): React.JSX.Element {
       {rows.length === 0 && (!inventoryMode || inventory) && (
         <p className="py-6 text-center text-xs text-quaternary-text">No items match your filters.</p>
       )}
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-3">
-        {rows.slice(0, visible).map((row) => (
+      <VirtualGrid
+        items={rows}
+        getKey={(row) => row.key}
+        scrollElement={scrollElement}
+        minColumnWidth={170}
+        estimateRowHeight={290}
+        renderItem={(row) => (
           <BrowseItemCard
-            key={row.key}
             item={row.item}
             fixedCondition={row.condition}
             onAdd={(side, condition) => {
@@ -375,15 +318,15 @@ function BrowseGrid({ items }: { items: Item[] }): React.JSX.Element {
               composer.addItem(side, row.item, duped, og)
             }}
           />
-        ))}
-      </div>
-      {visible < rows.length && <div ref={sentinelRef} className="h-px" />}
+        )}
+      />
     </section>
   )
 }
 
 export function CalculatorScreen(): React.JSX.Element {
   const { items } = useItems()
+  const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null)
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -391,13 +334,13 @@ export function CalculatorScreen(): React.JSX.Element {
         <h2 className="text-sm font-semibold text-primary-text">Value Calculator</h2>
         <ScanControls />
       </div>
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5 [scrollbar-gutter:stable]">
+      <div ref={setScrollElement} className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5 [scrollbar-gutter:stable]">
         <div className="grid grid-cols-2 gap-4">
           <SidePanel side="offering" items={items} />
           <SidePanel side="requesting" items={items} />
         </div>
         <SummaryBar />
-        <BrowseGrid items={items} />
+        <BrowseGrid items={items} scrollElement={scrollElement} />
       </div>
     </div>
   )

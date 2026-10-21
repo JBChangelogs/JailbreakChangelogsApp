@@ -35,6 +35,11 @@ export function currentOwnerId(item: DupeFinderItem, fallback: string): string {
   return item.latest_owner || item.user_id || fallback
 }
 
+/** Who first owned this copy, as the dupe cards show it. */
+export function originalOwnerId(item: DupeFinderItem, fallback: string): string {
+  return item.info?.find((entry) => entry.title === 'Original Owner')?.value || fallback
+}
+
 interface DupeFinderContextValue {
   state: SearchState
   search: (input: string) => void
@@ -167,7 +172,9 @@ export function DupeFinderProvider({ children }: { children: React.ReactNode }):
       setState({ status: 'success', robloxId, user, items: dupeItems })
       setOwnerProfiles((prev) => ({ ...prev, ...(user ? { [robloxId]: user } : {}) }))
 
-      const ownerIds = [...new Set(dupeItems.map((item) => currentOwnerId(item, robloxId)))]
+      const ownerIds = [
+        ...new Set(dupeItems.flatMap((item) => [currentOwnerId(item, robloxId), originalOwnerId(item, robloxId)]))
+      ]
       dupesApi
         .fetchUsersBatch(ownerIds)
         .then((batch) => setOwnerProfiles((prev) => ({ ...prev, ...batch })))

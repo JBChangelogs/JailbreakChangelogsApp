@@ -37,6 +37,9 @@ export interface Item {
   tradable: 0 | 1
   last_updated?: number
   trend: string | null
+  /** Seasonal unlocks: the season and level (or top percentage, like "5%") it unlocked at. */
+  season?: number | null
+  level?: string | null
   metadata?: ItemMetadata | null
   recent_changes?: RecentChange[] | null
 }

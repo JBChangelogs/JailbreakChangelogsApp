@@ -8,7 +8,7 @@ import { showToast } from '@renderer/lib/toast'
 import { formatFullValue } from '@renderer/lib/itemValueUtils'
 import { sideTotalValue, isTradeExpired, formatTimeLeft } from '@renderer/lib/tradeDisplay'
 import type { TradeAd, TradeItemWire, TradeOffer } from '@shared/trading'
-import { ItemTile, SideTotals, TradeUserAvatar, tradeUserLabel } from '@renderer/components/trading/TradeAdCard'
+import { ItemTile, TradeSidePreview, TradeUserAvatar, tradeUserLabel } from '@renderer/components/trading/TradeAdCard'
 import { Button } from '@renderer/components/ui/button'
 import { TradesHeader } from '@renderer/components/trading/TradesHeader'
 
@@ -35,29 +35,6 @@ function InboxIcon({ className }: { className?: string }): React.JSX.Element {
   )
 }
 
-function SideCard({ items, label }: { items: TradeItemWire[]; label: string }): React.JSX.Element {
-  return (
-    <section className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-border-card bg-secondary-bg">
-      <div className="border-b border-border-card bg-tertiary-bg px-3 py-2">
-        <h3 className="text-xs font-semibold text-primary-text">
-          {label} <span className="font-medium text-secondary-text">({items.length})</span>
-        </h3>
-      </div>
-      <div className="flex-1 p-3">
-        {items.length === 0 ? (
-          <p className="text-xs text-quaternary-text">Nothing</p>
-        ) : (
-          <div className="flex flex-wrap gap-1.5">
-            {items.map((item, i) => (
-              <ItemTile key={`${item.id}-${i}`} item={item} />
-            ))}
-          </div>
-        )}
-        <SideTotals items={items} />
-      </div>
-    </section>
-  )
-}
 
 export function ItemSide({ items, label }: { items: TradeItemWire[]; label: string }): React.JSX.Element {
   return (
@@ -284,8 +261,8 @@ export function TradeAdDetailScreen({
             </div>
 
             <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <SideCard items={ad.offering} label="Offering" />
-              <SideCard items={ad.requesting} label="Requesting" />
+              <TradeSidePreview items={ad.offering} title="Offering" />
+              <TradeSidePreview items={ad.requesting} title="Requesting" />
             </div>
 
             <div className="mb-3 flex items-center gap-2">

@@ -1,4 +1,5 @@
 import { spawnSync } from 'child_process'
+import { existsSync } from 'fs'
 import { readFile } from 'fs/promises'
 import { join } from 'path'
 
@@ -6,6 +7,7 @@ const root = join(import.meta.dirname, '..')
 const packDir = join(root, 'dist', 'win-unpacked')
 const { version } = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
 const productName = 'Jailbreak Changelogs'
+const notesPath = join(root, 'release-notes.md')
 
 const args = [
   'pack',
@@ -20,6 +22,7 @@ const args = [
   '--outputDir', join(root, 'dist'),
   '--runtime', 'win-x64',
   '--aumid', 'com.jailbreakchangelogs.desktop',
+  ...(existsSync(notesPath) ? ['--releaseNotes', notesPath] : []),
   '-y'
 ]
 

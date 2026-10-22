@@ -13,7 +13,7 @@ import {
   setRichPresencePreference,
   type RichPresencePreferenceKey
 } from './discordRpc'
-import { initAutoUpdater, startAutoUpdateChecks, checkForUpdates, quitAndInstall } from './autoUpdater'
+import { initAutoUpdater, startAutoUpdateChecks, checkForUpdates, downloadUpdate, quitAndInstall } from './autoUpdater'
 import { isDevToolsAllowed, refreshDevToolsAccess } from './devToolsAccess'
 import { showDesktopNotification, registerWindowsToastIdentity } from './notifications'
 import { ensureLinuxProtocolHandler } from './linuxProtocol'
@@ -253,6 +253,7 @@ if (!gotSingleInstanceLock) {
 
     ipcMain.on('updater:quit-and-install', () => quitAndInstall())
     ipcMain.on('updater:check-now', () => checkForUpdates())
+    ipcMain.on('updater:download', () => downloadUpdate())
 
     ipcMain.on('discord-rpc:set-preference', (_event, key: RichPresencePreferenceKey, value: boolean) => {
       setRichPresencePreference(key, value)

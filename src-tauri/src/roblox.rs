@@ -16,9 +16,12 @@ pub fn known_game(place_id: &str) -> Option<&'static str> {
     }
 }
 
+#[cfg(any(windows, test))]
 const JOIN_PREFIX: &str = "Joining game '";
+#[cfg(any(windows, test))]
 const LEAVE_PATTERN: &str = "leaveUGCGameInternal";
 
+#[cfg(any(windows, test))]
 fn find_joins(text: &str) -> Vec<(usize, String, String)> {
     let mut found = Vec::new();
     let mut from = 0;

@@ -7,6 +7,19 @@ export interface AppChangelogEntry {
   removed?: string[]
 }
 
+export function formatChangelogMarkdown(entry: AppChangelogEntry): string {
+  const sections: [string, string[] | undefined][] = [
+    ['Added', entry.added],
+    ['Changed', entry.changed],
+    ['Fixed', entry.fixed],
+    ['Removed', entry.removed]
+  ]
+  return sections
+    .filter(([, items]) => items?.length)
+    .map(([title, items]) => `### ${title}\n\n${(items ?? []).map((i) => `- ${i}`).join('\n')}`)
+    .join('\n\n')
+}
+
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
     version: '0.5.17',

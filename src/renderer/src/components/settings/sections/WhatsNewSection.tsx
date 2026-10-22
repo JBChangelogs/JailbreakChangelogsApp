@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { APP_CHANGELOG } from '@shared/appChangelog'
 import { Button } from '@renderer/components/ui/button'
+import { useCurrentUser } from '@renderer/hooks/useCurrentUser'
+import { onUpdatePreview, runUpdatePreview } from '@renderer/lib/updatePreview'
+import type { UpdaterStatus } from '@shared/desktopApi'
 
 const GROUP_LABELS = {
   added: 'Added',
@@ -29,28 +32,38 @@ function CheckForUpdatesRow(): React.JSX.Element {
   const [checking, setChecking] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
 
-  useEffect(
-    () =>
-      window.api.updater.onStatus((status) => {
-        if (status.state === 'checking') {
-          setChecking(true)
-          setFeedback(null)
-        } else if (status.state === 'not-available') {
-          setChecking(false)
-          setFeedback("You're up to date.")
-        } else if (status.state === 'available' || status.state === 'downloading') {
-          setChecking(false)
-          setFeedback('Update found - downloading…')
-        } else if (status.state === 'downloaded') {
-          setChecking(false)
-          setFeedback('Update ready - restart to apply it.')
-        } else if (status.state === 'error') {
-          setChecking(false)
-          setFeedback('Could not check for updates.')
-        }
-      }),
-    []
-  )
+  const { user } = useCurrentUser()
+  const isOwner = Boolean(user?.flags?.some((f) => f.flag === 'is_owner' && f.enabled))
+
+  useEffect(() => {
+    const show = (status: UpdaterStatus): void => {
+      if (status.state === 'checking') {
+        setChecking(true)
+        setFeedback(null)
+      } else if (status.state === 'not-available') {
+        setChecking(false)
+        setFeedback("You're up to date.")
+      } else if (status.state === 'available') {
+        setChecking(false)
+        setFeedback('Update found.')
+      } else if (status.state === 'downloading') {
+        setChecking(false)
+        setFeedback('Downloading update…')
+      } else if (status.state === 'downloaded') {
+        setChecking(false)
+        setFeedback('Installing update…')
+      } else if (status.state === 'error') {
+        setChecking(false)
+        setFeedback('Could not check for updates.')
+      }
+    }
+    const offReal = window.api.updater.onStatus(show)
+    const offPreview = onUpdatePreview(show)
+    return () => {
+      offReal()
+      offPreview()
+    }
+  }, [])
 
   const currentVersion = APP_CHANGELOG[0]?.version
 
@@ -62,15 +75,39 @@ function CheckForUpdatesRow(): React.JSX.Element {
         </p>
         {feedback && <p className="mt-0.5 text-xs text-tertiary-text">{feedback}</p>}
       </div>
-      <Button
-        type="button"
-        size="sm"
-        variant="secondary"
-        disabled={checking}
-        onClick={() => window.api.updater.checkNow()}
-      >
-        {checking ? 'Checking…' : 'Check for Updates'}
-      </Button>
+      <div className="flex shrink-0 items-center gap-2">
+        {isOwner && (
+          <>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              disabled={checking}
+              onClick={() => runUpdatePreview('poll')}
+            >
+              Preview Banner
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              disabled={checking}
+              onClick={() => runUpdatePreview('startup')}
+            >
+              Preview Startup
+            </Button>
+          </>
+        )}
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          disabled={checking}
+          onClick={() => window.api.updater.checkNow()}
+        >
+          {checking ? 'Checking…' : 'Check for Updates'}
+        </Button>
+      </div>
     </div>
   )
 }

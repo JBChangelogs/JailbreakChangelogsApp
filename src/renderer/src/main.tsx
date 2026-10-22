@@ -1,3 +1,4 @@
+import { desktopReady } from './desktop'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import './lib/authEvents'
@@ -16,18 +17,20 @@ document
   .getElementById('splash-website-link')
   ?.addEventListener('click', () => window.api.openExternal('https://jailbreakchangelogs.com'))
 
-ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
-  <React.StrictMode>
-    <ThemeProvider>
-      <AuthProvider>
-        <RealtimeProvider>
-          <PreferencesProvider>
-            <SettingsPageProvider>
-              <App />
-            </SettingsPageProvider>
-          </PreferencesProvider>
-        </RealtimeProvider>
-      </AuthProvider>
-    </ThemeProvider>
-  </React.StrictMode>
+void desktopReady.then(() =>
+  ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
+    <React.StrictMode>
+      <ThemeProvider>
+        <AuthProvider>
+          <RealtimeProvider>
+            <PreferencesProvider>
+              <SettingsPageProvider>
+                <App />
+              </SettingsPageProvider>
+            </PreferencesProvider>
+          </RealtimeProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </React.StrictMode>
+  )
 )

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-scanner-status"
+description = "Enables the scanner_status command without any pre-configured scope."
+commands.allow = ["scanner_status"]
+
+[[permission]]
+identifier = "deny-scanner-status"
+description = "Denies the scanner_status command without any pre-configured scope."
+commands.deny = ["scanner_status"]

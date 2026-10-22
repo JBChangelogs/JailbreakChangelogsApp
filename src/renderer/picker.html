@@ -1,0 +1,20 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src ipc: http://ipc.localhost" />
+  <style>
+    html, body { margin: 0; height: 100%; cursor: crosshair; user-select: none; overflow: hidden; background: transparent; font-family: system-ui, sans-serif }
+    #shade { position: fixed; inset: 0; background: rgba(0, 0, 0, .35) }
+    #box { position: fixed; display: none; border: 2px solid #4c9fff; box-shadow: 0 0 0 9999px rgba(0, 0, 0, .35) }
+    #hint { position: fixed; top: 24px; left: 50%; transform: translateX(-50%); padding: 8px 14px; border-radius: 8px; background: rgba(18, 19, 23, .92); color: #fff; font-size: 14px }
+  </style>
+</head>
+<body>
+  <div id="shade"></div>
+  <div id="box"></div>
+  <div id="hint">Drag a box around the trade window &middot; Esc to cancel</div>
+  <script type="module" src="/src/picker.ts"></script>
+</body>
+</html>

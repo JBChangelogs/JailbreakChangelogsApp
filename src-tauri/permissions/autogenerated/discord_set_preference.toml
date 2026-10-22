@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-discord-set-preference"
+description = "Enables the discord_set_preference command without any pre-configured scope."
+commands.allow = ["discord_set_preference"]
+
+[[permission]]
+identifier = "deny-discord-set-preference"
+description = "Denies the discord_set_preference command without any pre-configured scope."
+commands.deny = ["discord_set_preference"]

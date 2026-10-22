@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { APP_CHANGELOG } from '@shared/appChangelog'
 import { Button } from '@renderer/components/ui/button'
+import { Popover, PopoverAnchor, PopoverContent } from '@renderer/components/ui/popover'
 import { useCurrentUser } from '@renderer/hooks/useCurrentUser'
 import { onUpdatePreview, runUpdatePreview } from '@renderer/lib/updatePreview'
 import type { UpdaterStatus } from '@shared/desktopApi'
@@ -31,6 +32,7 @@ function formatDate(iso: string): string {
 function CheckForUpdatesRow(): React.JSX.Element {
   const [checking, setChecking] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
+  const [previewOpen, setPreviewOpen] = useState(false)
 
   const { user } = useCurrentUser()
   const isOwner = Boolean(user?.flags?.some((f) => f.flag === 'is_owner' && f.enabled))
@@ -75,39 +77,39 @@ function CheckForUpdatesRow(): React.JSX.Element {
         </p>
         {feedback && <p className="mt-0.5 text-xs text-tertiary-text">{feedback}</p>}
       </div>
-      <div className="flex shrink-0 items-center gap-2">
-        {isOwner && (
-          <>
+      <Popover open={previewOpen} onOpenChange={setPreviewOpen}>
+        <PopoverAnchor asChild>
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            disabled={checking}
+            onClick={(e) => {
+              if (isOwner && (e.ctrlKey || e.metaKey)) setPreviewOpen(true)
+              else window.api.updater.checkNow()
+            }}
+          >
+            {checking ? 'Checking…' : 'Check for Updates'}
+          </Button>
+        </PopoverAnchor>
+        <PopoverContent align="end" className="flex w-auto flex-col gap-1.5 p-2">
+          {(['poll', 'startup'] as const).map((source) => (
             <Button
+              key={source}
               type="button"
               size="sm"
-              variant="secondary"
-              disabled={checking}
-              onClick={() => runUpdatePreview('poll')}
+              variant="ghost"
+              className="justify-start!"
+              onClick={() => {
+                setPreviewOpen(false)
+                runUpdatePreview(source)
+              }}
             >
-              Preview Banner
+              {source === 'poll' ? 'Preview Banner' : 'Preview Startup'}
             </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              disabled={checking}
-              onClick={() => runUpdatePreview('startup')}
-            >
-              Preview Startup
-            </Button>
-          </>
-        )}
-        <Button
-          type="button"
-          size="sm"
-          variant="secondary"
-          disabled={checking}
-          onClick={() => window.api.updater.checkNow()}
-        >
-          {checking ? 'Checking…' : 'Check for Updates'}
-        </Button>
-      </div>
+          ))}
+        </PopoverContent>
+      </Popover>
     </div>
   )
 }

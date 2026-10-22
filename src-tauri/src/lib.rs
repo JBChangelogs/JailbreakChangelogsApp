@@ -476,6 +476,7 @@ pub fn run() {
             ));
 
             let resources = app.path().resource_dir()?;
+            legacy::clear_electron_caches();
             #[cfg(windows)]
             {
                 notify::register_windows_toast_identity(APP_USER_MODEL_ID, &resources.join("icon.ico"));

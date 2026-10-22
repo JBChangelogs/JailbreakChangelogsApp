@@ -7,11 +7,12 @@ use serde::{Deserialize, Serialize};
 use crate::data_dir;
 
 #[derive(Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", default)]
 struct Marker {
     version: u32,
     token_imported: bool,
     local_storage_imported: bool,
+    caches_cleared: bool,
 }
 
 const MARKER_FILE: &str = "tauri-migration.json";
@@ -143,6 +144,29 @@ pub fn local_storage() -> Option<HashMap<String, String>> {
     }
 }
 
+const ELECTRON_CACHE_DIRS: [&str; 6] =
+    ["Cache", "Code Cache", "GPUCache", "DawnGraphiteCache", "DawnWebGPUCache", "Shared Dictionary"];
+
+pub fn clear_electron_caches() {
+    std::thread::spawn(|| {
+        std::thread::sleep(std::time::Duration::from_secs(60));
+        let marker = read_marker();
+        if marker.caches_cleared || !marker.local_storage_imported {
+            return;
+        }
+        let mut all_removed = true;
+        for name in ELECTRON_CACHE_DIRS {
+            let dir = data_dir().join(name);
+            if dir.exists() && fs::remove_dir_all(&dir).is_err() {
+                all_removed = false;
+            }
+        }
+        if all_removed {
+            update_marker(|m| m.caches_cleared = true);
+        }
+    });
+}
+
 pub fn mark_local_storage_imported() {
     update_marker(|m| m.local_storage_imported = true);
 }
@@ -196,5 +220,16 @@ mod tests {
         assert_eq!(decode_chromium_string(b"\x00h\x00i\x00").as_deref(), Some("hi"));
         assert_eq!(decode_chromium_string(b"\x00h").as_deref(), None);
         assert_eq!(decode_chromium_string(b"").as_deref(), None);
+    }
+}
+
+#[cfg(test)]
+mod marker_tests {
+    use super::Marker;
+
+    #[test]
+    fn older_marker_files_keep_their_flags() {
+        let m: Marker = serde_json::from_str(r#"{"version":1,"tokenImported":true,"localStorageImported":true}"#).unwrap();
+        assert!(m.token_imported && m.local_storage_imported && !m.caches_cleared);
     }
 }

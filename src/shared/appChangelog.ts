@@ -22,6 +22,18 @@ export function formatChangelogMarkdown(entry: AppChangelogEntry): string {
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.6.0',
+    date: '2026-10-22',
+    added: [
+      'The trade scanner is now a one-time download the first time you use it, instead of being part of every install and update'
+    ],
+    changed: [
+      'Jailbreak Changelogs has been rebuilt on a much lighter engine: downloads and updates are a few MB instead of almost 200 MB, it opens almost instantly and uses less memory',
+      'Your settings, theme, filters and sign-in carry over from the previous version',
+      'The previous version is removed automatically once the new one is installed, along with about 115 MB of leftover cache files'
+    ]
+  },
+  {
     version: '0.5.18',
     date: '2026-10-22',
     added: [

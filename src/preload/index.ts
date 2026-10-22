@@ -1,11 +1,11 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-import type { UpdaterStatus } from '../main/autoUpdater'
 import type { AutoScanSettings, ScannerStatus, ScanResponse } from '../shared/tradeScan'
-import type { RobloxActivityEvent } from '../main/robloxGameWatcher'
 import type { RichPresencePreferenceKey } from '../shared/richPresence'
+import type { DesktopApi, RobloxActivityEvent, UpdaterStatus } from '../shared/desktopApi'
 
-const api = {
+const api: DesktopApi = {
+  platform: process.platform,
   openExternal: (url: string): Promise<void> => ipcRenderer.invoke('shell:open-external', url),
   onProtocolUrl: (callback: (url: string) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, url: string): void => callback(url)
@@ -42,6 +42,7 @@ const api = {
   updater: {
     quitAndInstall: () => ipcRenderer.send('updater:quit-and-install'),
     checkNow: () => ipcRenderer.send('updater:check-now'),
+    download: () => ipcRenderer.send('updater:download'),
     onStatus: (callback: (status: UpdaterStatus) => void) => {
       const listener = (_event: Electron.IpcRendererEvent, status: UpdaterStatus): void =>
         callback(status)
@@ -66,6 +67,8 @@ const api = {
   },
   scanner: {
     status: (): Promise<ScannerStatus> => ipcRenderer.invoke('scanner:status'),
+    install: (): Promise<ScannerStatus> => ipcRenderer.invoke('scanner:status'),
+    onInstallProgress: () => () => {},
     snip: (): Promise<ScanResponse | null> => ipcRenderer.invoke('scanner:snip'),
     getAuto: (): Promise<AutoScanSettings> => ipcRenderer.invoke('scanner:get-auto'),
     setAutoEnabled: (enabled: boolean): Promise<AutoScanSettings> =>

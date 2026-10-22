@@ -11,3 +11,7 @@ openapi.json
 preview/preview.html
 preview/app/snapshot.json
 preview/app/themes.json
+src-tauri/target/
+src-tauri/gen/
+src-tauri/ocr-pack/
+src-tauri/ocr-pack.json

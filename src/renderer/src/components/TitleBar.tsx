@@ -51,7 +51,7 @@ function capitalize(str) {
 export function TitleBar({ canOpenSettings }: { canOpenSettings: boolean }): React.JSX.Element {
   const [isMaximized, setIsMaximized] = useState(false)
   const { location } = useRealtime()
-  const isMac = window.electron.process.platform === 'darwin'
+  const isMac = window.api.platform === 'darwin'
 
   useEffect(() => {
     window.api.window.isMaximized().then(setIsMaximized)
@@ -62,6 +62,7 @@ export function TitleBar({ canOpenSettings }: { canOpenSettings: boolean }): Rea
     <div
       className="flex h-9 shrink-0 select-none items-center justify-between border-b border-border-primary bg-secondary-bg"
       style={DRAG}
+      data-tauri-drag-region="deep"
     >
       <div className={`flex items-center gap-2 px-3 text-xs font-semibold text-secondary-text ${isMac ? 'pl-20' : ''}`}>
         <img src={appIcon} alt="" className="header-logo h-6 w-6 shrink-0" draggable={false} />
@@ -72,7 +73,7 @@ export function TitleBar({ canOpenSettings }: { canOpenSettings: boolean }): Rea
           {capitalize(location)}
         </div>
       )}
-      <div className="flex h-full items-center" style={NO_DRAG}>
+      <div className="flex h-full items-center" style={NO_DRAG} data-tauri-drag-region="false">
         <NotificationsPopover />
         <AnimatedThemeToggler
           size="sm"

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-analytics-get-enabled"
+description = "Enables the analytics_get_enabled command without any pre-configured scope."
+commands.allow = ["analytics_get_enabled"]
+
+[[permission]]
+identifier = "deny-analytics-get-enabled"
+description = "Denies the analytics_get_enabled command without any pre-configured scope."
+commands.deny = ["analytics_get_enabled"]

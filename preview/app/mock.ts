@@ -294,6 +294,7 @@ window.WebSocket = FakeSocket as unknown as typeof WebSocket
 
 const subscribers = new Map<string, Set<(value: unknown) => void>>()
 const bridge: Record<string, unknown> = {
+  platform: 'win32',
   'auth.getToken': async () => 'preview',
   'window.isMaximized': async () => false,
   'scanner.status': async () => ({ available: true, provider: 'preview' }),

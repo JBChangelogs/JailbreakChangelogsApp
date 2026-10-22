@@ -4,7 +4,7 @@ import { Button } from '@renderer/components/ui/button'
 import { Switch } from '@renderer/components/ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { showToast } from '@renderer/lib/toast'
-import type { AutoScanSettings } from '@shared/tradeScan'
+import type { AutoScanSettings, ScannerStatus } from '@shared/tradeScan'
 
 function SnipIcon({ className }: { className?: string }): React.JSX.Element {
   return (
@@ -14,7 +14,22 @@ function SnipIcon({ className }: { className?: string }): React.JSX.Element {
   )
 }
 
-type Availability = { state: 'checking' } | { state: 'ready' } | { state: 'unavailable'; reason: string }
+type Availability =
+  | { state: 'checking' }
+  | { state: 'ready' }
+  | { state: 'unavailable'; reason: string }
+  | { state: 'installable'; size: number; reason: string }
+  | { state: 'installing'; percent: number }
+
+function toAvailability(s: ScannerStatus): Availability {
+  if (s.available) return { state: 'ready' }
+  if (s.installSize) return { state: 'installable', size: s.installSize, reason: s.reason }
+  return { state: 'unavailable', reason: s.reason }
+}
+
+function formatSize(bytes: number): string {
+  return `${Math.max(1, Math.round(bytes / (1024 * 1024)))} MB`
+}
 
 export function ScanControls(): React.JSX.Element {
   const { applyScan } = useCalculator()
@@ -27,7 +42,7 @@ export function ScanControls(): React.JSX.Element {
     window.api.scanner
       .status()
       .then((s) => {
-        if (!cancelled) setAvailability(s.available ? { state: 'ready' } : { state: 'unavailable', reason: s.reason })
+        if (!cancelled) setAvailability(toAvailability(s))
       })
       .catch(() => {
         if (!cancelled) setAvailability({ state: 'unavailable', reason: "The scanner couldn't start." })
@@ -39,6 +54,22 @@ export function ScanControls(): React.JSX.Element {
   }, [])
 
   const disabled = availability.state !== 'ready' || busy
+
+  const install = async (): Promise<void> => {
+    setAvailability({ state: 'installing', percent: 0 })
+    const off = window.api.scanner.onInstallProgress(({ transferred, total }) =>
+      setAvailability({ state: 'installing', percent: total ? Math.floor((transferred / total) * 100) : 0 })
+    )
+    try {
+      const next = toAvailability(await window.api.scanner.install())
+      setAvailability(next)
+      if (next.state !== 'ready') showToast("Couldn't download the scanner", { description: 'Please try again.' })
+    } catch {
+      setAvailability({ state: 'unavailable', reason: "The scanner couldn't be downloaded." })
+    } finally {
+      off()
+    }
+  }
 
   const snip = async (): Promise<void> => {
     setBusy(true)
@@ -72,12 +103,20 @@ export function ScanControls(): React.JSX.Element {
     setAuto(await window.api.scanner.setAutoEnabled(enabled))
   }
 
-  const scanButton = (
-    <Button type="button" size="sm" disabled={disabled} onClick={() => void snip()}>
-      <SnipIcon className="h-3.5 w-3.5" />
-      Scan trade
-    </Button>
-  )
+  const scanButton =
+    availability.state === 'installable' || availability.state === 'installing' ? (
+      <Button type="button" size="sm" disabled={availability.state === 'installing'} onClick={() => void install()}>
+        <SnipIcon className="h-3.5 w-3.5" />
+        {availability.state === 'installing'
+          ? `Downloading scanner… ${availability.percent}%`
+          : `Download scanner (${formatSize(availability.size)})`}
+      </Button>
+    ) : (
+      <Button type="button" size="sm" disabled={disabled} onClick={() => void snip()}>
+        <SnipIcon className="h-3.5 w-3.5" />
+        Scan trade
+      </Button>
+    )
 
   return (
     <div className="flex items-center gap-3">
@@ -103,7 +142,7 @@ export function ScanControls(): React.JSX.Element {
           Set area
         </button>
       )}
-      {availability.state === 'unavailable' ? (
+      {availability.state === 'unavailable' || availability.state === 'installable' ? (
         <Tooltip>
           <TooltipTrigger asChild>
             <span>{scanButton}</span>

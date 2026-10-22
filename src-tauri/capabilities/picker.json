@@ -1,0 +1,10 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "picker",
+  "windows": [
+    "picker"
+  ],
+  "permissions": [
+    "allow-scanner-pick-done"
+  ]
+}

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-scanner-get-auto"
+description = "Enables the scanner_get_auto command without any pre-configured scope."
+commands.allow = ["scanner_get_auto"]
+
+[[permission]]
+identifier = "deny-scanner-get-auto"
+description = "Denies the scanner_get_auto command without any pre-configured scope."
+commands.deny = ["scanner_get_auto"]

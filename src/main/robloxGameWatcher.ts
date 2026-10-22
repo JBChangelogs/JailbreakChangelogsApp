@@ -13,11 +13,8 @@ const POLL_INTERVAL_MS = 2_000
 const LAUNCH_TIME_FALLBACK_WINDOW_MS = 12 * 60 * 60 * 1000
 // Written when the player leaves a game for the Roblox menu (teleports log a new join instead).
 const LEAVE_PATTERN = 'leaveUGCGameInternal'
-export interface RobloxActivityEvent {
-  jobId: string | null
-  placeId: string | null
-  game: string | null
-}
+export type { RobloxActivityEvent } from '../shared/desktopApi'
+import type { RobloxActivityEvent } from '../shared/desktopApi'
 
 async function isRobloxRunning(): Promise<boolean> {
   try {

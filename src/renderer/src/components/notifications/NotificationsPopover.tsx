@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { useAuth } from '@renderer/contexts/AuthContext'
 import { useSettingsPage } from '@renderer/contexts/SettingsPageContext'
 import { useNotificationCount } from '@renderer/hooks/useNotificationCount'
@@ -7,8 +7,9 @@ import { formatMessageTimestamp } from '@renderer/lib/messageFormatting'
 import { isWhitelistedNotificationLink } from '@renderer/lib/notificationUrl'
 import { Popover, PopoverContent, PopoverTrigger } from '@renderer/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
-import { Markdown } from '@renderer/components/ui/markdown'
 import type { NotificationHistory, NotificationItem } from '@shared/notification'
+
+const Markdown = lazy(() => import('@renderer/components/ui/markdown').then((m) => ({ default: m.Markdown })))
 
 const PAGE_SIZE = 5
 
@@ -132,9 +133,11 @@ export function NotificationsPopover(): React.JSX.Element {
       >
         <p className="text-sm font-semibold text-primary-text">{notif.title}</p>
         {notif.description && (
-          <Markdown className="mt-1 text-xs [&_p]:my-0 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0">
-            {notif.description}
-          </Markdown>
+          <Suspense fallback={<p className="mt-1 text-xs">{notif.description}</p>}>
+            <Markdown className="mt-1 text-xs [&_p]:my-0 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0">
+              {notif.description}
+            </Markdown>
+          </Suspense>
         )}
         {showRawLink && <p className="mt-1 text-xs break-all text-quaternary-text">{notif.link}</p>}
         <div className="mt-2 flex items-center justify-between gap-2">

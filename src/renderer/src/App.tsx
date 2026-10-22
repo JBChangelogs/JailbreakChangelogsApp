@@ -4,6 +4,7 @@ import { LoginGate } from '@renderer/components/LoginGate'
 import { AppAccessGate, useAppAccess } from '@renderer/components/AppAccessGate'
 import { TransitionSplash } from '@renderer/components/TransitionSplash'
 import { UpdateBanner } from '@renderer/components/UpdateBanner'
+import { UpdateScreen } from '@renderer/components/UpdateScreen'
 import { HomeScreen } from '@renderer/components/HomeScreen'
 import { ToastViewport } from '@renderer/components/notifications/ToastViewport'
 import { SettingsPage } from '@renderer/components/settings/SettingsPage'
@@ -83,6 +84,7 @@ function App(): React.JSX.Element {
         ) : null}
         {showTransitionSplash && <TransitionSplash visible={transitionSplashVisible} />}
         {hasAccess && <SettingsPage />}
+        <UpdateScreen />
       </div>
       <ToastViewport />
     </div>

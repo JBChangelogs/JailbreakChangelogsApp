@@ -1,15 +1,26 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { useValues } from '@renderer/contexts/ValuesContext'
 import { useRelativeTime } from '@renderer/hooks/useRelativeTime'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { CreatorLink } from '@renderer/components/values/CreatorLink'
 import { ItemValuesPanel } from '@renderer/components/values/ItemValuesPanel'
-import { ItemValueChart } from '@renderer/components/values/itemdetail/ItemValueChart'
 import { ItemHoardersTab } from '@renderer/components/values/itemdetail/ItemHoardersTab'
 import { ItemDupesTab } from '@renderer/components/values/itemdetail/ItemDupesTab'
 import { ItemSuggestionsTab } from '@renderer/components/values/itemdetail/ItemSuggestionsTab'
 import { ItemChangelogsTab } from '@renderer/components/values/itemdetail/ItemChangelogsTab'
 import { ItemSimilarTab } from '@renderer/components/values/itemdetail/ItemSimilarTab'
+
+const ItemValueChart = lazy(() =>
+  import('@renderer/components/values/itemdetail/ItemValueChart').then((m) => ({ default: m.ItemValueChart }))
+)
+
+function ChartSpinner(): React.JSX.Element {
+  return (
+    <div className="flex items-center justify-center py-10">
+      <div className="h-6 w-6 animate-spin rounded-full border-2 border-border-primary border-t-status-info" />
+    </div>
+  )
+}
 import { itemDetailApi } from '@renderer/lib/itemDetailApi'
 import { CategoryIconBadge, getCategoryColor, getCategoryIcon } from '@renderer/lib/categoryIcons'
 import { getItemImagePath, handleImageError } from '@renderer/lib/itemValueUtils'
@@ -261,11 +272,11 @@ export function ItemDetailScreen({ item }: { item: Item }): React.JSX.Element {
             (historyError ? (
               <p className="py-8 text-center text-sm text-status-error">Failed to load value history.</p>
             ) : history === null ? (
-              <div className="flex items-center justify-center py-10">
-                <div className="h-6 w-6 animate-spin rounded-full border-2 border-border-primary border-t-status-info" />
-              </div>
+              <ChartSpinner />
             ) : (
-              <ItemValueChart history={history} />
+              <Suspense fallback={<ChartSpinner />}>
+                <ItemValueChart history={history} />
+              </Suspense>
             ))}
 
           {activeTab === 'changes' && <ItemChangelogsTab itemId={item.id} />}

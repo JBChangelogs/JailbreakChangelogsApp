@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-scanner-pick-done"
+description = "Enables the scanner_pick_done command without any pre-configured scope."
+commands.allow = ["scanner_pick_done"]
+
+[[permission]]
+identifier = "deny-scanner-pick-done"
+description = "Denies the scanner_pick_done command without any pre-configured scope."
+commands.deny = ["scanner_pick_done"]

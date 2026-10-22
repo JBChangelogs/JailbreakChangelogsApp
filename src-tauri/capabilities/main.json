@@ -1,0 +1,39 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
+    "core:window:allow-minimize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-close",
+    "core:window:allow-is-maximized",
+    "core:window:allow-start-dragging",
+    "core:window:allow-internal-toggle-maximize",
+    "allow-open-external",
+    "allow-auth-login",
+    "allow-auth-get-token",
+    "allow-auth-logout",
+    "allow-updater-check-now",
+    "allow-updater-download",
+    "allow-updater-quit-and-install",
+    "allow-notifications-show",
+    "allow-scanner-status",
+    "allow-scanner-install",
+    "allow-scanner-snip",
+    "allow-scanner-get-auto",
+    "allow-scanner-set-auto-enabled",
+    "allow-scanner-pick-auto-area",
+    "allow-analytics-track",
+    "allow-analytics-get-enabled",
+    "allow-analytics-set-enabled",
+    "allow-discord-set-preference",
+    "allow-legacy-local-storage",
+    "allow-legacy-local-storage-done",
+    "allow-devtools-open",
+    "allow-app-reload"
+  ]
+}

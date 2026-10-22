@@ -2,13 +2,18 @@
   "extends": "@electron-toolkit/tsconfig/tsconfig.node.json",
   "include": [
     "electron.vite.config.*",
+    "tauri.vite.config.ts",
     "src/main/**/*",
     "src/preload/**/*",
-    "src/shared/**/*"
+    "src/shared/**/*",
+    "src-tauri/tauri.conf.json"
   ],
   "compilerOptions": {
     "composite": true,
     "moduleResolution": "bundler",
-    "types": ["electron-vite/node"]
+    "types": [
+      "electron-vite/node"
+    ],
+    "resolveJsonModule": true
   }
 }

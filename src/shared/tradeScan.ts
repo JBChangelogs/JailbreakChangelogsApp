@@ -53,7 +53,9 @@ export interface OcrDetection {
   conf: number
 }
 
-export type ScannerStatus = { available: true; provider: string } | { available: false; reason: string }
+export type ScannerStatus =
+  | { available: true; provider: string }
+  | { available: false; reason: string; installSize?: number }
 
 export type ScanResponse =
   | { ok: true; width: number; height: number; detections: OcrDetection[] }

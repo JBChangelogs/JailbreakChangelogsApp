@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { useCurrentUser } from '@renderer/hooks/useCurrentUser'
 import { useProfileImageUpload } from '@renderer/hooks/useProfileImageUpload'
 import { uploadAvatar, getCustomAvatar } from '@renderer/lib/avatarApi'
 import { uploadBanner, getCustomBanner } from '@renderer/lib/bannerApi'
 import { Switch } from '@renderer/components/ui/switch'
-import { ImageCropModal } from './ImageCropModal'
+
+const ImageCropModal = lazy(() => import('./ImageCropModal').then((m) => ({ default: m.ImageCropModal })))
 
 const MIN_SUPPORTER_TIER = 2
 const AVATAR_SIZE = 512
@@ -179,30 +180,32 @@ export function ProfilePreviewSection(): React.JSX.Element {
         </div>
       </div>
 
-      {avatar.pendingImageSrc && (
-        <ImageCropModal
-          title="Crop your avatar"
-          imageSrc={avatar.pendingImageSrc}
-          aspect={1}
-          cropShape="round"
-          outputWidth={AVATAR_SIZE}
-          outputHeight={AVATAR_SIZE}
-          onCancel={avatar.closeCropModal}
-          onConfirm={(blob) => void avatar.confirmCrop(blob)}
-        />
-      )}
-      {banner.pendingImageSrc && (
-        <ImageCropModal
-          title="Crop your banner"
-          imageSrc={banner.pendingImageSrc}
-          aspect={3}
-          cropShape="rect"
-          outputWidth={BANNER_WIDTH}
-          outputHeight={BANNER_HEIGHT}
-          onCancel={banner.closeCropModal}
-          onConfirm={(blob) => void banner.confirmCrop(blob)}
-        />
-      )}
+      <Suspense fallback={null}>
+        {avatar.pendingImageSrc && (
+          <ImageCropModal
+            title="Crop your avatar"
+            imageSrc={avatar.pendingImageSrc}
+            aspect={1}
+            cropShape="round"
+            outputWidth={AVATAR_SIZE}
+            outputHeight={AVATAR_SIZE}
+            onCancel={avatar.closeCropModal}
+            onConfirm={(blob) => void avatar.confirmCrop(blob)}
+          />
+        )}
+        {banner.pendingImageSrc && (
+          <ImageCropModal
+            title="Crop your banner"
+            imageSrc={banner.pendingImageSrc}
+            aspect={3}
+            cropShape="rect"
+            outputWidth={BANNER_WIDTH}
+            outputHeight={BANNER_HEIGHT}
+            onCancel={banner.closeCropModal}
+            onConfirm={(blob) => void banner.confirmCrop(blob)}
+          />
+        )}
+      </Suspense>
     </div>
   )
 }

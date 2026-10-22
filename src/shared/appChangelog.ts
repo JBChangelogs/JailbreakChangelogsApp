@@ -22,6 +22,18 @@ export function formatChangelogMarkdown(entry: AppChangelogEntry): string {
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.5.18',
+    date: '2026-10-22',
+    added: [
+      "A new update banner shows what's in each update, with What's new and an Update button so you can install it when you're ready",
+      'Updates found when the app starts now install automatically behind a progress screen'
+    ],
+    changed: [
+      'Gets the app ready to move to the new, much smaller and faster version of Jailbreak Changelogs, which keeps your settings and sign-in',
+      'The value chart, image cropper and notification text now load the first time you use them, so the app starts faster'
+    ]
+  },
+  {
     version: '0.5.17',
     date: '2026-10-21',
     added: [

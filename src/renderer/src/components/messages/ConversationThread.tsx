@@ -98,6 +98,14 @@ function ReplyCornerIcon({ className }: { className?: string }): React.JSX.Eleme
   )
 }
 
+function PencilSolidIcon({ className }: { className?: string }): React.JSX.Element {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="currentColor">
+      <path d="M3.2 13.9 2 17.3a.6.6 0 0 0 .7.7l3.4-1.2a3.6 3.6 0 0 0 1.3-.8l8.9-8.9a2.4 2.4 0 0 0-3.4-3.4L4 12.6a3.6 3.6 0 0 0-.8 1.3Z" />
+    </svg>
+  )
+}
+
 function EditIcon({ className }: { className?: string }): React.JSX.Element {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
@@ -1344,10 +1352,14 @@ export function ConversationThread({
               >
                 <span className="truncate text-sm font-semibold text-primary-text">{recipientLabel}</span>
                 {isGroupOwner && (
-                  <EditIcon className="h-3.5 w-3.5 shrink-0 text-tertiary-text opacity-0 transition-opacity group-hover/name:opacity-100" />
-                )}
-                {group && (
-                  <span className="shrink-0 text-xs text-tertiary-text">{group.member_ids.length} members</span>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center text-secondary-text opacity-0 transition-opacity group-hover/name:opacity-100 hover:text-primary-text">
+                        <PencilSolidIcon className="h-3.5 w-3.5" />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">Edit Group</TooltipContent>
+                  </Tooltip>
                 )}
               </button>
               {canInvite && (

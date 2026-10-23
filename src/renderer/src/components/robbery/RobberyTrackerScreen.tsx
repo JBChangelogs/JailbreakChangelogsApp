@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { Button } from '@renderer/components/ui/button'
+import { VirtualGrid } from '@renderer/components/ui/virtual-grid'
 import { useRobberyTracker } from '@renderer/contexts/RobberyTrackerContext'
 import { RobberyCard } from '@renderer/components/robbery/RobberyCard'
 import { JoinHistoryPopover } from '@renderer/components/tracker/JoinHistoryPopover'
@@ -36,6 +38,7 @@ export function RobberyTrackerScreen({
     totalJoined,
     joinHistoryLoading
   } = useRobberyTracker()
+  const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null)
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
@@ -86,20 +89,21 @@ export function RobberyTrackerScreen({
         <StatusBanner>Connecting to the tracker…</StatusBanner>
       )}
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-4">
+      <div ref={setScrollElement} className="min-h-0 flex-1 overflow-y-auto p-4">
         {filteredRobberies.length === 0 ? (
           <p className="pt-10 text-center text-sm text-quaternary-text">
             No robberies match the current filters.
           </p>
         ) : (
-          <div
-            className="grid gap-3"
-            style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 1fr))' }}
-          >
-            {filteredRobberies.map((robbery) => (
-              <RobberyCard key={`${robbery.marker_name}-${robbery.job_id}-${robbery.timestamp}`} robbery={robbery} />
-            ))}
-          </div>
+          <VirtualGrid
+            items={filteredRobberies}
+            getKey={(robbery) => `${robbery.marker_name}-${robbery.job_id}-${robbery.timestamp}`}
+            renderItem={(robbery, columns) => <RobberyCard robbery={robbery} compact={columns === 1} />}
+            scrollElement={scrollElement}
+            minColumnWidth={280}
+            maxColumnWidth={380}
+            estimateRowHeight={340}
+          />
         )}
       </div>
     </div>

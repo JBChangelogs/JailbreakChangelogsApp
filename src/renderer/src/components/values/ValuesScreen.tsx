@@ -35,7 +35,8 @@ export function ValuesScreen(): React.JSX.Element {
               getKey={(item) => item.id}
               renderItem={(item) => <ItemCard item={item} />}
               scrollElement={scrollElement}
-              minColumnWidth={275}
+              minColumnWidth={240}
+              maxColumnWidth={320}
               estimateRowHeight={420}
               onEndReached={loadMore}
             />

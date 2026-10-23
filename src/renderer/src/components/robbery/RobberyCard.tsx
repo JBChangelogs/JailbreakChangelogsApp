@@ -133,7 +133,7 @@ function StatusBadge({ robbery, planeCountdown }: { robbery: RobberyData; planeC
   }
 }
 
-export function RobberyCard({ robbery }: { robbery: RobberyData }): React.JSX.Element {
+export function RobberyCard({ robbery, compact = false }: { robbery: RobberyData; compact?: boolean }): React.JSX.Element {
   const [isJoining, setIsJoining] = useState(false)
   const [planeCountdown, setPlaneCountdown] = useState<string | null>(null)
   const [casinoCountdown, setCasinoCountdown] = useState<string | null>(null)
@@ -194,8 +194,13 @@ export function RobberyCard({ robbery }: { robbery: RobberyData }): React.JSX.El
     (robbery.marker_name === 'Casino' && robbery.status === 2 && robbery.metadata?.casino_time && casinoCountdown)
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden rounded-2xl border-2 border-border-card bg-secondary-bg transition-all duration-300 hover:shadow-lg">
-      <div className="relative w-full overflow-hidden bg-tertiary-bg" style={{ aspectRatio: '16 / 9' }}>
+    <div
+      className={`flex h-full w-full overflow-hidden rounded-2xl border-2 border-border-card bg-secondary-bg transition-shadow duration-300 hover:shadow-lg ${compact ? 'flex-row' : 'flex-col'}`}
+    >
+      <div
+        className={`relative shrink-0 overflow-hidden bg-tertiary-bg ${compact ? 'w-40 self-stretch' : 'w-full'}`}
+        style={compact ? undefined : { aspectRatio: '16 / 9' }}
+      >
         <img src={imageUrl} alt={displayName} className="h-full w-full object-cover" draggable={false} />
         <div className="absolute top-2 right-2 flex items-center gap-1.5">
           {alreadyJoined && (
@@ -212,7 +217,7 @@ export function RobberyCard({ robbery }: { robbery: RobberyData }): React.JSX.El
         </div>
       </div>
 
-      <div className="flex w-full flex-1 flex-col gap-1.5 p-2.5">
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5 p-2.5">
         <div className="flex items-start justify-between gap-1.5">
           <h3 className="min-w-0 flex-1 truncate text-sm font-semibold text-primary-text">{displayName}</h3>
         </div>

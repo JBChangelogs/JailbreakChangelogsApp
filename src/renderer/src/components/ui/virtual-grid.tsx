@@ -4,11 +4,13 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 interface VirtualGridProps<T> {
   items: T[]
   getKey: (item: T) => string | number
-  renderItem: (item: T) => React.ReactNode
+  renderItem: (item: T, columns: number) => React.ReactNode
   /** The element that scrolls; the grid can sit anywhere inside it, below other content. */
   scrollElement: HTMLElement | null
   /** Columns are as many of these as fit, stretched to fill the row (like auto-fill/minmax). */
   minColumnWidth: number
+  /** Cards never stretch wider than this; more columns are added instead. */
+  maxColumnWidth?: number
   gap?: number
   /** A typical row's height; rows are measured once they render. */
   estimateRowHeight: number
@@ -23,6 +25,7 @@ export function VirtualGrid<T>({
   renderItem,
   scrollElement,
   minColumnWidth,
+  maxColumnWidth,
   gap = 12,
   estimateRowHeight,
   onEndReached
@@ -47,7 +50,10 @@ export function VirtualGrid<T>({
     return () => observer.disconnect()
   }, [scrollElement])
 
-  const columns = Math.max(1, Math.floor((width + gap) / (minColumnWidth + gap)))
+  const fitByMin = Math.max(1, Math.floor((width + gap) / (minColumnWidth + gap)))
+  const columns = maxColumnWidth
+    ? Math.min(fitByMin, Math.max(1, Math.ceil((width + gap) / (maxColumnWidth + gap))))
+    : fitByMin
   const rowCount = Math.ceil(items.length / columns)
 
   const virtualizer = useVirtualizer({
@@ -81,7 +87,7 @@ export function VirtualGrid<T>({
             }}
           >
             {items.slice(row.index * columns, (row.index + 1) * columns).map((item) => (
-              <Fragment key={getKey(item)}>{renderItem(item)}</Fragment>
+              <Fragment key={getKey(item)}>{renderItem(item, columns)}</Fragment>
             ))}
           </div>
         ))}

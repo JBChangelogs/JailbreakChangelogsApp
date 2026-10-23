@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '@renderer/contexts/AuthContext'
 import { useCurrentUser } from '@renderer/hooks/useCurrentUser'
 import { giftsApi } from '@renderer/lib/giftsApi'
-import { supporterBadgeUrl } from '@renderer/lib/badgeAssets'
 import { Button } from '@renderer/components/ui/button'
 import { GiftToUserModal } from './GiftToUserModal'
-import type { SupporterGift, SupporterLevel } from '@shared/gifts'
+import { SupporterHistoryCard, SupporterTierRow } from './SupporterSections'
+import { SETTINGS_LIST, SettingRow, SettingsCard, SettingsPageLayout } from '@renderer/components/settings/SettingsCard'
+import { GiftIcon } from '@renderer/components/settings/SettingsSidebar'
+import type { SupporterGift } from '@shared/gifts'
 import type { UserProfile } from '@shared/user'
 
 const TIER_LABELS: Record<number, string> = {
@@ -22,7 +24,6 @@ export function GiftInventorySection(): React.JSX.Element {
   const { token } = useAuth()
   const { user } = useCurrentUser()
   const [gifts, setGifts] = useState<SupporterGift[] | null>(null)
-  const [levels, setLevels] = useState<SupporterLevel[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pendingIds, setPendingIds] = useState<Record<string, boolean>>({})
@@ -32,11 +33,9 @@ export function GiftInventorySection(): React.JSX.Element {
     if (!token) return
     setLoading(true)
     setError(null)
-    Promise.all([giftsApi.list(token), giftsApi.levels()])
-      .then(([giftsList, levelsList]) => {
-        setGifts(giftsList)
-        setLevels(levelsList)
-      })
+    giftsApi
+      .list(token)
+      .then(setGifts)
       .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Failed to load gifts'))
       .finally(() => setLoading(false))
   }, [token])
@@ -74,83 +73,73 @@ export function GiftInventorySection(): React.JSX.Element {
     }
   }
 
-  const giftableLevels = [...levels].filter((l) => l.is_gift).sort((a, b) => a.level - b.level)
-
   return (
-    <div className="mx-auto max-w-2xl px-8 py-6">
-      <h1 className="text-xl font-bold text-primary-text">Supporter Gifts</h1>
-      <p className="mt-1 text-sm text-tertiary-text">Supporter gifts purchased on your account.</p>
-      <p className="mt-1 text-sm text-tertiary-text">
-        Want to compare perks first?{' '}
-        <button
-          type="button"
-          onClick={() => void window.api.openExternal('https://jailbreakchangelogs.com/supporting')}
-          className="text-link hover:text-link-hover"
-        >
-          View supporter tier benefits
-        </button>
-        .
-      </p>
-
-      {loading && <p className="mt-6 text-sm text-quaternary-text">Loading…</p>}
-      {error && <p className="mt-6 text-sm text-form-error">{error}</p>}
-
-      {!loading && !error && gifts && (
-        <div className="mt-6 space-y-3">
-          {gifts.length === 0 && <p className="text-sm text-quaternary-text">No gifts purchased yet.</p>}
-          {gifts.map((gift) => (
-            <div key={gift.id} className="flex flex-col gap-3 rounded-2xl border border-border-card bg-tertiary-bg p-4">
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-semibold text-primary-text">{tierLabel(gift.level)}</p>
-                <img src={supporterBadgeUrl(gift.level)} alt="" className="h-4.5 w-4.5 object-contain" />
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  disabled={!!pendingIds[gift.share_id]}
-                  onClick={() => void handleRedeemForSelf(gift)}
-                >
-                  {pendingIds[gift.share_id] ? 'Processing…' : 'Self Redeem'}
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={!!pendingIds[gift.share_id]}
-                  onClick={() => setGiftModalFor(gift)}
-                >
-                  {pendingIds[gift.share_id] ? 'Processing…' : 'Gift to User'}
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <h2 className="mt-6 text-xs font-bold tracking-wide text-quaternary-text uppercase">Buy a gift</h2>
-      <div className="mt-3 space-y-2">
-        {giftableLevels.map((level) => (
-          <div
-            key={level.id}
-            className="flex items-center justify-between gap-3 rounded-2xl border border-border-card bg-tertiary-bg px-3 py-2.5"
+    <SettingsPageLayout>
+      <SupporterHistoryCard />
+      <SettingsCard
+        title="Purchased Gifts"
+        icon={GiftIcon}
+        description={<p>Supporter gifts purchased on your account.</p>}
+      >
+        <div className={SETTINGS_LIST}>
+          <SettingRow
+            title="Buy a gift"
+            description="Give Supporter to a friend, or keep it to redeem yourself later."
+            action={
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => void window.api.openExternal('https://jailbreakchangelogs.com/supporting')}
+              >
+                View benefits
+              </Button>
+            }
           >
-            <div className="flex min-w-0 items-center gap-2">
-              <img src={supporterBadgeUrl(level.level)} alt="" className="h-4.5 w-4.5 shrink-0 object-contain" />
-              <div className="min-w-0">
-                <p className="text-sm text-primary-text">{level.name}</p>
-                <p className="mt-0.5 text-xs text-tertiary-text">{level.price_str}</p>
-              </div>
+          </SettingRow>
+
+          {loading && <p className="text-sm text-quaternary-text">Loading…</p>}
+          {error && <p className="text-sm text-form-error">{error}</p>}
+          {!loading && !error && gifts && gifts.length === 0 && (
+            <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border-card px-4 py-8 text-center">
+              <GiftIcon className="size-8 text-secondary-text" />
+              <p className="text-sm font-medium text-primary-text">No gifts yet</p>
+              <p className="max-w-sm text-sm text-secondary-text">
+                Gifts you buy show up here, ready to redeem yourself or send to someone.
+              </p>
             </div>
-            <Button type="button" size="sm" variant="secondary" onClick={() => void window.api.openExternal(level.url)}>
-              Purchase
-            </Button>
-          </div>
-        ))}
-        {giftableLevels.length === 0 && !loading && (
-          <p className="text-sm text-quaternary-text">No gift tiers available right now.</p>
-        )}
-      </div>
+          )}
+          {!loading && !error && gifts && gifts.length > 0 && (
+            <div className="space-y-3">
+              {gifts.map((gift) => {
+                const busy = !!pendingIds[gift.share_id]
+                return (
+                  <SupporterTierRow
+                    key={gift.id}
+                    level={gift.level}
+                    name={tierLabel(gift.level)}
+                    detail={`Bought ${new Date(gift.created_at * 1000).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}`}
+                    actions={
+                      <>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          disabled={busy}
+                          onClick={() => void handleRedeemForSelf(gift)}
+                        >
+                          {busy ? 'Processing…' : 'Redeem'}
+                        </Button>
+                        <Button type="button" disabled={busy} onClick={() => setGiftModalFor(gift)}>
+                          {busy ? 'Processing…' : 'Gift to User'}
+                        </Button>
+                      </>
+                    }
+                  />
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </SettingsCard>
 
       {giftModalFor && (
         <GiftToUserModal
@@ -159,6 +148,6 @@ export function GiftInventorySection(): React.JSX.Element {
           onConfirm={(recipient) => handleGiftToUser(giftModalFor, recipient)}
         />
       )}
-    </div>
+    </SettingsPageLayout>
   )
 }

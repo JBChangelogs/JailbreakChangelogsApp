@@ -36,11 +36,13 @@ export interface NotificationPreferenceCategory {
 export const NOTIFICATION_PREFERENCE_GROUPS: readonly {
   id: string
   label: string
+  description: string
   categories: readonly NotificationPreferenceCategory[]
 }[] = [
   {
     id: 'trading',
     label: 'Trading',
+    description: 'Offers on your trade ads and how they turn out.',
     categories: [
       { id: 'new_trade_offer', label: 'New Trade Offer', description: 'Someone sends an offer on one of your trade ads.' },
       { id: 'trade_offer_accepted', label: 'Trade Offer Accepted', description: 'Someone accepts an offer you sent.' },
@@ -51,6 +53,7 @@ export const NOTIFICATION_PREFERENCE_GROUPS: readonly {
   {
     id: 'comments-and-followers',
     label: 'Comments and followers',
+    description: 'Comments, replies and new followers.',
     categories: [
       { id: 'inventory_comment', label: 'Inventory Comment', description: 'Someone comments on your scanned inventory.' },
       { id: 'profile_comment', label: 'Profile Comment', description: 'Someone comments on your profile.' },
@@ -61,6 +64,7 @@ export const NOTIFICATION_PREFERENCE_GROUPS: readonly {
   {
     id: 'inventory-and-items',
     label: 'Inventory and items',
+    description: 'Inventory scans and changes to items.',
     categories: [
       { id: 'inventory_scanned', label: 'Inventory Scanned', description: 'Your Roblox inventory finishes scanning.' },
       {
@@ -74,6 +78,7 @@ export const NOTIFICATION_PREFERENCE_GROUPS: readonly {
   {
     id: 'other',
     label: 'Other',
+    description: 'Everything else.',
     categories: [
       { id: 'reminders', label: 'Reminders', description: 'Occasional reminders from the site, like re-scanning your inventory.' }
     ]

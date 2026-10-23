@@ -61,7 +61,7 @@ export function ProfilePreviewSection(): React.JSX.Element {
   const errorMessage = avatar.error || banner.error
 
   return (
-    <div className="mb-4">
+    <div>
       <div className="overflow-hidden rounded-xl border border-border-card bg-secondary-bg">
         <button
           type="button"

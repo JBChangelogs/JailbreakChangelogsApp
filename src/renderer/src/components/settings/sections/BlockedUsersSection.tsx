@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { SettingsCard } from '@renderer/components/settings/SettingsCard'
 import { useAuth } from '@renderer/contexts/AuthContext'
 import { useBlockedUsers } from '@renderer/hooks/useBlockedUsers'
 import { usersApi } from '@renderer/lib/usersApi'
@@ -44,17 +45,26 @@ export function BlockedUsersSection(): React.JSX.Element {
   }
 
   return (
-    <div className="mt-8">
-      <h2 className="text-xs font-bold tracking-wide text-quaternary-text uppercase">Blocked Users</h2>
-      <p className="mt-0.5 text-xs text-tertiary-text">
-        Blocked users can't message you, but can still see your profile, presence, and Roblox
-        activity unless separately hidden above.
-      </p>
-
-      <div className="mt-3 space-y-1">
-        {loading && <p className="text-sm text-quaternary-text">Loading…</p>}
+    <SettingsCard
+      title="Blocked Users"
+      icon={BlockIcon}
+      description={
+        <p>
+          Blocked users can&apos;t message you, but can still see your profile, presence, and Roblox activity unless
+          separately hidden above.
+        </p>
+      }
+    >
+      <div className="-mx-2 space-y-1">
+        {loading && <p className="py-6 text-center text-sm text-quaternary-text">Loading…</p>}
         {!loading && blockedIds && blockedIds.length === 0 && (
-          <p className="text-sm text-quaternary-text">You haven't blocked anyone.</p>
+          <div className="mx-2 flex flex-col items-center gap-2 rounded-lg border border-dashed border-border-card px-4 py-8 text-center">
+            <BlockIcon className="size-8 text-secondary-text" />
+            <p className="text-sm font-medium text-primary-text">No blocked users</p>
+            <p className="max-w-sm text-sm text-secondary-text">
+              People you block from their profile or a chat show up here, so you can unblock them later.
+            </p>
+          </div>
         )}
         {!loading &&
           blockedIds?.map((id) => {
@@ -80,6 +90,15 @@ export function BlockedUsersSection(): React.JSX.Element {
             )
           })}
       </div>
-    </div>
+    </SettingsCard>
+  )
+}
+
+function BlockIcon({ className }: { className?: string }): React.JSX.Element {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <circle cx="12" cy="12" r="9" />
+      <path strokeLinecap="round" d="m5.6 5.6 12.8 12.8" />
+    </svg>
   )
 }

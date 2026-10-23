@@ -1,8 +1,13 @@
+import { Fragment } from 'react'
 import { Switch } from '@renderer/components/ui/switch'
 import type { SettingsCategories } from '@shared/settings'
+import { SETTINGS_LIST, SettingRow, SettingsCard, formatSettingName } from '@renderer/components/settings/SettingsCard'
+import { PaletteIcon, ShieldIcon, UserIcon } from '@renderer/components/settings/SettingsSidebar'
 
-// Server settings the app doesn't support yet.
-const HIDDEN_SETTINGS = new Set(['custom_background'])
+const CATEGORY_ICONS: Record<string, (props: { className?: string }) => React.JSX.Element> = {
+  privacy: ShieldIcon,
+  appearance: PaletteIcon
+}
 
 interface CategorySettingsListProps {
   settings: SettingsCategories | null
@@ -12,6 +17,9 @@ interface CategorySettingsListProps {
   toggle: (name: string, next: boolean) => void
   categoryFilter: (categoryName: string) => boolean
   excludeSettings?: Set<string>
+  renderBefore?: (settingName: string) => React.ReactNode
+  renderAction?: (settingName: string) => React.ReactNode
+  renderEnd?: (categoryName: string, settingNames: string[]) => React.ReactNode
 }
 
 export function CategorySettingsList({
@@ -21,14 +29,17 @@ export function CategorySettingsList({
   pending,
   toggle,
   categoryFilter,
-  excludeSettings
+  excludeSettings,
+  renderBefore,
+  renderAction,
+  renderEnd
 }: CategorySettingsListProps): React.JSX.Element {
   const categories = settings
     ? Object.values(settings)
         .filter((category) => categoryFilter(category.name))
         .map((category) => ({
           ...category,
-          settings: category.settings.filter((s) => !HIDDEN_SETTINGS.has(s.name) && !excludeSettings?.has(s.name))
+          settings: category.settings.filter((s) => !excludeSettings?.has(s.name))
         }))
         .filter((category) => category.settings.length > 0)
         .sort((a, b) => a.index - b.index)
@@ -36,37 +47,54 @@ export function CategorySettingsList({
 
   return (
     <>
-      {loading && <p className="mt-6 text-sm text-quaternary-text">Loading…</p>}
-      {error && <p className="mt-6 text-sm text-form-error">{error}</p>}
+      {loading && <p className="text-sm text-quaternary-text">Loading…</p>}
+      {error && <p className="text-sm text-form-error">{error}</p>}
       {!loading &&
         !error &&
-        categories.map((category) => (
-          <div key={category.name} className="mt-6 first:mt-5">
-            <h2 className="text-xs font-bold tracking-wide text-quaternary-text uppercase">
-              {category.name}
-            </h2>
-            {category.description && (
-              <p className="mt-0.5 text-xs text-tertiary-text">{category.description}</p>
-            )}
-            <div className="mt-3 space-y-0.5">
-              {[...category.settings]
-                .sort((a, b) => a.index - b.index)
-                .map((setting) => (
-                  <label
-                    key={setting.name}
-                    className="flex cursor-pointer items-center justify-between gap-3 rounded-md px-3 py-2 transition-colors hover:bg-quaternary-bg"
-                  >
-                    <span className="text-sm text-primary-text">{setting.description}</span>
-                    <Switch
-                      checked={setting.value}
-                      disabled={pending.has(setting.name)}
-                      onCheckedChange={(checked) => toggle(setting.name, checked)}
-                    />
-                  </label>
-                ))}
-            </div>
-          </div>
-        ))}
+        categories.map((category) => {
+          const title = category.name.charAt(0).toUpperCase() + category.name.slice(1)
+          const showDescription =
+            category.description && category.description.trim().toLowerCase() !== `${category.name} settings`
+          return (
+            <SettingsCard
+              key={category.name}
+              title={title}
+              icon={CATEGORY_ICONS[category.name.toLowerCase()] ?? UserIcon}
+              description={showDescription ? <p>{category.description}</p> : undefined}
+            >
+              <div className={SETTINGS_LIST}>
+                {[...category.settings]
+                  .sort((a, b) => a.index - b.index)
+                  .map((setting) => {
+                    const customAction = renderAction?.(setting.name)
+                    return (
+                      <Fragment key={setting.name}>
+                        {renderBefore?.(setting.name)}
+                        <SettingRow
+                          highlight={!customAction}
+                          title={formatSettingName(setting.name)}
+                          description={setting.description}
+                          action={
+                            customAction ?? (
+                              <Switch
+                                checked={setting.value}
+                                disabled={pending.has(setting.name)}
+                                onCheckedChange={(checked) => toggle(setting.name, checked)}
+                              />
+                            )
+                          }
+                        />
+                      </Fragment>
+                    )
+                  })}
+                {renderEnd?.(
+                  category.name,
+                  category.settings.map((s) => s.name)
+                )}
+              </div>
+            </SettingsCard>
+          )
+        })}
     </>
   )
 }

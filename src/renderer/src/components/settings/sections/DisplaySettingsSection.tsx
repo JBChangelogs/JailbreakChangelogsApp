@@ -2,7 +2,10 @@ import { useEffect, useState } from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { useTheme } from '@renderer/contexts/ThemeContext'
 import { useAuth } from '@renderer/contexts/AuthContext'
-import { usePreferences } from '@renderer/contexts/PreferencesContext'
+import { usePreferences, type TabStyle } from '@renderer/contexts/PreferencesContext'
+import { SETTINGS_LIST, SettingRow, SettingsCard, SettingsPageLayout } from '@renderer/components/settings/SettingsCard'
+import { PaletteIcon } from '@renderer/components/settings/SettingsSidebar'
+import { Tabs } from '@renderer/components/ui/tabs'
 import { Button } from '@renderer/components/ui/button'
 import { Switch } from '@renderer/components/ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
@@ -240,49 +243,78 @@ function SectionHeading({ children }: { children: React.ReactNode }): React.JSX.
   return <h3 className="mb-2 text-xs font-semibold tracking-wide text-secondary-text uppercase">{children}</h3>
 }
 
-const PALETTE_ICON =
-  'M4.098 19.902a3.75 3.75 0 0 0 5.304 0l6.401-6.402M6.75 21A3.75 3.75 0 0 1 3 17.25V4.125C3 3.504 3.504 3 4.125 3h5.25c.621 0 1.125.504 1.125 1.125v4.072M6.75 21a3.75 3.75 0 0 0 3.75-3.75V8.197M6.75 21h13.125c.621 0 1.125-.504 1.125-1.125v-5.25c0-.621-.504-1.125-1.125-1.125h-4.072M10.5 8.197l2.88-2.88c.438-.439 1.15-.439 1.59 0l3.712 3.713c.44.44.44 1.152 0 1.59l-2.879 2.88M6.75 17.25h.008v.008H6.75v-.008Z'
-
-/** A settings row with a button on the right, laid out like the switch rows. */
-function ActionRow({
-  label,
-  description,
-  children
-}: {
-  label: string
-  description: string
-  children: React.ReactNode
-}): React.JSX.Element {
+function MonitorIcon({ className }: { className?: string }): React.JSX.Element {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-md px-3 py-2">
-      <div className="min-w-0">
-        <span className="text-sm text-primary-text">{label}</span>
-        <p className="mt-0.5 text-xs text-tertiary-text">{description}</p>
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h18v11H3zM8 20h8m-4-4v4" />
+    </svg>
+  )
+}
+
+function TabStylePreview(): React.JSX.Element {
+  const [tab, setTab] = useState<'overview' | 'values' | 'history'>('overview')
+  return (
+    <div className="space-y-4 rounded-lg border border-border-card bg-primary-bg p-4">
+      <Tabs
+        value={tab}
+        onChange={setTab}
+        options={[
+          { value: 'overview', label: 'Overview' },
+          { value: 'values', label: 'Values' },
+          { value: 'history', label: 'History' }
+        ]}
+      />
+      <div aria-hidden className="space-y-2">
+        <div className="h-2 w-1/3 rounded-full bg-secondary-text/25" />
+        <div className="h-2 w-2/3 rounded-full bg-secondary-text/15" />
+        <div className="h-12 rounded-md bg-secondary-text/10" />
       </div>
-      <div className="shrink-0">{children}</div>
     </div>
   )
 }
 
-function SettingRow({
-  label,
-  description,
-  checked,
-  onCheckedChange
-}: {
-  label: string
-  description: string
-  checked: boolean
-  onCheckedChange: (checked: boolean) => void
-}): React.JSX.Element {
+function TabStyleSetting({ value, onChange }: { value: TabStyle; onChange: (value: TabStyle) => void }): React.JSX.Element {
   return (
-    <label className="flex cursor-pointer items-center justify-between gap-3 rounded-md px-3 py-2 transition-colors hover:bg-quaternary-bg">
-      <div className="min-w-0">
-        <span className="text-sm text-primary-text">{label}</span>
-        <p className="mt-0.5 text-xs text-tertiary-text">{description}</p>
+    <div>
+      <h3 id="tab-style-label" className="text-base font-medium text-primary-text">
+        Tab style
+      </h3>
+      <p className="mt-1 text-sm text-secondary-text">Choose how tabs appear across the app. Syncs with your account.</p>
+      <div className="mt-3 grid items-start gap-5 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+        <div role="radiogroup" aria-labelledby="tab-style-label" className="flex flex-col gap-3">
+          {(['underline', 'filled'] as const).map((option) => (
+            <label
+              key={option}
+              className="group flex cursor-pointer items-start gap-3 rounded-xl border border-border-card bg-tertiary-bg p-4 transition-colors hover:border-border-focus/60 has-checked:border-button-info has-checked:bg-button-info/5 has-focus-visible:ring-2 has-focus-visible:ring-link"
+            >
+              <input
+                type="radio"
+                name="tab-style"
+                value={option}
+                checked={value === option}
+                onChange={() => onChange(option)}
+                className="sr-only"
+              />
+              <span
+                aria-hidden
+                className="mt-1 size-4 shrink-0 rounded-full border-2 border-border-card transition-colors group-has-checked:border-button-info group-has-checked:bg-button-info group-has-checked:shadow-[inset_0_0_0_2px_var(--color-tertiary-bg)]"
+              />
+              <span>
+                <span className="block font-medium text-primary-text">
+                  {option === 'underline' ? 'Underline' : 'Filled'}
+                </span>
+                <span className="block text-sm text-secondary-text">
+                  {option === 'underline'
+                    ? 'A minimal line under the selected tab.'
+                    : 'A filled background behind the selected tab.'}
+                </span>
+              </span>
+            </label>
+          ))}
+        </div>
+        <TabStylePreview />
       </div>
-      <Switch checked={checked} onCheckedChange={onCheckedChange} />
-    </label>
+    </div>
   )
 }
 
@@ -303,7 +335,7 @@ export function DisplaySettingsSection(): React.JSX.Element {
     shortcutHidden,
     setShortcutHidden
   } = useTheme()
-  const { twemojiEnabled, setTwemojiEnabled } = usePreferences()
+  const { twemojiEnabled, setTwemojiEnabled, tabStyle, setTabStyle } = usePreferences()
 
   const [mine, setMine] = useState<CustomTheme[]>([])
   const [shared, setShared] = useState<Map<string, CustomTheme>>(new Map())
@@ -383,45 +415,53 @@ export function DisplaySettingsSection(): React.JSX.Element {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-8 py-6">
-      <h1 className="text-xl font-bold text-primary-text">Display</h1>
-      <p className="mt-1 text-sm text-tertiary-text">Choose how the app looks.</p>
+    <SettingsPageLayout>
+      <SettingsCard title="Themes" icon={PaletteIcon}>
+        <div className={SETTINGS_LIST}>
+          <SettingRow
+            title="Theme"
+            description={`Using ${current}. ${token ? 'Syncs with your account.' : 'Saved on this computer.'}`}
+            action={
+              <Button type="button" onClick={() => setSheetOpen(true)}>
+                Change theme
+              </Button>
+            }
+          />
+          <SettingRow
+            title="Custom themes"
+            description="Make your own, or import one someone shared."
+            action={
+              <Button type="button" variant="secondary" onClick={() => void window.api.openExternal(SITE_THEMES_URL)}>
+                Create on website
+              </Button>
+            }
+          />
+          <SettingRow
+            highlight
+            title="Use theme cursor"
+            description="Match your cursor to your selected theme. Saved on this computer."
+            action={<Switch checked={cursorEnabled} onCheckedChange={setCursorEnabled} />}
+          />
+          <SettingRow
+            highlight
+            title="Theme button in title bar"
+            description="Show a button in the title bar that opens these settings. Saved on this computer."
+            action={<Switch checked={!shortcutHidden} onCheckedChange={(show) => setShortcutHidden(!show)} />}
+          />
+        </div>
+      </SettingsCard>
 
-      <div className="mt-4 space-y-0.5">
-        <ActionRow
-          label="Theme"
-          description={`Using ${current}. ${token ? 'Syncs with your account.' : 'Saved on this computer.'}`}
-        >
-          <Button type="button" size="sm" onClick={() => setSheetOpen(true)}>
-            <MenuIcon path={PALETTE_ICON} />
-            Change theme
-          </Button>
-        </ActionRow>
-        <ActionRow label="Custom themes" description="Make your own, or import one someone shared.">
-          <Button type="button" variant="secondary" size="sm" onClick={() => void window.api.openExternal(SITE_THEMES_URL)}>
-            <MenuIcon path={EXTERNAL_ICON} />
-            Create on website
-          </Button>
-        </ActionRow>
-        <SettingRow
-          label="Use theme cursor"
-          description="Match your cursor to your selected theme. Saved on this computer."
-          checked={cursorEnabled}
-          onCheckedChange={setCursorEnabled}
-        />
-        <SettingRow
-          label="Theme button in title bar"
-          description="Show a button in the title bar that opens these settings. Saved on this computer."
-          checked={!shortcutHidden}
-          onCheckedChange={(show) => setShortcutHidden(!show)}
-        />
-        <SettingRow
-          label="Use Twemoji"
-          description="Render emoji with Twitter's emoji set instead of your system's."
-          checked={twemojiEnabled}
-          onCheckedChange={setTwemojiEnabled}
-        />
-      </div>
+      <SettingsCard title="Display" icon={MonitorIcon}>
+        <div className={SETTINGS_LIST}>
+          <SettingRow
+            highlight
+            title="Use Twemoji"
+            description="Render emoji with Twitter's emoji set instead of your system's."
+            action={<Switch checked={twemojiEnabled} onCheckedChange={setTwemojiEnabled} />}
+          />
+          <TabStyleSetting value={tabStyle} onChange={setTabStyle} />
+        </div>
+      </SettingsCard>
 
       {/* Every theme in a side panel, like the website. It stays open on a pick and has no dark
           backdrop, so the app shows each theme as you try it. */}
@@ -503,13 +543,13 @@ export function DisplaySettingsSection(): React.JSX.Element {
                     aria-label="Theme code or share link"
                     className="h-10 min-w-0 flex-1 rounded-xl border border-border-card bg-primary-bg px-3 text-sm text-primary-text placeholder-secondary-text transition-colors focus:border-button-info focus:outline-none"
                   />
-                  <Button type="button" variant="secondary" size="sm" className="h-10!" onClick={() => void pasteAndImport()}>
+                  <Button type="button" variant="secondary" size="sm" className="h-10! rounded-xl!" onClick={() => void pasteAndImport()}>
                     Paste
                   </Button>
                   <Button
                     type="button"
                     size="sm"
-                    className="h-10!"
+                    className="h-10! rounded-xl!"
                     onClick={() => void importTheme()}
                     disabled={lookingUp || !input.trim()}
                   >
@@ -531,6 +571,6 @@ export function DisplaySettingsSection(): React.JSX.Element {
           </DialogPrimitive.Content>
         </DialogPrimitive.Portal>
       </DialogPrimitive.Root>
-    </div>
+    </SettingsPageLayout>
   )
 }

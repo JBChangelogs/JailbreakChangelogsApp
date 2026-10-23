@@ -22,6 +22,16 @@ export function formatChangelogMarkdown(entry: AppChangelogEntry): string {
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.6.7',
+    date: '2026-10-23',
+    changed: [
+      'Clicking Reply on a message puts the cursor in the message box',
+      'The Playing banner is now part of the account panel at the bottom of the sidebar',
+      'Checkboxes have slightly smaller corners'
+    ],
+    fixed: ['The alerts notice in the tracker sidebar has even spacing above and below it']
+  },
+  {
     version: '0.6.6',
     date: '2026-10-23',
     changed: [

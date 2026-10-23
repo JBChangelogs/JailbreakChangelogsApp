@@ -101,7 +101,7 @@ export function GiftToUserModal({ levelLabel, onCancel, onConfirm }: GiftToUserM
           {error && <p className="mt-2 text-xs text-form-error">{error}</p>}
         </div>
 
-        <div className="flex shrink-0 justify-end gap-2 border-t border-border-primary px-5 py-4">
+        <div className="flex shrink-0 justify-end gap-2 border-t border-border-primary p-5">
           <Button type="button" variant="secondary" size="sm" onClick={onCancel} disabled={sending}>
             Cancel
           </Button>

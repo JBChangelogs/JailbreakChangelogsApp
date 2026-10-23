@@ -934,7 +934,7 @@ function MessageRow({
           <DialogTitle>Delete message?</DialogTitle>
         </DialogHeader>
         <div className="px-5 py-4 text-sm text-secondary-text">This cannot be undone.</div>
-        <div className="flex shrink-0 justify-end gap-2 border-t border-border-primary px-5 py-4">
+        <div className="flex shrink-0 justify-end gap-2 border-t border-border-primary p-5">
           <Button type="button" variant="secondary" size="sm" onClick={() => setDeleteOpen(false)}>
             Cancel
           </Button>
@@ -970,7 +970,7 @@ function MessageRow({
             className="w-full resize-none rounded-xl border border-border-card bg-form-input px-3 py-2 text-sm text-primary-text outline-none focus:border-border-focus"
           />
         </div>
-        <div className="flex shrink-0 justify-end gap-2 border-t border-border-primary px-5 py-4">
+        <div className="flex shrink-0 justify-end gap-2 border-t border-border-primary p-5">
           <Button
             type="button"
             variant="secondary"
@@ -1754,7 +1754,7 @@ export function ConversationThread({
           <div className="px-5 py-4 text-sm text-secondary-text">
             They won't be able to message you until you unblock them.
           </div>
-          <div className="flex shrink-0 justify-end gap-2 border-t border-border-primary px-5 py-4">
+          <div className="flex shrink-0 justify-end gap-2 border-t border-border-primary p-5">
             <Button type="button" variant="secondary" size="sm" onClick={() => setBlockConfirmOpen(false)}>
               Cancel
             </Button>

@@ -195,7 +195,7 @@ function SummaryBar(): React.JSX.Element {
                 </li>
               </ul>
             </div>
-            <div className="flex shrink-0 justify-end gap-2 border-t border-border-primary px-5 py-4">
+            <div className="flex shrink-0 justify-end gap-2 border-t border-border-primary p-5">
               <Button
                 type="button"
                 size="sm"

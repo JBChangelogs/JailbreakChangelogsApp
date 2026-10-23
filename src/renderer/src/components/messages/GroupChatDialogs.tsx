@@ -189,7 +189,7 @@ export function UserPickerDialog({
           className={`grid shrink-0 border-t border-border-primary transition-[grid-template-rows,opacity] duration-200 ease-out ${showGroupName ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}
         >
           <div className="min-h-0 overflow-hidden">
-            <div className="px-5 pt-4">
+            <div className="px-5 pt-5">
               <input
                 value={groupName}
                 tabIndex={showGroupName ? 0 : -1}
@@ -201,7 +201,7 @@ export function UserPickerDialog({
             </div>
           </div>
         </div>
-        <div className="flex shrink-0 gap-3 px-5 py-4">
+        <div className="flex shrink-0 gap-3 p-5">
           <Button type="button" variant="secondary" className="flex-1" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
@@ -275,7 +275,7 @@ export function RenameGroupDialog({ open, onOpenChange, group, onUpdated }: Rena
           />
           {error && <p className="mt-2 text-xs text-form-error">{error}</p>}
         </div>
-        <div className="flex shrink-0 justify-end gap-2 border-t border-border-primary px-5 py-4">
+        <div className="flex shrink-0 justify-end gap-2 border-t border-border-primary p-5">
           <Button type="button" variant="secondary" size="sm" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
@@ -365,7 +365,7 @@ export function LeaveGroupDialog({
           )}
           {error && <p className="text-xs text-form-error">{error}</p>}
         </div>
-        <div className="flex shrink-0 items-center gap-2 border-t border-border-primary px-5 py-4">
+        <div className="flex shrink-0 items-center gap-2 border-t border-border-primary p-5">
           {isOwner && !confirmDelete && (
             <button
               type="button"

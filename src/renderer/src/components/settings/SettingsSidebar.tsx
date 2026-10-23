@@ -164,7 +164,7 @@ export function UninstallDialog({
           </label>
           {error && <p className="mt-3 text-xs text-status-error">{error}</p>}
         </div>
-        <div className="flex shrink-0 justify-end gap-2 border-t border-border-primary px-5 py-4">
+        <div className="flex shrink-0 justify-end gap-2 border-t border-border-primary p-5">
           <Button type="button" size="sm" variant="secondary" disabled={busy} onClick={() => onOpenChange(false)}>
             Cancel
           </Button>

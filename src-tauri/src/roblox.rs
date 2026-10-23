@@ -41,7 +41,7 @@ fn find_joins(text: &str) -> Vec<(usize, String, String)> {
 }
 
 #[cfg(windows)]
-pub use watcher::{process_start_time, start};
+pub use watcher::start;
 
 #[cfg(not(windows))]
 pub fn start(_on_activity: impl Fn(RobloxActivity) + Send + 'static) {}

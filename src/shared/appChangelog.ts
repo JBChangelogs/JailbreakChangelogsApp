@@ -22,6 +22,34 @@ export function formatChangelogMarkdown(entry: AppChangelogEntry): string {
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.6.5',
+    date: '2026-10-23',
+    added: [
+      "Desktop notifications for new messages show who sent them, and now also arrive while the Messages tab is open but the app isn't focused",
+      'Uninstall can now also remove your settings, sign-in and other app data',
+      'A Tab style setting in Display, synced with the website: Underline or Filled',
+      'Accent colors and card styles for your profile cards, in Settings > Profile',
+      'Email notifications can be turned on or off in Notifications',
+      'Messages that reply to you are highlighted, and Escape cancels a reply',
+      'Group names can be set when starting a group chat',
+      'The alerts notice in the tracker sidebar can be closed, and Clear shortcuts can be collapsed'
+    ],
+    changed: [
+      "Settings were redesigned to match the website, with Account renamed to Profile, Supporter Gifts to Supporter and What's New to About",
+      'Messages are easier to read, with Discord-style text colors, spacing, replies and typing indicator',
+      'Tabs, buttons, checkboxes and colors now match the website and follow custom themes',
+      'The tracker status bar shows uptime as one continuous bar',
+      'Robberies switch to a list when the window is narrow, and value cards keep a consistent size',
+      'Scrollbars no longer take up space on Windows'
+    ],
+    fixed: [
+      'Resizing the window on the robberies page is no longer slow',
+      'Tooltips close as soon as you move off the item they belong to',
+      'Focus outlines no longer appear after clicking something and pressing a key other than Tab',
+      'Messages no longer jump when cancelling a reply'
+    ]
+  },
+  {
     version: '0.6.4',
     date: '2026-10-23',
     changed: ['New updates now show up as soon as they are released, instead of up to 30 minutes later']

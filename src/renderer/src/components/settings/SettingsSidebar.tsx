@@ -208,8 +208,11 @@ export function SettingsSidebar(): React.JSX.Element {
         ))}
       </nav>
 
-      <div className="space-y-0.5 border-t border-border-primary p-2">
+      <div className="px-2 pb-2">
         <UninstallButton />
+      </div>
+
+      <div className="border-t border-border-primary p-2">
         <button
           type="button"
           onClick={close}

@@ -1,36 +1,29 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo } from 'react'
 import { useUptimeMonitor } from '@renderer/hooks/useUptimeMonitor'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import type { UptimeHeartbeat } from '@shared/uptimeStatus'
 
 const MONITOR_NAME = 'Robbery Tracking Bots'
 const MAX_BEATS = 50
-const BAR_HEIGHT = 14
-const BAR_GAP = 2
 
-const STATUS_COLOR: Record<number, string> = {
-  0: '#dc3545',
-  1: '#28a745',
-  2: '#ffc107',
-  3: '#1747f5'
+const STATUS_STYLE: Record<number, { className: string; label: string }> = {
+  0: { className: 'bg-status-error', label: 'Down' },
+  1: { className: 'bg-status-success', label: 'Up' },
+  2: { className: 'bg-status-warning', label: 'Pending' },
+  3: { className: 'bg-status-info', label: 'Maintenance' }
 }
-const EMPTY_COLOR = '#d4d4d4'
+
+interface Run {
+  status: number | null
+  beats: UptimeHeartbeat[]
+  count: number
+}
 
 function badgeClassName(uptime24h: number | null): string {
   if (uptime24h == null) return 'bg-status-neutral'
-  if (uptime24h >= 0.98) return 'bg-status-success-vibrant'
+  if (uptime24h >= 0.98) return 'bg-status-success'
   if (uptime24h >= 0.9) return 'bg-status-warning'
   return 'bg-status-error'
-}
-
-function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
-  ctx.beginPath()
-  ctx.moveTo(x + r, y)
-  ctx.arcTo(x + w, y, x + w, y + h, r)
-  ctx.arcTo(x + w, y + h, x, y + h, r)
-  ctx.arcTo(x, y + h, x, y, r)
-  ctx.arcTo(x, y, x + w, y, r)
-  ctx.closePath()
 }
 
 function formatHeartbeatTime(iso: string): string {
@@ -43,73 +36,67 @@ function formatHeartbeatTime(iso: string): string {
   })
 }
 
-function HeartbeatBar({ heartbeats }: { heartbeats: UptimeHeartbeat[] }): React.JSX.Element {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  const wrapRef = useRef<HTMLDivElement | null>(null)
-  const [width, setWidth] = useState(600)
+function toRuns(heartbeats: UptimeHeartbeat[]): Run[] {
+  const beats = heartbeats.slice(-MAX_BEATS)
+  const runs: Run[] = []
+  const missing = MAX_BEATS - beats.length
+  if (missing > 0) runs.push({ status: null, beats: [], count: missing })
+  for (const beat of beats) {
+    const last = runs[runs.length - 1]
+    if (last && last.status === beat.status) {
+      last.beats.push(beat)
+      last.count++
+    } else {
+      runs.push({ status: beat.status, beats: [beat], count: 1 })
+    }
+  }
+  return runs
+}
 
-  useEffect(() => {
-    const el = wrapRef.current
-    if (!el) return undefined
-    const observer = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width))
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [])
-
-  const padded = useMemo<(UptimeHeartbeat | null)[]>(
-    () => Array(Math.max(0, MAX_BEATS - heartbeats.length)).fill(null).concat(heartbeats.slice(-MAX_BEATS)),
-    [heartbeats]
+function RunTooltip({ run }: { run: Run }): React.JSX.Element {
+  const pings = run.beats.map((b) => b.ping).filter((p): p is number => p != null)
+  const avgPing = pings.length ? Math.round(pings.reduce((a, b) => a + b, 0) / pings.length) : null
+  const first = run.beats[0]
+  const last = run.beats[run.beats.length - 1]
+  return (
+    <>
+      <p className="font-semibold">
+        {STATUS_STYLE[run.status ?? -1]?.label ?? 'Unknown'} · {run.count} {run.count === 1 ? 'check' : 'checks'}
+      </p>
+      <p className="text-secondary-text">{avgPing != null ? `${avgPing}ms average ping` : 'No ping data'}</p>
+      <p className="text-quaternary-text">
+        {formatHeartbeatTime(first.time)}
+        {run.count > 1 && ` – ${formatHeartbeatTime(last.time)}`}
+      </p>
+    </>
   )
-  const barWidth = width > 0 ? (width - BAR_GAP * (MAX_BEATS - 1)) / MAX_BEATS : 0
+}
 
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas || width <= 0) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    const dpr = window.devicePixelRatio || 1
-    canvas.width = Math.round(width * dpr)
-    canvas.height = Math.round(BAR_HEIGHT * dpr)
-    canvas.style.width = `${width}px`
-    canvas.style.height = `${BAR_HEIGHT}px`
-    ctx.scale(dpr, dpr)
-    ctx.clearRect(0, 0, width, BAR_HEIGHT)
-
-    padded.forEach((beat, i) => {
-      const x = i * (barWidth + BAR_GAP)
-      const w = Math.min(barWidth, width - x)
-      ctx.fillStyle = beat ? (STATUS_COLOR[beat.status] ?? EMPTY_COLOR) : EMPTY_COLOR
-      roundRect(ctx, x, 0, w, BAR_HEIGHT, 2)
-      ctx.fill()
-    })
-  }, [padded, barWidth, width])
+function HeartbeatBar({ heartbeats }: { heartbeats: UptimeHeartbeat[] }): React.JSX.Element {
+  const runs = useMemo(() => toRuns(heartbeats), [heartbeats])
 
   return (
-    <div ref={wrapRef} className="relative w-full">
-      <canvas
-        ref={canvasRef}
-        role="img"
-        aria-label={`Heartbeat history: ${heartbeats.length} checks`}
-      />
-      {barWidth > 0 && (
-        <div className="absolute inset-0 flex" style={{ gap: BAR_GAP }}>
-          {padded.map((beat, i) =>
-            beat ? (
-              <Tooltip key={i}>
-                <TooltipTrigger asChild>
-                  <div style={{ width: barWidth }} />
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  <p className="font-semibold">{beat.ping != null ? `${beat.ping}ms` : 'No ping data'}</p>
-                  <p className="text-quaternary-text">{formatHeartbeatTime(beat.time)}</p>
-                </TooltipContent>
-              </Tooltip>
-            ) : (
-              <div key={i} style={{ width: barWidth }} />
-            )
-          )}
-        </div>
+    <div
+      role="img"
+      aria-label={`Heartbeat history: ${heartbeats.length} checks`}
+      className="flex h-2 w-full items-center gap-[3px]"
+    >
+      {runs.map((run, i) =>
+        run.status == null ? (
+          <div key={i} className="h-full min-w-2 rounded-full bg-quaternary-bg" style={{ flexGrow: run.count }} />
+        ) : (
+          <Tooltip key={i}>
+            <TooltipTrigger asChild>
+              <div
+                className={`h-full min-w-2 rounded-full transition-opacity hover:opacity-80 ${STATUS_STYLE[run.status]?.className ?? 'bg-quaternary-bg'}`}
+                style={{ flexGrow: run.count }}
+              />
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <RunTooltip run={run} />
+            </TooltipContent>
+          </Tooltip>
+        )
       )}
     </div>
   )
@@ -134,7 +121,7 @@ export function UptimeStatusBanner(): React.JSX.Element {
       </div>
       <div className="min-w-0 flex-1">
         {showSkeleton ? (
-          <div className="h-3.5 w-full animate-pulse rounded bg-quaternary-bg" />
+          <div className="h-2 w-full animate-pulse rounded-full bg-quaternary-bg" />
         ) : (
           <HeartbeatBar heartbeats={heartbeats} />
         )}

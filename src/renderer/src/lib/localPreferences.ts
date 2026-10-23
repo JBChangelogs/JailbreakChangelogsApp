@@ -7,6 +7,8 @@ const LAST_SELECTED_CONVERSATION_ID_KEY = 'jbcl:last-selected-conversation-id'
 const SETTINGS_PAGE_OPEN_KEY = 'jbcl:settings-page-open'
 const SETTINGS_PAGE_SECTION_KEY = 'jbcl:settings-page-section'
 const HIDE_JOINED_SERVERS_KEY = 'jbcl:hide-joined-servers'
+const BACKGROUND_ALERTS_NOTICE_KEY = 'jbcl:background-alerts-notice'
+const CLEAR_SHORTCUTS_EXPANDED_KEY = 'jbcl:clear-shortcuts-expanded'
 
 function getFlag(key: string): boolean {
   try {
@@ -46,6 +48,22 @@ export function getHideJoinedServersEnabled(): boolean {
 
 export function setHideJoinedServersEnabled(enabled: boolean): void {
   setFlag(HIDE_JOINED_SERVERS_KEY, enabled)
+}
+
+export function getBackgroundAlertsNoticeVisible(): boolean {
+  return getFlag(BACKGROUND_ALERTS_NOTICE_KEY)
+}
+
+export function setBackgroundAlertsNoticeVisible(visible: boolean): void {
+  setFlag(BACKGROUND_ALERTS_NOTICE_KEY, visible)
+}
+
+export function getClearShortcutsExpanded(): boolean {
+  return getFlag(CLEAR_SHORTCUTS_EXPANDED_KEY)
+}
+
+export function setClearShortcutsExpanded(expanded: boolean): void {
+  setFlag(CLEAR_SHORTCUTS_EXPANDED_KEY, expanded)
 }
 
 export function getLastActiveTab(): string | null {

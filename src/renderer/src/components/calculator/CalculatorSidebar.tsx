@@ -1,4 +1,7 @@
+import { useState } from 'react'
 import { useCalculator } from '@renderer/contexts/CalculatorContext'
+import { getClearShortcutsExpanded, setClearShortcutsExpanded } from '@renderer/lib/localPreferences'
+import { Tabs } from '@renderer/components/ui/tabs'
 import { useCurrentUser } from '@renderer/hooks/useCurrentUser'
 import { SearchInput } from '@renderer/components/ui/search-input'
 import { Kbd } from '@renderer/components/ui/kbd'
@@ -10,6 +13,7 @@ export function CalculatorSidebar(): React.JSX.Element {
   const { browse } = useCalculator()
   const { user } = useCurrentUser()
   const activeCount = browse.types.size + browse.demand.size + browse.trend.size
+  const [shortcutsOpen, setShortcutsOpen] = useState(getClearShortcutsExpanded)
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
@@ -35,22 +39,14 @@ export function CalculatorSidebar(): React.JSX.Element {
 
       <div className="flex flex-col gap-2 px-3 pb-3">
         {user?.roblox?.roblox_id && (
-          <div className="grid grid-cols-2 gap-1 rounded-2xl border border-border-card bg-tertiary-bg p-1">
-            {(['catalog', 'inventory'] as const).map((source) => (
-              <button
-                key={source}
-                type="button"
-                onClick={() => browse.setSource(source)}
-                className={`rounded-xl py-1.5 text-xs font-medium transition-colors ${
-                  browse.source === source
-                    ? 'bg-button-info text-form-button-text'
-                    : 'text-secondary-text hover:text-primary-text'
-                }`}
-              >
-                {source === 'catalog' ? 'Values List' : 'My Inventory'}
-              </button>
-            ))}
-          </div>
+          <Tabs
+            value={browse.source}
+            onChange={browse.setSource}
+            options={[
+              { value: 'catalog', label: 'Values List' },
+              { value: 'inventory', label: 'My Inventory' }
+            ]}
+          />
         )}
         <SearchInput value={browse.search} onChange={browse.setSearch} placeholder="Search items..." />
         <SortMenu value={browse.sort} onChange={browse.setSort} groups={LOCAL_SORT_GROUPS} />
@@ -97,18 +93,42 @@ export function CalculatorSidebar(): React.JSX.Element {
 
       {/* Stays at the bottom while the filters scroll. */}
       <div className="shrink-0 border-t border-border-primary px-3 py-2.5">
-        <p className="mb-1.5 text-[11px] font-bold tracking-wide text-quaternary-text uppercase">Clear shortcuts</p>
-        <ul className="space-y-1.5 text-[11px] text-secondary-text">
-          <li>
-            <Kbd>Shift</Kbd> + click: both sides
-          </li>
-          <li>
-            <Kbd>Ctrl</Kbd> + click: Offering
-          </li>
-          <li>
-            <Kbd>Ctrl</Kbd> + right-click: Requesting
-          </li>
-        </ul>
+        <button
+          type="button"
+          aria-expanded={shortcutsOpen}
+          onClick={() => {
+            setClearShortcutsExpanded(!shortcutsOpen)
+            setShortcutsOpen(!shortcutsOpen)
+          }}
+          className="flex w-full items-center justify-between text-[11px] font-bold tracking-wide text-quaternary-text uppercase transition-colors hover:text-secondary-text"
+        >
+          Clear shortcuts
+          <svg
+            className={`h-3.5 w-3.5 transition-transform duration-200 ease-out ${shortcutsOpen ? '' : '-rotate-90'}`}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.5}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
+          </svg>
+        </button>
+        <div
+          aria-hidden={!shortcutsOpen}
+          className={`grid transition-[grid-template-rows,opacity] duration-200 ease-out ${shortcutsOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}
+        >
+          <ul className="min-h-0 space-y-1.5 overflow-hidden text-[11px] text-secondary-text">
+            <li className="pt-1.5">
+              <Kbd>Shift</Kbd> + click: both sides
+            </li>
+            <li>
+              <Kbd>Ctrl</Kbd> + click: Offering
+            </li>
+            <li>
+              <Kbd>Ctrl</Kbd> + right-click: Requesting
+            </li>
+          </ul>
+        </div>
       </div>
     </div>
   )

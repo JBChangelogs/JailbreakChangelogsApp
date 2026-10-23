@@ -22,6 +22,14 @@ export function formatChangelogMarkdown(entry: AppChangelogEntry): string {
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.6.6',
+    date: '2026-10-23',
+    changed: [
+      'Trade scanning is about twice as fast, and the first scan no longer waits for the scanner to load',
+      'Snipping a trade reads it right after you finish selecting, without a pause'
+    ]
+  },
+  {
     version: '0.6.5',
     date: '2026-10-23',
     added: [

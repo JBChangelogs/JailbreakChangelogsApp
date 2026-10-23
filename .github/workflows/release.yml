@@ -128,3 +128,22 @@ jobs:
           version=$(node -p "require('./package.json').version")
           gh release create "v$version" dist-tauri/JBCLSetup.exe dist-tauri/JBCLSetup.AppImage dist-tauri/JBCLSetup.dmg \
             --title "v$version" --notes-file release-notes.md --target "$GITHUB_SHA"
+
+      - name: Notify running apps
+        env:
+          APP_RELEASE_API_KEY: ${{ secrets.APP_RELEASE_API_KEY }}
+        run: |
+          if [ -z "$APP_RELEASE_API_KEY" ]; then
+            echo "::warning::APP_RELEASE_API_KEY is not set; apps will pick up the release on their next check."
+            exit 0
+          fi
+          version=$(node -p "require('./package.json').version")
+          if ! response=$(curl -sS --fail-with-body --max-time 20 -X POST \
+            https://api.jailbreakchangelogs.com/v2/realtime/app-update \
+            -H "Authorization: $APP_RELEASE_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{\"version\": \"$version\"}"); then
+            echo "::warning::Couldn't notify running apps: $response"
+            exit 0
+          fi
+          echo "Notified running apps of $version: $response"

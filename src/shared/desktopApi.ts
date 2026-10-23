@@ -74,6 +74,6 @@ export interface DesktopApi {
   }
   uninstall: {
     supported: () => Promise<boolean>
-    run: () => Promise<void>
+    run: (purge: boolean) => Promise<void>
   }
 }

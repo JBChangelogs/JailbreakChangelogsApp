@@ -331,6 +331,7 @@ async fn pick_area(app: &AppHandle) -> Option<ScanArea> {
         #[cfg(windows)]
         let builder = builder
             .additional_browser_args(crate::WEBVIEW2_ARGS)
+            .scroll_bar_style(tauri::webview::ScrollBarStyle::FluentOverlay)
             .data_directory(crate::webview2_data_dir(app).ok()?);
         let overlay = builder.build().ok()?;
         let _ = overlay.set_position(pos);

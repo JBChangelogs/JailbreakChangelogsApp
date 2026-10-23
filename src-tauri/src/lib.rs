@@ -296,6 +296,7 @@ fn create_main_window(app: &AppHandle) -> tauri::Result<WebviewWindow> {
     #[cfg(windows)]
     let builder = builder
         .additional_browser_args(WEBVIEW2_ARGS)
+        .scroll_bar_style(tauri::webview::ScrollBarStyle::FluentOverlay)
         .data_directory(webview2_data_dir(app)?);
 
     builder.build()
@@ -445,8 +446,8 @@ fn app_can_uninstall() -> bool {
 }
 
 #[tauri::command]
-fn app_uninstall(app: AppHandle) -> Result<(), String> {
-    uninstall::run(&app)
+fn app_uninstall(app: AppHandle, purge: bool) -> Result<(), String> {
+    uninstall::run(&app, purge)
 }
 
 pub fn run() {

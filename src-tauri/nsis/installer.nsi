@@ -827,6 +827,11 @@ Function un.onInit
   ${IfNot} ${Errors}
     StrCpy $UpdateMode 1
   ${EndIf}
+
+  ${GetOptions} $CMDLINE "/PURGE" $R0
+  ${IfNot} ${Errors}
+    StrCpy $DeleteAppDataCheckboxState 1
+  ${EndIf}
 FunctionEnd
 
 Section Uninstall
@@ -937,6 +942,9 @@ Section Uninstall
     SetShellVarContext current
     RmDir /r "$APPDATA\${BUNDLEID}"
     RmDir /r "$LOCALAPPDATA\${BUNDLEID}"
+    Sleep 1000
+    RmDir /r "$APPDATA\jailbreak-changelogs"
+    RmDir /r "$LOCALAPPDATA\jailbreak-changelogs"
   ${EndIf}
 
   !ifmacrodef NSIS_HOOK_POSTUNINSTALL

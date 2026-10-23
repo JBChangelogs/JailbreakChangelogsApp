@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useSettingsPage, type SettingsSectionId } from '@renderer/contexts/SettingsPageContext'
 import { Button } from '@renderer/components/ui/button'
+import { Checkbox } from '@renderer/components/ui/checkbox'
+import { showToast } from '@renderer/lib/toast'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@renderer/components/ui/dialog'
 
-function ShieldIcon({ className }: { className?: string }): React.JSX.Element {
+export function ShieldIcon({ className }: { className?: string }): React.JSX.Element {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
       <path
@@ -15,7 +17,7 @@ function ShieldIcon({ className }: { className?: string }): React.JSX.Element {
   )
 }
 
-function BellIcon({ className }: { className?: string }): React.JSX.Element {
+export function BellIcon({ className }: { className?: string }): React.JSX.Element {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
       <path
@@ -40,7 +42,16 @@ function GamepadIcon({ className }: { className?: string }): React.JSX.Element {
   )
 }
 
-function SparklesIcon({ className }: { className?: string }): React.JSX.Element {
+export function InfoIcon({ className }: { className?: string }): React.JSX.Element {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <circle cx="12" cy="12" r="9" />
+      <path strokeLinecap="round" d="M12 11v5m0-8h.01" />
+    </svg>
+  )
+}
+
+export function SparklesIcon({ className }: { className?: string }): React.JSX.Element {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
       <path
@@ -52,7 +63,7 @@ function SparklesIcon({ className }: { className?: string }): React.JSX.Element 
   )
 }
 
-function PaletteIcon({ className }: { className?: string }): React.JSX.Element {
+export function PaletteIcon({ className }: { className?: string }): React.JSX.Element {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
       <path
@@ -75,7 +86,7 @@ function BackIcon({ className }: { className?: string }): React.JSX.Element {
   )
 }
 
-function TrashIcon({ className }: { className?: string }): React.JSX.Element {
+export function TrashIcon({ className }: { className?: string }): React.JSX.Element {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h16M10 11v6M14 11v6M5 7l1 13h12l1-13M9 7V4h6v3" />
@@ -83,11 +94,92 @@ function TrashIcon({ className }: { className?: string }): React.JSX.Element {
   )
 }
 
+export function UninstallDialog({
+  open,
+  onOpenChange,
+  preview = false
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  preview?: boolean
+}): React.JSX.Element {
+  const [busy, setBusy] = useState(false)
+  const [purge, setPurge] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+    setBusy(false)
+    setPurge(false)
+    setError(null)
+  }, [open])
+
+  const uninstall = async (): Promise<void> => {
+    setBusy(true)
+    setError(null)
+    if (preview) {
+      setTimeout(() => {
+        onOpenChange(false)
+        showToast('Uninstall preview', {
+          description: purge ? 'The app and its data would have been removed.' : 'The app would have been removed.'
+        })
+      }, 1500)
+      return
+    }
+    try {
+      await window.api.uninstall.run(purge)
+    } catch (err) {
+      setError(typeof err === 'string' ? err : "The app couldn't be uninstalled. Please try again.")
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => !busy && onOpenChange(next)}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Uninstall Jailbreak Changelogs?</DialogTitle>
+          <DialogDescription>The app will close and be removed from this computer.</DialogDescription>
+        </DialogHeader>
+        <div className="px-5 py-4 text-sm text-secondary-text">
+          <p>
+            Your account isn&apos;t affected.{' '}
+            {purge
+              ? 'Your settings, sign-in and other app data will be removed from this computer.'
+              : 'Your settings stay on this computer in case you reinstall.'}
+          </p>
+          <label className="mt-4 flex items-start gap-3 rounded-lg border border-border-card bg-secondary-bg px-3 py-2.5">
+            <Checkbox
+              checked={purge}
+              disabled={busy}
+              onCheckedChange={(checked) => setPurge(checked === true)}
+              className="mt-0.5 h-5 w-5 rounded-lg"
+            />
+            <span className="min-w-0">
+              <span className="block font-medium text-primary-text">Also remove my settings and data</span>
+              <span className="mt-0.5 block text-xs text-tertiary-text">
+                Signs you out and deletes saved settings, caches and downloaded files.
+              </span>
+            </span>
+          </label>
+          {error && <p className="mt-3 text-xs text-status-error">{error}</p>}
+        </div>
+        <div className="flex shrink-0 justify-end gap-2 border-t border-border-primary px-5 py-4">
+          <Button type="button" size="sm" variant="secondary" disabled={busy} onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button type="button" size="sm" variant="destructive" disabled={busy} onClick={() => void uninstall()}>
+            {busy ? 'Uninstalling…' : 'Uninstall'}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 function UninstallButton(): React.JSX.Element | null {
   const [supported, setSupported] = useState(false)
   const [open, setOpen] = useState(false)
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -102,17 +194,6 @@ function UninstallButton(): React.JSX.Element | null {
 
   if (!supported) return null
 
-  const uninstall = async (): Promise<void> => {
-    setBusy(true)
-    setError(null)
-    try {
-      await window.api.uninstall.run()
-    } catch (err) {
-      setError(typeof err === 'string' ? err : "The app couldn't be uninstalled. Please try again.")
-      setBusy(false)
-    }
-  }
-
   return (
     <>
       <button
@@ -123,31 +204,12 @@ function UninstallButton(): React.JSX.Element | null {
         <TrashIcon className="h-4 w-4 shrink-0" />
         Uninstall
       </button>
-      <Dialog open={open} onOpenChange={(next) => !busy && setOpen(next)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Uninstall Jailbreak Changelogs?</DialogTitle>
-            <DialogDescription>The app will close and be removed from this computer.</DialogDescription>
-          </DialogHeader>
-          <div className="px-5 py-4 text-sm text-secondary-text">
-            <p>Your account isn't affected, and your settings stay on this computer in case you reinstall.</p>
-            {error && <p className="mt-3 text-xs text-status-error">{error}</p>}
-          </div>
-          <div className="flex shrink-0 justify-end gap-2 border-t border-border-primary px-5 py-4">
-            <Button type="button" size="sm" variant="secondary" disabled={busy} onClick={() => setOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="button" size="sm" variant="destructive" disabled={busy} onClick={() => void uninstall()}>
-              {busy ? 'Uninstalling…' : 'Uninstall'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <UninstallDialog open={open} onOpenChange={setOpen} />
     </>
   )
 }
 
-function UserIcon({ className }: { className?: string }): React.JSX.Element {
+export function UserIcon({ className }: { className?: string }): React.JSX.Element {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
       <path
@@ -159,7 +221,7 @@ function UserIcon({ className }: { className?: string }): React.JSX.Element {
   )
 }
 
-function GiftIcon({ className }: { className?: string }): React.JSX.Element {
+export function GiftIcon({ className }: { className?: string }): React.JSX.Element {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
       <path
@@ -172,13 +234,13 @@ function GiftIcon({ className }: { className?: string }): React.JSX.Element {
 }
 
 const SECTIONS: { id: SettingsSectionId; label: string; icon: (props: { className?: string }) => React.JSX.Element }[] = [
-  { id: 'account', label: 'Account', icon: UserIcon },
+  { id: 'account', label: 'Profile', icon: UserIcon },
   { id: 'display', label: 'Display', icon: PaletteIcon },
   { id: 'privacy', label: 'Privacy', icon: ShieldIcon },
   { id: 'notifications', label: 'Notifications', icon: BellIcon },
   { id: 'richPresence', label: 'Rich Presence', icon: GamepadIcon },
-  { id: 'gifts', label: 'Supporter Gifts', icon: GiftIcon },
-  { id: 'whatsNew', label: "What's New", icon: SparklesIcon }
+  { id: 'gifts', label: 'Supporter', icon: GiftIcon },
+  { id: 'whatsNew', label: 'About', icon: InfoIcon }
 ]
 
 export function SettingsSidebar(): React.JSX.Element {

@@ -1,6 +1,8 @@
 use std::path::PathBuf;
 
 use tauri::AppHandle;
+#[cfg(not(windows))]
+use tauri::Manager;
 
 #[cfg(any(windows, target_os = "macos"))]
 fn current_exe() -> Option<PathBuf> {
@@ -35,17 +37,44 @@ pub fn supported() -> bool {
     return app_image().is_some();
 }
 
-pub fn run(app: &AppHandle) -> Result<(), String> {
+#[cfg(not(windows))]
+fn remove_data(app: &AppHandle) {
+    let path = app.path();
+    let mut dirs = vec![crate::data_dir().to_path_buf()];
+    dirs.extend(path.local_data_dir().ok().map(|d| d.join("jailbreak-changelogs")));
+    dirs.extend(
+        [path.app_data_dir(), path.app_local_data_dir(), path.app_config_dir(), path.app_cache_dir(), path.app_log_dir()]
+            .into_iter()
+            .flatten(),
+    );
+    #[cfg(target_os = "macos")]
+    if let Some(home) = std::env::var_os("HOME").map(PathBuf::from) {
+        dirs.push(home.join("Library/WebKit").join(&app.config().identifier));
+    }
+    for dir in dirs {
+        let _ = std::fs::remove_dir_all(dir);
+    }
+}
+
+pub fn run(app: &AppHandle, purge: bool) -> Result<(), String> {
     if !supported() {
         return Err("This copy of the app can't be uninstalled from here.".into());
     }
-    crate::analytics::track("app_uninstall", None);
+    crate::analytics::track("app_uninstall", Some(serde_json::json!({ "purge": purge })));
+    if purge {
+        crate::auth::clear_token();
+    }
 
     #[cfg(windows)]
     {
         let uninstaller = uninstaller().ok_or("The uninstaller is missing.")?;
         crate::before_quit();
-        std::process::Command::new(&uninstaller).arg("/S").spawn().map_err(|e| format!("Couldn't start the uninstaller: {e}"))?;
+        let mut command = std::process::Command::new(&uninstaller);
+        command.arg("/S");
+        if purge {
+            command.arg("/PURGE");
+        }
+        command.spawn().map_err(|e| format!("Couldn't start the uninstaller: {e}"))?;
     }
 
     #[cfg(target_os = "macos")]
@@ -72,6 +101,12 @@ pub fn run(app: &AppHandle) -> Result<(), String> {
             let _ = std::fs::remove_file(home.join(".local/share/icons/hicolor/512x512/apps/jailbreak-changelogs.png"));
             let _ = std::process::Command::new("update-desktop-database").arg(&apps).status();
         }
+    }
+
+    #[cfg(not(windows))]
+    if purge {
+        crate::before_quit();
+        remove_data(app);
     }
 
     app.exit(0);

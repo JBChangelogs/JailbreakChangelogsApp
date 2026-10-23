@@ -79,7 +79,7 @@ const api: DesktopApi = {
   },
   uninstall: {
     supported: () => invoke('app_can_uninstall'),
-    run: () => invoke('app_uninstall')
+    run: (purge) => invoke('app_uninstall', { purge })
   }
 }
 

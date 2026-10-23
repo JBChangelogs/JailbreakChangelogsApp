@@ -22,6 +22,11 @@ export function formatChangelogMarkdown(entry: AppChangelogEntry): string {
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.6.4',
+    date: '2026-10-23',
+    changed: ['New updates now show up as soon as they are released, instead of up to 30 minutes later']
+  },
+  {
     version: '0.6.3',
     date: '2026-10-23',
     changed: [

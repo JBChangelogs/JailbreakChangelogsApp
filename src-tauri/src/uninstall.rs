@@ -43,15 +43,9 @@ pub fn run(app: &AppHandle) -> Result<(), String> {
 
     #[cfg(windows)]
     {
-        use std::os::windows::process::CommandExt;
-        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
         let uninstaller = uninstaller().ok_or("The uninstaller is missing.")?;
-        let script = format!("ping -n 3 127.0.0.1 >nul & \"{}\" /S", uninstaller.display());
-        std::process::Command::new("cmd")
-            .args(["/C", &script])
-            .creation_flags(CREATE_NO_WINDOW)
-            .spawn()
-            .map_err(|e| e.to_string())?;
+        crate::before_quit();
+        std::process::Command::new(&uninstaller).arg("/S").spawn().map_err(|e| format!("Couldn't start the uninstaller: {e}"))?;
     }
 
     #[cfg(target_os = "macos")]

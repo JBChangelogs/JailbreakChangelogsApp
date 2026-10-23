@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Button } from '@renderer/components/ui/button'
 import { MessagesIcon } from '@renderer/components/NavBar'
 import { useConversation, type DisplayMessage } from '@renderer/hooks/useConversation'
@@ -86,14 +86,6 @@ function ReplyIcon({ className }: { className?: string }): React.JSX.Element {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h10.5a6 6 0 0 1 6 6v3" />
-    </svg>
-  )
-}
-
-function ReplyCornerIcon({ className }: { className?: string }): React.JSX.Element {
-  return (
-    <svg className={className} viewBox="0 0 56 12" fill="none" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M18 9V2h34" />
     </svg>
   )
 }
@@ -590,6 +582,8 @@ function MessageRow({
   onDiscard,
   onJumpToMessage,
   isHighlighted,
+  isReplyTarget,
+  isReplyToMe,
   registerRef,
   showReadReceipt
 }: {
@@ -610,6 +604,8 @@ function MessageRow({
   onDiscard: (localId: string) => void
   onJumpToMessage: (messageId: string) => void
   isHighlighted: boolean
+  isReplyTarget: boolean
+  isReplyToMe: boolean
   registerRef: (id: string, el: HTMLDivElement | null) => void
   showReadReceipt: boolean
 }): React.JSX.Element {
@@ -653,7 +649,7 @@ function MessageRow({
     if (typeof metaType === 'string' && GROUP_EVENT_TYPES.has(metaType)) {
       const icon =
         metaType === 'members_added' ? (
-          <ArrowIcon className="h-4.5 w-4.5 text-[color-mix(in_srgb,var(--color-status-success)_70%,black)]" />
+          <ArrowIcon className="h-4.5 w-4.5 text-status-success" />
         ) : metaType === 'group_renamed' ? (
           <EditIcon className="h-4.5 w-4.5 text-tertiary-text" />
         ) : (
@@ -664,7 +660,7 @@ function MessageRow({
           <div className="flex w-9 shrink-0 justify-center">{icon}</div>
           <p className="min-w-0 flex-1 text-sm text-tertiary-text">
             <GroupEventText message={message} metadata={metadata} profiles={profiles} />{' '}
-            <span className="text-xs text-quaternary-text">{formatMessageTimestamp(message.created_at)}</span>
+            <span className="text-xs text-message-muted">{formatMessageTimestamp(message.created_at)}</span>
           </p>
         </div>
       )
@@ -748,23 +744,35 @@ function MessageRow({
   const rowContent = (
     <div
       ref={(el) => registerRef(message.id, el)}
-      className={`group rounded px-5 transition-colors duration-150 hover:bg-secondary-bg/60 ${showSenderInfo || message.parent_id ? 'mt-2 pt-1' : ''
-        } ${isHighlighted ? 'bg-status-info/15' : isContextMenuOpen ? 'bg-secondary-bg/60' : ''}`}
+      className={`group px-5 py-0.5 transition-colors duration-150 hover:bg-secondary-bg/60 ${showSenderInfo || message.parent_id ? 'mt-[17px]' : ''
+        } ${isHighlighted
+          ? 'bg-status-info/15'
+          : isReplyTarget
+            ? 'bg-button-info/10 shadow-[inset_2px_0_0_var(--color-button-info)] hover:bg-button-info/10!'
+            : isReplyToMe
+              ? 'bg-status-warning/10 shadow-[inset_2px_0_0_var(--color-status-warning)] hover:bg-status-warning/15!'
+              : isContextMenuOpen
+                ? 'bg-secondary-bg/60'
+                : ''
+        }`}
     >
       {message.parent_id && (
-        <div className="flex items-center">
-          <ReplyCornerIcon className="h-3 w-14 shrink-0 text-tertiary-text" />
+        <div className="relative mb-1 flex h-5 items-center pl-12">
+          <span
+            aria-hidden
+            className="pointer-events-none absolute top-1/2 bottom-[-2px] left-[17px] -mt-px w-[27px] rounded-tl-md border-t-2 border-l-2 border-tertiary-text/70"
+          />
           <button
             type="button"
             onClick={() => parentMessage && onJumpToMessage(parentMessage.id)}
             disabled={!parentMessage}
-            className="flex min-w-0 flex-1 items-center gap-1 text-left text-xs text-tertiary-text disabled:cursor-default hover:enabled:text-secondary-text"
+            className="flex min-w-0 flex-1 items-center gap-1 text-left text-sm text-message-muted disabled:cursor-default"
           >
             {parentMessage ? (
               <>
                 <UserAvatar id={parentMessage.sender_id} profile={parentSenderProfile} className="h-4 w-4 shrink-0" />
                 {parentLabel ? (
-                  <span className="shrink-0 font-medium text-secondary-text">{parentLabel}</span>
+                  <span className="shrink-0 font-medium text-message-text">@{parentLabel}</span>
                 ) : (
                   <UserNameSkeleton className="w-14" />
                 )}
@@ -785,7 +793,7 @@ function MessageRow({
               </button>
             </UserProfilePopover>
           ) : (
-            <span className="hidden pt-0.5 text-[10px] whitespace-nowrap text-quaternary-text group-hover:block">
+            <span className="hidden pt-1 text-[11px] whitespace-nowrap text-message-muted group-hover:block">
               {formatTimeOnly(message.created_at)}
             </span>
           )}
@@ -794,11 +802,11 @@ function MessageRow({
           {(showSenderInfo || parentMessage) && (
             <div className="flex items-baseline gap-2">
               <UserProfilePopover userId={senderId} profile={senderProfile}>
-                <button type="button" className="min-w-0 truncate text-left text-base font-semibold text-primary-text hover:underline">
+                <button type="button" className="min-w-0 truncate text-left text-base font-medium text-message-header hover:underline">
                   {label}
                 </button>
               </UserProfilePopover>
-              <span className="shrink-0 text-xs text-tertiary-text">
+              <span className="shrink-0 text-xs text-message-muted">
                 {formatMessageTimestamp(message.created_at)}
               </span>
               {readIndicatorMounted && (
@@ -817,24 +825,28 @@ function MessageRow({
             </div>
           )}
           {isEditing ? (
-            <div className="space-y-1.5">
-              <textarea
-                autoFocus
-                value={editDraft}
-                onChange={(e) => setEditDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    void saveEdit()
-                  } else if (e.key === 'Escape') {
-                    setIsEditing(false)
-                    setEditDraft(message.content)
-                  }
-                }}
-                rows={1}
-                maxLength={MAX_LENGTH}
-                className="box-border w-full resize-none rounded-xl border border-border-focus bg-form-input px-2 py-1.5 text-base leading-6 text-primary-text outline-none"
-              />
+            <div className="space-y-1.5 pt-0.5">
+              <div className="flex rounded-xl border border-border-card bg-tertiary-bg px-4 py-2.5">
+                <textarea
+                  autoFocus
+                  onFocus={(e) => e.currentTarget.setSelectionRange(e.currentTarget.value.length, e.currentTarget.value.length)}
+                  value={editDraft}
+                  onChange={(e) => setEditDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault()
+                      void saveEdit()
+                    } else if (e.key === 'Escape') {
+                      e.preventDefault()
+                      setIsEditing(false)
+                      setEditDraft(message.content)
+                    }
+                  }}
+                  rows={1}
+                  maxLength={MAX_LENGTH}
+                  className="box-border max-h-64 w-full resize-none overflow-y-auto border-none bg-transparent text-base leading-6 text-primary-text shadow-none field-sizing-content focus:outline-none"
+                />
+              </div>
               <p className="text-xs text-tertiary-text">
                 escape to{' '}
                 <button
@@ -861,11 +873,11 @@ function MessageRow({
           ) : (
             <>
               <p
-                className={`text-base whitespace-pre-wrap break-words ${isFailed
+                className={`text-base leading-[1.375rem] whitespace-pre-wrap break-words ${isFailed
                   ? 'text-status-error'
                   : isPending
-                    ? 'text-primary-text/50'
-                    : 'text-primary-text/90'
+                    ? 'text-message-text/50'
+                    : 'text-message-text'
                   }`}
               >
                 <EmojiText text={message.content} />
@@ -1211,9 +1223,24 @@ export function ConversationThread({
     scrollRef.current.scrollTop = scrollRef.current.scrollHeight
   }, [recipientId])
 
+  const replyBarShown = Boolean(replyTo)
+  useLayoutEffect(() => {
+    if (!scrollRef.current || isScrolledUp) return
+    scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+  }, [replyBarShown])
+
   useEffect(() => {
     setReplyTo(null)
   }, [recipientId])
+
+  useEffect(() => {
+    if (!replyTo) return
+    const onKeyDown = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape' && !e.defaultPrevented) setReplyTo(null)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [replyTo])
 
   useEffect(() => {
     const el = textareaRef.current
@@ -1429,7 +1456,7 @@ export function ConversationThread({
           <div ref={setChatRow} className="relative flex min-h-0 flex-1">
             <div className="flex min-w-0 flex-1 flex-col">
               <div className="relative min-h-0 flex-1">
-                <div ref={setScrollRef} className="absolute inset-0 overflow-y-auto pt-1 pb-5">
+                <div ref={setScrollRef} className={`absolute inset-0 overflow-y-auto pt-1 ${replyTo ? 'pb-13' : 'pb-5 transition-[padding-bottom] duration-200 ease-out'}`}>
                   {hasMore && (
                     <div className="flex justify-center">
                       <Button variant="ghost" size="sm" onClick={loadOlder} disabled={loading}>
@@ -1513,6 +1540,8 @@ export function ConversationThread({
                             onDiscard={discardFailedSend}
                             onJumpToMessage={handleJumpToMessage}
                             isHighlighted={message.id === highlightedId}
+                            isReplyTarget={message.id === replyTo?.id}
+                            isReplyToMe={!isMine && !!currentUser && parentMessage?.sender_id === currentUser.id}
                             registerRef={registerMessageRef}
                             showReadReceipt={index === lastMineIndex}
                           />
@@ -1524,24 +1553,29 @@ export function ConversationThread({
 
                 <div
                   className={`pointer-events-none absolute inset-x-0 z-10 grid transition-[grid-template-rows,bottom] duration-200 ease-out ${recipientIsTyping ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
-                    } ${pendingReplyTo ? 'bottom-8' : 'bottom-0'}`}
+                    } ${replyTo ? 'bottom-8' : 'bottom-0'}`}
                 >
-                  <div className="flex items-center gap-2 overflow-hidden px-4 text-xs text-tertiary-text">
-                    <span className="flex h-3 shrink-0 items-center gap-[2px]">
-                      <span className="h-1 w-1 animate-typing-dot rounded-full bg-tertiary-text [animation-delay:-0.3s]" />
-                      <span className="h-1 w-1 animate-typing-dot rounded-full bg-tertiary-text [animation-delay:-0.15s]" />
-                      <span className="h-1 w-1 animate-typing-dot rounded-full bg-tertiary-text" />
-                    </span>
-                    <UserAvatar id={typerIds[0] ?? ''} profile={typerProfile} className="h-4 w-4 shrink-0" />
-                    <span className="truncate py-1.5">
-                      {isGroup ? (
-                        groupTypingLabel(typerIds, profiles)
-                      ) : (
-                        <>
-                          <span className="font-semibold text-secondary-text">{recipientLabel}</span> is typing…
-                        </>
-                      )}
-                    </span>
+                  <div className="min-h-0 overflow-hidden">
+                    <div
+                      className={`flex items-center gap-2 bg-linear-to-t from-primary-bg from-45% to-transparent px-4 pt-6 pb-1.5 text-sm text-primary-text transition-[opacity,translate] duration-200 ease-out ${recipientIsTyping ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'
+                        }`}
+                    >
+                      <span className="flex h-3 shrink-0 items-center gap-[3px]">
+                        <span className="h-1.5 w-1.5 animate-typing-dot rounded-full bg-secondary-text [animation-delay:-0.3s]" />
+                        <span className="h-1.5 w-1.5 animate-typing-dot rounded-full bg-secondary-text [animation-delay:-0.15s]" />
+                        <span className="h-1.5 w-1.5 animate-typing-dot rounded-full bg-secondary-text" />
+                      </span>
+                      <UserAvatar id={typerIds[0] ?? ''} profile={typerProfile} className="h-4 w-4 shrink-0" />
+                      <span className="truncate">
+                        {isGroup ? (
+                          groupTypingLabel(typerIds, profiles)
+                        ) : (
+                          <>
+                            <span className="font-semibold">{recipientLabel}</span> is typing…
+                          </>
+                        )}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1553,8 +1587,7 @@ export function ConversationThread({
                     backgroundImage:
                       'linear-gradient(in srgb to top, var(--color-primary-bg) 35%, color-mix(in srgb, var(--color-primary-bg) 90%, transparent) 50%, color-mix(in srgb, var(--color-primary-bg) 65%, transparent) 65%, color-mix(in srgb, var(--color-primary-bg) 35%, transparent) 78%, color-mix(in srgb, var(--color-primary-bg) 12%, transparent) 90%, transparent 100%)'
                   }}
-                  className={`pointer-events-none absolute inset-x-0 bottom-0 transition-[height] duration-300 ease-in-out ${isScrolledUp && recipientIsTyping ? (pendingReplyTo ? 'h-40' : 'h-28') : 'h-18'
-                    }`}
+                  className="pointer-events-none absolute inset-x-0 bottom-0 h-18"
                 />
 
                 {pendingReplyTo && (
@@ -1571,11 +1604,6 @@ export function ConversationThread({
                           : profiles.get(pendingReplyTo.sender_id)
                         )?.username || `User #${pendingReplyTo.sender_id.slice(-6)}`}
                       </span>
-                      {pendingReplyTo.content && (
-                        <>
-                          : <EmojiText text={pendingReplyTo.content} />
-                        </>
-                      )}
                     </p>
                     <button
                       type="button"
@@ -1627,7 +1655,7 @@ export function ConversationThread({
                   )}
 
                   <div
-                    className={`focus-within:border-border-focus flex w-full min-h-[64px] items-center gap-2 rounded-xl border border-border-card bg-tertiary-bg px-1 py-2 text-primary-text transition-[border-radius] duration-200 ease-out ${pendingReplyTo ? 'rounded-t-none' : ''
+                    className={`flex w-full min-h-[64px] items-center gap-2 rounded-xl border border-border-card bg-tertiary-bg px-1 py-2 text-primary-text transition-[border-radius] duration-200 ease-out ${pendingReplyTo ? 'rounded-t-none' : ''
                       }`}
                   >
                     {recipientId && (

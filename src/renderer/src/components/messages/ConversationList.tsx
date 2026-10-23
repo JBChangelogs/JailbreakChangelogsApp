@@ -103,16 +103,18 @@ export function ConversationList({
   const [leaving, setLeaving] = useState<GroupChat | null>(null)
 
   // One person opens a DM; more start a group named after them, like Discord.
-  const startConversation = async (users: UserProfile[]): Promise<void> => {
+  const startConversation = async (users: UserProfile[], groupName: string): Promise<void> => {
     if (users.length === 1) {
       onSelect(users[0].id)
       return
     }
     if (!token) return
-    const name = users
-      .map((u) => displayName(u.id, u))
-      .join(', ')
-      .slice(0, 64)
+    const name =
+      groupName ||
+      users
+        .map((u) => displayName(u.id, u))
+        .join(', ')
+        .slice(0, 64)
     const group = await groupChatsApi.create(
       token,
       name,
@@ -190,10 +192,11 @@ export function ConversationList({
         onOpenChange={setNewMessageOpen}
         title="New Message"
         subtitle={`Group chats can have up to ${MAX_GROUP_MEMBERS} members.`}
-        confirmLabel="Create Message"
+        confirmLabel={(count) => (count > 1 ? 'Create Group' : 'Create Message')}
         suggestedIds={conversations.map((c) => c.recipient_id)}
         excludeIds={currentUserId ? [currentUserId] : []}
         maxSelect={MAX_GROUP_MEMBERS - 1}
+        askGroupName
         onConfirm={startConversation}
       />
 
@@ -253,7 +256,7 @@ export function ConversationList({
                   className="h-8 w-8"
                 />
                 <div className="min-w-0 flex-1">
-                  <span className="block truncate text-[15px] font-medium text-primary-text">{group.name}</span>
+                  <span className={`block truncate text-base font-medium ${isSelected ? 'text-primary-text' : 'text-message-name group-hover:text-message-text'}`}>{group.name}</span>
                   {typerIds.length > 0 ? (
                     <span className="block truncate text-[11px] text-tertiary-text">
                       {groupTypingLabel(typerIds, profiles)}
@@ -331,7 +334,7 @@ export function ConversationList({
 
               <div className="min-w-0 flex-1">
                 {label ? (
-                  <span className="block truncate text-[15px] font-medium text-primary-text">
+                  <span className={`block truncate text-base font-medium ${isSelected ? 'text-primary-text' : 'text-message-name group-hover:text-message-text'}`}>
                     {label}
                   </span>
                 ) : (

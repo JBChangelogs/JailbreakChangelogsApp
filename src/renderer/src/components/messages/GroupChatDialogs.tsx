@@ -65,12 +65,13 @@ interface UserPickerDialogProps {
   onOpenChange: (open: boolean) => void
   title: string
   subtitle: string
-  confirmLabel: string
+  confirmLabel: string | ((count: number) => string)
   /** Shown before anything is searched, e.g. people you already message. */
   suggestedIds: string[]
   excludeIds?: string[]
   maxSelect: number
-  onConfirm: (users: UserProfile[]) => Promise<void>
+  askGroupName?: boolean
+  onConfirm: (users: UserProfile[], groupName: string) => Promise<void>
 }
 
 /** Pick people with checkboxes: the New Message and Invite to Group modals. */
@@ -83,9 +84,11 @@ export function UserPickerDialog({
   suggestedIds,
   excludeIds = [],
   maxSelect,
+  askGroupName = false,
   onConfirm
 }: UserPickerDialogProps): React.JSX.Element {
   const [query, setQuery] = useState('')
+  const [groupName, setGroupName] = useState('')
   const [selected, setSelected] = useState<UserProfile[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -95,6 +98,7 @@ export function UserPickerDialog({
   useEffect(() => {
     if (!open) return
     setQuery('')
+    setGroupName('')
     setSelected([])
     setError(null)
   }, [open])
@@ -103,10 +107,11 @@ export function UserPickerDialog({
   const pool = searching
     ? results
     : suggestedIds.map((id) => suggestedProfiles.get(id)).filter((p): p is UserProfile => p !== undefined)
-  // Picked people stay at the top while you search for more.
   const selectedIds = new Set(selected.map((u) => u.id))
-  const rows = [...selected, ...pool.filter((u) => !selectedIds.has(u.id) && !excludeIds.includes(u.id))]
+  const visible = pool.filter((u) => !excludeIds.includes(u.id))
+  const rows = [...visible, ...selected.filter((u) => !visible.some((v) => v.id === u.id))]
   const full = selected.length >= maxSelect
+  const showGroupName = askGroupName && selected.length > 1
 
   const toggle = (user: UserProfile): void => {
     setSelected((prev) =>
@@ -119,7 +124,7 @@ export function UserPickerDialog({
     setSubmitting(true)
     setError(null)
     try {
-      await onConfirm(selected)
+      await onConfirm(selected, groupName.trim())
       onOpenChange(false)
     } catch (err) {
       setError(errorMessage(err, 'Something went wrong'))
@@ -130,7 +135,7 @@ export function UserPickerDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="h-[560px] max-w-md">
         <div className="shrink-0 px-5 pt-5 pb-3">
           <DialogTitle className="text-lg font-bold">{title}</DialogTitle>
           <p className="mt-1 text-sm text-tertiary-text">{subtitle}</p>
@@ -171,7 +176,7 @@ export function UserPickerDialog({
                   checked={checked}
                   disabled={disabled}
                   onCheckedChange={() => toggle(user)}
-                  className="h-5 w-5 rounded-md"
+                  className="h-5 w-5 rounded-lg"
                   aria-label={displayName(user.id, user)}
                 />
               </label>
@@ -179,7 +184,24 @@ export function UserPickerDialog({
           })}
         </div>
         {error && <p className="px-5 pb-2 text-xs text-form-error">{error}</p>}
-        <div className="flex shrink-0 gap-3 border-t border-border-primary px-5 py-4">
+        <div
+          aria-hidden={!showGroupName}
+          className={`grid shrink-0 border-t border-border-primary transition-[grid-template-rows,opacity] duration-200 ease-out ${showGroupName ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}
+        >
+          <div className="min-h-0 overflow-hidden">
+            <div className="px-5 pt-4">
+              <input
+                value={groupName}
+                tabIndex={showGroupName ? 0 : -1}
+                onChange={(e) => setGroupName(e.target.value)}
+                maxLength={MAX_GROUP_NAME_LENGTH}
+                placeholder="Group name (optional)"
+                className={INPUT_CLASS}
+              />
+            </div>
+          </div>
+        </div>
+        <div className="flex shrink-0 gap-3 px-5 py-4">
           <Button type="button" variant="secondary" className="flex-1" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
@@ -189,7 +211,7 @@ export function UserPickerDialog({
             onClick={() => void submit()}
             disabled={submitting || selected.length === 0}
           >
-            {confirmLabel}
+            {typeof confirmLabel === 'function' ? confirmLabel(selected.length) : confirmLabel}
           </Button>
         </div>
       </DialogContent>

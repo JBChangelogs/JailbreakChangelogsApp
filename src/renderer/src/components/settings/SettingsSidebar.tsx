@@ -153,7 +153,7 @@ export function UninstallDialog({
               checked={purge}
               disabled={busy}
               onCheckedChange={(checked) => setPurge(checked === true)}
-              className="mt-0.5 h-5 w-5 rounded-lg"
+              className="mt-0.5 h-5 w-5 rounded-md"
             />
             <span className="min-w-0">
               <span className="block font-medium text-primary-text">Also remove my settings and data</span>

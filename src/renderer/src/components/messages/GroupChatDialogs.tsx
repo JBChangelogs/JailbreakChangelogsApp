@@ -176,7 +176,7 @@ export function UserPickerDialog({
                   checked={checked}
                   disabled={disabled}
                   onCheckedChange={() => toggle(user)}
-                  className="h-5 w-5 rounded-lg"
+                  className="h-5 w-5 rounded-md"
                   aria-label={displayName(user.id, user)}
                 />
               </label>

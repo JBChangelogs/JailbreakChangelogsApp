@@ -13,7 +13,7 @@ export function RobloxStatusBar(): React.JSX.Element | null {
   const icon = GAME_ICONS[gameName]
 
   return (
-    <div className="flex shrink-0 items-center gap-2 rounded-t-md  border-t border-border-card bg-secondary-bg px-3.5 py-2 text-xs font-medium text-white">
+    <div className="flex items-center gap-2 border-b border-border-primary px-3 py-2 text-xs font-medium text-primary-text">
       {icon ? (
         <img src={icon} alt="" className="h-8 w-8 shrink-0 rounded-sm object-contain" draggable={false} />
       ) : (

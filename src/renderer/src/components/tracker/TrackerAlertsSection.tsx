@@ -23,7 +23,7 @@ export function BackgroundAlertsNotice(): React.JSX.Element | null {
   const [visible, setVisible] = useState(getBackgroundAlertsNoticeVisible)
   if (!visible) return null
   return (
-    <div className="shrink-0 border-t border-border-primary px-3 py-2.5">
+    <div className="shrink-0 border-t border-border-primary px-2 pt-2">
       <div className="flex items-start gap-2 rounded-lg bg-tertiary-bg px-2.5 py-2">
         <BellIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-link" />
         <p className="flex-1 text-[11px] leading-snug text-secondary-text">

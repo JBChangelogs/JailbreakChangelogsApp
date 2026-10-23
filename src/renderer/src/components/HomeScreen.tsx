@@ -9,7 +9,6 @@ import { parseChatKey } from '@renderer/lib/messagesApi'
 import { useUnreadCount } from '@renderer/hooks/useUnreadCount'
 import { useCurrentUser } from '@renderer/hooks/useCurrentUser'
 import { useMessageToasts } from '@renderer/hooks/useMessageToasts'
-import { useOwnRobloxActivity } from '@renderer/hooks/useOwnRobloxActivity'
 import { AccountPanel } from '@renderer/components/AccountPanel'
 import { RobloxStatusBar } from '@renderer/components/RobloxStatusBar'
 import { NavBar, type HomeTab } from '@renderer/components/NavBar'
@@ -86,7 +85,6 @@ export function HomeScreen(): React.JSX.Element {
     useConversations()
   const { unread, refresh: refreshUnread } = useUnreadCount()
   const { user: currentUser } = useCurrentUser()
-  const { placeId: robloxPlaceId } = useOwnRobloxActivity()
   const [selectedId, setSelectedIdState] = useState<string | null>(() => getLastSelectedConversationId())
   const setSelectedId = (id: string | null): void => {
     setSelectedIdState(id)
@@ -261,13 +259,11 @@ export function HomeScreen(): React.JSX.Element {
         <div className="flex h-full w-64 shrink-0 flex-col border-r border-border-primary bg-secondary-bg">
           <NavBar activeTab={activeTab} onSelect={setActiveTab} unreadCount={unread} />
           <div ref={setSidebarSlot} className="relative flex min-h-0 flex-1 flex-col" />
-          <RobloxStatusBar />
-          <div
-            className={`flex h-[64px] m-2 shrink-0 items-center border border-border-primary px-1.5 mb-2 rounded-xl transition-[border-radius] duration-200 ease-out ${robloxPlaceId ? 'rounded-t-none' : ''
-              }`}
-          >
-            <AccountPanel />
-            <div className="border-border-primary" />
+          <div className="m-2 shrink-0 overflow-hidden rounded-xl border border-border-primary">
+            <RobloxStatusBar />
+            <div className="flex h-[64px] items-center px-1.5">
+              <AccountPanel />
+            </div>
           </div>
         </div>
 

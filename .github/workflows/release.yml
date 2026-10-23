@@ -1,6 +1,5 @@
 name: Release
 
-# Run manually from the Actions tab after bumping the version and changelog on main.
 on:
   workflow_dispatch:
 
@@ -9,14 +8,21 @@ concurrency: release
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: windows-latest
-            script: build:win
-          - os: ubuntu-latest
-            script: build:linux
+            ort: win32-x64
+            args: --bundles nsis
+            bundle: src-tauri/target/release/bundle
+          - os: ubuntu-22.04
+            ort: linux-x64
+            args: --bundles appimage
+            bundle: src-tauri/target/release/bundle
           - os: macos-latest
-            script: build:mac
+            ort: darwin-arm64
+            args: --target universal-apple-darwin --bundles app,dmg
+            bundle: src-tauri/target/universal-apple-darwin/release/bundle
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -26,37 +32,60 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Install Velopack CLI
-        if: runner.os == 'Windows'
-        shell: bash
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ runner.os == 'macOS' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Linux build dependencies
+        if: runner.os == 'Linux'
         run: |
-          dotnet tool install -g vpk
-          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev librsvg2-dev patchelf libdbus-1-dev libxcb1-dev libxrandr-dev \
+            libwayland-dev libegl-dev libgbm-dev
 
       - run: npm ci
-
-      - name: Release notes
-        shell: bash
-        run: node --experimental-strip-types build/release-notes.mjs > release-notes.md
-
-      - run: npm run ${{ matrix.script }}
         env:
-          CSC_IDENTITY_AUTO_DISCOVERY: false
+          ELECTRON_SKIP_BINARY_DOWNLOAD: 1
+
+      - run: node build/make-ocr-pack.mjs ${{ matrix.ort }}
+
+      - run: npm run typecheck
+
+      - run: npx tauri build ${{ matrix.args }}
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+      - name: Collect artifacts
+        shell: bash
+        run: |
+          mkdir -p dist-tauri/ocr
+          cp src-tauri/ocr-pack/*.zip dist-tauri/ocr/
+          b="${{ matrix.bundle }}"
+          case "${{ runner.os }}" in
+            Windows)
+              cp "$b"/nsis/*-setup.exe dist-tauri/JBCLSetup.exe
+              cp "$b"/nsis/*-setup.exe.sig dist-tauri/JBCLSetup.exe.sig ;;
+            Linux)
+              cp "$b"/appimage/*.AppImage dist-tauri/JBCLSetup.AppImage
+              cp "$b"/appimage/*.AppImage.sig dist-tauri/JBCLSetup.AppImage.sig ;;
+            macOS)
+              cp "$b"/dmg/*.dmg dist-tauri/JBCLSetup.dmg
+              cp "$b"/macos/*.app.tar.gz dist-tauri/JBCLSetup.app.tar.gz
+              cp "$b"/macos/*.app.tar.gz.sig dist-tauri/JBCLSetup.app.tar.gz.sig ;;
+          esac
+          ls -la dist-tauri
 
       - uses: actions/upload-artifact@v7
         with:
-          name: dist-${{ runner.os }}
+          name: tauri-${{ runner.os }}
           if-no-files-found: error
-          path: |
-            dist/*.nupkg
-            dist/*-Setup.exe
-            dist/RELEASES
-            dist/*.json
-            dist/latest-linux.yml
-            dist/*.AppImage
-            dist/*.dmg
+          path: dist-tauri/*
 
-  # One upload for all platforms, so the stale-nupkg cleanup sees the whole release.
   publish:
     needs: build
     runs-on: ubuntu-latest
@@ -76,16 +105,17 @@ jobs:
 
       - uses: actions/download-artifact@v8
         with:
-          path: dist
+          path: dist-tauri
           merge-multiple: true
 
-      # Before uploading, so a missing changelog entry stops the release instead of half-publishing it.
       - name: Release notes
         run: node --experimental-strip-types build/release-notes.mjs > release-notes.md
 
       - name: Upload to R2
-        run: node build/upload-release.mjs
+        run: node build/upload-tauri-release.mjs
         env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
@@ -96,7 +126,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           version=$(node -p "require('./package.json').version")
-          mkdir assets
-          cp dist/*-Setup.exe assets/JBCLSetup.exe
-          cp dist/JBCLSetup.AppImage dist/JBCLSetup.dmg assets/
-          gh release create "v$version" assets/* --title "v$version" --notes-file release-notes.md --target "$GITHUB_SHA"
+          gh release create "v$version" dist-tauri/JBCLSetup.exe dist-tauri/JBCLSetup.AppImage dist-tauri/JBCLSetup.dmg \
+            --title "v$version" --notes-file release-notes.md --target "$GITHUB_SHA"

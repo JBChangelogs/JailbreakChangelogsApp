@@ -17,7 +17,6 @@ export type UpdaterStatus =
     }
   | { state: 'not-available'; source?: UpdateSource }
   | { state: 'downloaded'; source?: UpdateSource; version: string; size?: number; notes?: string }
-  | { state: 'manual'; version: string; url: string }
   | { state: 'error'; message: string }
 
 export interface RobloxActivityEvent {
@@ -73,7 +72,7 @@ export interface DesktopApi {
   discordRpc: {
     setPreference: (key: RichPresencePreferenceKey, value: boolean) => void
   }
-  uninstall?: {
+  uninstall: {
     supported: () => Promise<boolean>
     run: () => Promise<void>
   }

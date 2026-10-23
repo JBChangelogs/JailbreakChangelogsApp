@@ -69,28 +69,15 @@ export function UpdateBanner(): React.JSX.Element | null {
 
   if (!status) return null
   if ('source' in status && status.source === 'startup') return null
-  if (
-    status.state !== 'available' &&
-    status.state !== 'downloading' &&
-    status.state !== 'downloaded' &&
-    status.state !== 'manual'
-  ) {
-    return null
-  }
+  if (status.state !== 'available' && status.state !== 'downloading' && status.state !== 'downloaded') return null
 
   const downloading = status.state === 'downloading'
   const percent = status.state === 'downloading' ? status.percent : undefined
   const title = version ? `Version ${version}` : 'A new version'
-  const stage =
-    status.state === 'manual' || status.state === 'available'
-      ? 'is available'
-      : downloading
-        ? 'Downloading…'
-        : 'Installing…'
+  const stage = status.state === 'available' ? 'is available' : downloading ? 'Downloading…' : 'Installing…'
   const detail = [size ? formatMegabytes(size) : null, stage].filter(Boolean).join(' · ')
 
   const onUpdate = (): void => {
-    if (status.state === 'manual') return void window.api.openExternal(status.url)
     if (isPreview) return downloadUpdatePreview()
     window.api.updater.download()
   }
@@ -132,7 +119,7 @@ export function UpdateBanner(): React.JSX.Element | null {
       ) : (
         <Button type="button" size="sm" onClick={onUpdate}>
           <DownloadIcon className="h-3.5 w-3.5" />
-          {status.state === 'manual' ? 'Download' : 'Update'}
+          Update
         </Button>
       )}
       <UpdateNotesDialog open={notesOpen} onOpenChange={setNotesOpen} version={version} notes={notes} />

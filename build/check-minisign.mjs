@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { createHash, generateKeyPairSync, randomBytes, sign } from 'node:crypto'
-import { verifyMinisign } from '../src/main/minisign.ts'
+import { verifyMinisign } from './bridge-minisign-verify.ts'
 import { publicKeyMatches, signLegacy } from './minisign-legacy.mjs'
 
 const { publicKey, privateKey } = generateKeyPairSync('ed25519')

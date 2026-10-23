@@ -7,7 +7,7 @@ import tailwindcss from '@tailwindcss/vite'
 const dir = fileURLToPath(new URL('.', import.meta.url))
 const repo = resolve(dir, '..')
 
-// Builds the real renderer (same aliases and plugins as electron.vite.config.ts) with the
+// Builds the real renderer (same aliases and plugins as tauri.vite.config.ts) with the
 // desktop bridge, API and sockets mocked, plus the showcase page that tours it.
 export default defineConfig({
   // Repo root, so Tailwind scans src/ for classes like the app build does. Pages land in dist/preview/.

@@ -92,7 +92,7 @@ function UninstallButton(): React.JSX.Element | null {
   useEffect(() => {
     let cancelled = false
     void window.api.uninstall
-      ?.supported()
+      .supported()
       .then((ok) => !cancelled && setSupported(ok))
       .catch(() => {})
     return () => {
@@ -106,7 +106,7 @@ function UninstallButton(): React.JSX.Element | null {
     setBusy(true)
     setError(null)
     try {
-      await window.api.uninstall?.run()
+      await window.api.uninstall.run()
     } catch (err) {
       setError(typeof err === 'string' ? err : "The app couldn't be uninstalled. Please try again.")
       setBusy(false)

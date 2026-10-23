@@ -32,7 +32,6 @@ export function useUpdateStatus(): UpdateState {
           size: (next.state === 'downloading' ? next.total : next.size) ?? prev.size
         }))
       }
-      if (next.state === 'manual') setDetails({ version: next.version, notes: null, size: null })
     }
     const offReal = window.api.updater.onStatus((next) => {
       endUpdatePreview()

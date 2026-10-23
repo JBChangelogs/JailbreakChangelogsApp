@@ -5,7 +5,6 @@ out
 .DS_Store
 *.tsbuildinfo
 .env
-electron.vite.config.*.mjs
 screenshots/
 openapi.json
 preview/preview.html

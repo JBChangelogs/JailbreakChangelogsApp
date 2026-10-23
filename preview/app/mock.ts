@@ -317,7 +317,7 @@ function stub(path: string): unknown {
     }
   })
 }
-Object.assign(window, { api: stub(''), electron: { process: { platform: 'win32' } } })
+Object.assign(window, { api: stub('') })
 
 /* ---------- Controls for the tour (preview/tour.ts) ---------- */
 

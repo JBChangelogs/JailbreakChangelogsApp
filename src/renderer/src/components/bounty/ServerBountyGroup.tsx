@@ -94,7 +94,7 @@ export function ServerBountyGroup({ group }: { group: BountyServerGroupData }): 
               {alreadyJoined && (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-status-success-vibrant/15 text-status-success-vibrant">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-status-success/20 text-status-success">
                       <CheckIcon className="h-3.5 w-3.5" />
                     </span>
                   </TooltipTrigger>

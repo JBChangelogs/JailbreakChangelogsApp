@@ -92,7 +92,7 @@ function OfferRow({
         <span className="flex-1" />
         <span
           className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${status === 1
-            ? 'bg-status-success-vibrant/15 text-status-success-vibrant'
+            ? 'bg-status-success/20 text-button-success'
             : status === 2
               ? 'bg-status-error/15 text-status-error'
               : 'bg-quaternary-bg text-secondary-text'

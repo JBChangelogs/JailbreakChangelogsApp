@@ -64,7 +64,7 @@
       0.8);
   --color-newsletter-bg: hsl(60, 100%, 100%);
 
-  --color-primary-text: hsl(60, 5%, 97%);
+  --color-primary-text: hsl(60, 100%, 100%);
   --color-secondary-text: hsl(214, 16%, 64%);
   --color-tertiary-text: hsl(214,
       12%,
@@ -140,6 +140,12 @@
       45%);
   --color-status-info: hsl(210, 99%, 50%);
   --color-status-neutral: hsl(214, 8%, 35%);
+  --color-button-danger-text: var(--color-form-button-text);
+  --color-button-success-text: var(--color-form-button-text);
+  --color-icon-tile: var(--color-link);
+  --color-icon-tile-bg: color-mix(in srgb, var(--color-button-info) 15%, transparent);
+  --color-menu-badge-bg: color-mix(in srgb, var(--color-button-info) 20%, transparent);
+  --color-menu-badge-text: var(--color-link);
 
   --color-highlight: hsl(210, 99%, 50%);
   --color-secondary: hsl(225, 5%, 47%);
@@ -226,7 +232,19 @@
 
   select,
   select option {
-    font-family: "Inter", sans-serif;
+    font-family: inherit;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="tab"]:not([data-disabled]),
+  [role^="menuitem"]:not([data-disabled]),
+  [role="option"]:not([data-disabled]),
+  label:has(input:not(:disabled)),
+  label[for],
+  select,
+  summary {
+    cursor: pointer;
   }
 
   select {
@@ -275,6 +293,11 @@
   z-index: 999;
 }
 
+html:not(.keyboard-nav) :focus-visible {
+  outline: none !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -295,30 +318,6 @@
 
 ::-webkit-scrollbar-corner {
   background: transparent;
-}
-
-.tabs {
-  --tab-bg: var(--color-secondary-bg);
-  --tab-border-color: var(--color-border-primary);
-  --tab-radius: 0.5rem;
-}
-
-.tab {
-  color: var(--color-secondary-text);
-  background-color: var(--color-secondary-bg);
-  border-color: var(--color-border-primary);
-}
-
-.tab:hover {
-  color: var(--color-primary-text);
-  background-color: var(--color-quaternary-bg);
-}
-
-.tab-active {
-  color: var(--color-status-info);
-  background-color: var(--color-secondary-bg);
-  border-bottom-color: var(--color-status-info);
-  border-bottom-width: 2px;
 }
 
 #ncmp-consent-link button {
@@ -520,4 +519,43 @@ img.twemoji {
       black 18%) !important;
   backdrop-filter: blur(16px) !important;
   -webkit-backdrop-filter: blur(16px) !important;
+}
+
+[data-accent-cards].bg-secondary-bg,
+[data-accent-cards] .bg-secondary-bg,
+[data-accent-cards] [class*="bg-secondary-bg/"] {
+  --color-secondary-bg: var(--accent-card-bg);
+  --color-tertiary-bg: var(--accent-card-tertiary);
+  --color-quaternary-bg: var(--accent-card-quaternary);
+  --color-border-card: var(--accent-card-border);
+  --color-border-primary: var(--accent-card-border);
+  --color-secondary-text: var(--accent-card-text-secondary);
+}
+
+[data-accent-cards="solid"].bg-secondary-bg,
+[data-accent-cards="solid"] .bg-secondary-bg,
+[data-accent-cards="solid"] [class*="bg-secondary-bg/"] {
+  --color-primary-text: var(--accent-card-text);
+}
+
+[data-accent-cards].bg-secondary-bg,
+[data-accent-cards] .bg-secondary-bg {
+  --color-secondary-bg: var(--accent-card-surface, var(--accent-card-bg));
+  background-image: var(--accent-card-gradient, none);
+  background-origin: border-box;
+}
+
+[data-accent-cards="glass"].bg-secondary-bg,
+[data-accent-cards="glass"] .bg-secondary-bg {
+  background-image:
+    linear-gradient(135deg, rgb(255 255 255 / 0.12), rgb(255 255 255 / 0.03) 45%, transparent 70%),
+    var(--accent-card-gradient, none);
+  backdrop-filter: blur(14px) saturate(180%);
+}
+
+@theme inline {
+  --color-message-header: color-mix(in srgb, var(--color-primary-text) 96%, var(--color-primary-bg));
+  --color-message-text: color-mix(in srgb, var(--color-primary-text) 88%, var(--color-primary-bg));
+  --color-message-name: color-mix(in srgb, var(--color-primary-text) 72%, var(--color-primary-bg));
+  --color-message-muted: color-mix(in srgb, var(--color-primary-text) 60%, var(--color-primary-bg));
 }

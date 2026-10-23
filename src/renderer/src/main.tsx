@@ -17,6 +17,13 @@ document
   .getElementById('splash-website-link')
   ?.addEventListener('click', () => window.api.openExternal('https://jailbreakchangelogs.com'))
 
+window.addEventListener(
+  'keydown',
+  (event) => event.key === 'Tab' && document.documentElement.classList.add('keyboard-nav'),
+  true
+)
+window.addEventListener('pointerdown', () => document.documentElement.classList.remove('keyboard-nav'), true)
+
 void desktopReady.then(() =>
   ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
     <React.StrictMode>

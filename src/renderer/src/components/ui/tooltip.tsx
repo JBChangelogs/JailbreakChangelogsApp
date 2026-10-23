@@ -5,9 +5,17 @@ import { cn } from '@renderer/lib/utils'
 
 function TooltipProvider({
   delayDuration = 0,
+  disableHoverableContent = true,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Provider>): React.JSX.Element {
-  return <TooltipPrimitive.Provider data-slot="tooltip-provider" delayDuration={delayDuration} {...props} />
+  return (
+    <TooltipPrimitive.Provider
+      data-slot="tooltip-provider"
+      delayDuration={delayDuration}
+      disableHoverableContent={disableHoverableContent}
+      {...props}
+    />
+  )
 }
 
 function Tooltip({ ...props }: React.ComponentProps<typeof TooltipPrimitive.Root>): React.JSX.Element {

@@ -235,18 +235,11 @@ fn remove_velopack_install() {
 fn uninstall_velopack(update_exe: PathBuf) {
     use std::os::windows::process::CommandExt;
     std::thread::spawn(move || {
-        std::thread::sleep(Duration::from_secs(10));
-        loop {
-            if roblox::process_start_time("Jailbreak Changelogs.exe").is_some() {
-                std::thread::sleep(Duration::from_secs(15));
-                continue;
-            }
-            const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-            match std::process::Command::new(&update_exe).args(["uninstall", "--silent"]).creation_flags(CREATE_NO_WINDOW).status() {
-                Ok(s) if s.success() => println!("[migration] removed the previous Electron install"),
-                other => eprintln!("[migration] could not remove the previous Electron install: {other:?}"),
-            }
-            return;
+        std::thread::sleep(Duration::from_secs(5));
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        match std::process::Command::new(&update_exe).args(["uninstall", "--silent"]).creation_flags(CREATE_NO_WINDOW).status() {
+            Ok(s) if s.success() => println!("[migration] removed the previous Electron install"),
+            other => eprintln!("[migration] could not remove the previous Electron install: {other:?}"),
         }
     });
 }

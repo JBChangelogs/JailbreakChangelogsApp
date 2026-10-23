@@ -1157,6 +1157,10 @@ export function ConversationThread({
     setScrollNode(node)
   }, [])
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const replyAndFocus = useCallback((message: MessageItem) => {
+    setReplyTo(message)
+    textareaRef.current?.focus()
+  }, [])
   const prevRecipientRef = useRef<string | null>(null)
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map())
   const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -1532,7 +1536,7 @@ export function ConversationThread({
                             profiles={profiles}
                             parentMessage={parentMessage}
                             parentSenderProfile={parentSenderProfile}
-                            onReply={setReplyTo}
+                            onReply={replyAndFocus}
                             onEdit={editMessage}
                             onDelete={deleteMessage}
                             onReport={reportMessage}

@@ -11,12 +11,18 @@ import {
 import {
   usePreferences,
   RICH_PRESENCE_PREFERENCE_KEYS,
-  type RichPresencePreferenceKey
+  TAB_STYLES,
+  type RichPresencePreferenceKey,
+  type TabStyle
 } from '@renderer/contexts/PreferencesContext'
 import { useRealtime, type RealtimeMessage } from '@renderer/contexts/RealtimeContext'
 
 // Any theme the website has; ThemeContext shows the default until the list includes it.
 const isTheme = isThemeSlug
+
+function isTabStyle(value: unknown): value is TabStyle {
+  return typeof value === 'string' && (TAB_STYLES as readonly string[]).includes(value)
+}
 
 function isRichPresenceKey(key: unknown): key is RichPresencePreferenceKey {
   return typeof key === 'string' && (RICH_PRESENCE_PREFERENCE_KEYS as readonly string[]).includes(key)
@@ -25,11 +31,12 @@ function isRichPresenceKey(key: unknown): key is RichPresencePreferenceKey {
 export function useRealtimePreferences(): void {
   const { token } = useAuth()
   const { theme, setSyncedTheme: setTheme, customTheme, setCustomTheme, recentThemes, setRecentThemes } = useTheme()
-  const { twemojiEnabled, setTwemojiEnabled, richPresence, setRichPresence } = usePreferences()
+  const { twemojiEnabled, setTwemojiEnabled, tabStyle, setTabStyle, richPresence, setRichPresence } = usePreferences()
   const { send, subscribe } = useRealtime()
 
   const lastServerThemeRef = useRef<Theme | null>(null)
   const lastServerTwemojiRef = useRef<boolean | null>(null)
+  const lastServerTabStyleRef = useRef<TabStyle | null>(null)
   const lastServerRichPresenceRef = useRef<Partial<Record<RichPresencePreferenceKey, boolean>>>({})
 
   // Custom themes only sync once the server's preferences have arrived, so a device that hasn't
@@ -87,6 +94,10 @@ export function useRealtimePreferences(): void {
           lastServerTwemojiRef.current = data.twemoji_enabled
           setTwemojiEnabled(data.twemoji_enabled)
         }
+        if (isTabStyle(data?.tab_style)) {
+          lastServerTabStyleRef.current = data.tab_style
+          setTabStyle(data.tab_style)
+        }
         for (const key of RICH_PRESENCE_PREFERENCE_KEYS) {
           const value = data?.[key]
           if (typeof value === 'boolean') {
@@ -108,6 +119,10 @@ export function useRealtimePreferences(): void {
           lastServerTwemojiRef.current = update.value
           setTwemojiEnabled(update.value)
         }
+        if (update?.key === 'tab_style' && isTabStyle(update.value)) {
+          lastServerTabStyleRef.current = update.value
+          setTabStyle(update.value)
+        }
         if (isRichPresenceKey(update?.key) && typeof update?.value === 'boolean') {
           lastServerRichPresenceRef.current[update.key] = update.value
           setRichPresence(update.key, update.value)
@@ -115,7 +130,7 @@ export function useRealtimePreferences(): void {
         }
       }
     })
-  }, [subscribe, setTheme, setTwemojiEnabled, setRichPresence, applyServerCustomTheme, applyServerRecentThemes])
+  }, [subscribe, setTheme, setTwemojiEnabled, setTabStyle, setRichPresence, applyServerCustomTheme, applyServerRecentThemes])
 
   useEffect(() => {
     const code = customTheme?.share_code ?? null
@@ -152,6 +167,13 @@ export function useRealtimePreferences(): void {
     lastServerTwemojiRef.current = twemojiEnabled
     send({ type: 'set_preference', key: 'twemoji_enabled', value: twemojiEnabled })
   }, [twemojiEnabled, token, send])
+
+  useEffect(() => {
+    if (!token || !syncedRef.current) return
+    if (lastServerTabStyleRef.current === tabStyle) return
+    lastServerTabStyleRef.current = tabStyle
+    send({ type: 'set_preference', key: 'tab_style', value: tabStyle })
+  }, [tabStyle, token, send])
 
   useEffect(() => {
     if (!token) return

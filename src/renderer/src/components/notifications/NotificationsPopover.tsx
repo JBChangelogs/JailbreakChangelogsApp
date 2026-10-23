@@ -7,6 +7,7 @@ import { formatMessageTimestamp } from '@renderer/lib/messageFormatting'
 import { isWhitelistedNotificationLink } from '@renderer/lib/notificationUrl'
 import { Popover, PopoverContent, PopoverTrigger } from '@renderer/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
+import { Tabs } from '@renderer/components/ui/tabs'
 import type { NotificationHistory, NotificationItem } from '@shared/notification'
 
 const Markdown = lazy(() => import('@renderer/components/ui/markdown').then((m) => ({ default: m.Markdown })))
@@ -219,26 +220,14 @@ export function NotificationsPopover(): React.JSX.Element {
           )}
         </div>
 
-        <div className="relative flex bg-secondary-bg">
-          {(['unread', 'history'] as const).map((value) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => switchTab(value)}
-              className={`flex-1 px-3 py-2.5 text-sm font-medium transition-colors ${
-                tab === value
-                  ? 'text-primary-text'
-                  : 'text-secondary-text hover:bg-quaternary-bg hover:text-primary-text'
-              }`}
-            >
-              {value === 'unread' ? 'Unread' : 'History'}
-            </button>
-          ))}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-border-primary/60" />
-          <div
-            className={`pointer-events-none absolute bottom-0 h-0.5 w-1/2 bg-border-focus transition-transform duration-200 ease-out ${
-              tab === 'history' ? 'translate-x-full' : 'translate-x-0'
-            }`}
+        <div className="bg-secondary-bg px-3 pt-1 pb-2">
+          <Tabs
+            value={tab}
+            onChange={switchTab}
+            options={[
+              { value: 'unread', label: 'Unread' },
+              { value: 'history', label: 'History' }
+            ]}
           />
         </div>
 

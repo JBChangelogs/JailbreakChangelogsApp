@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react'
 import { useValues } from '@renderer/contexts/ValuesContext'
 import { useRelativeTime } from '@renderer/hooks/useRelativeTime'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
+import { Tabs } from '@renderer/components/ui/tabs'
 import { CreatorLink } from '@renderer/components/values/CreatorLink'
 import { ItemValuesPanel } from '@renderer/components/values/ItemValuesPanel'
 import { ItemHoardersTab } from '@renderer/components/values/itemdetail/ItemHoardersTab'
@@ -217,23 +218,8 @@ export function ItemDetailScreen({ item }: { item: Item }): React.JSX.Element {
             </div>
           </div>
 
-          <div className="min-w-0 overflow-x-auto border-b border-border-primary">
-            <div className="flex w-max min-w-full gap-1">
-              {TABS.map((tab) => (
-                <button
-                  key={tab.value}
-                  type="button"
-                  onClick={() => setActiveTab(tab.value)}
-                  className={`shrink-0 border-b-2 px-2.5 py-1.5 text-xs font-medium whitespace-nowrap transition-colors sm:px-3 sm:py-2 sm:text-sm ${
-                    activeTab === tab.value
-                      ? 'border-button-info text-primary-text'
-                      : 'border-transparent text-secondary-text hover:text-primary-text'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
+          <div className="min-w-0 overflow-x-auto">
+            <Tabs value={activeTab} onChange={setActiveTab} options={TABS} className="min-w-max" />
           </div>
 
           {activeTab === 'details' && (

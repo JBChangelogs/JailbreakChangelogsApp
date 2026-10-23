@@ -14,6 +14,7 @@ import {
 } from '@renderer/lib/itemValueUtils'
 import { CUSTOM_TRADE_TYPES, getCustomTradeTypeIconUrl } from '@shared/trading'
 import { SearchInput } from '@renderer/components/ui/search-input'
+import { Tabs } from '@renderer/components/ui/tabs'
 import { FilterMenu } from '@renderer/components/tracker/FilterMenus'
 import { Kbd } from '@renderer/components/ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
@@ -156,53 +157,28 @@ export function TradeItemPicker({ header, side, onSide, onAddItem, onAddCustomTy
           Tip: <Kbd>Shift</Kbd> + click to add to Offering, <Kbd>Ctrl</Kbd> + click to add to Requesting.
         </p>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1.5 rounded-2xl border border-border-card bg-secondary-bg p-1">
-            {(['offering', 'requesting'] as const).map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => onSide(s)}
-                className={`rounded-xl px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors ${side === s ? 'bg-button-info text-form-button-text' : 'text-secondary-text hover:text-primary-text'
-                  }`}
-              >
-                Add to {s === 'offering' ? 'Offering' : 'Requesting'}
-              </button>
-            ))}
-          </div>
+          <Tabs
+            fill={false}
+            value={side}
+            onChange={onSide}
+            options={[
+              { value: 'offering', label: 'Add to Offering' },
+              { value: 'requesting', label: 'Add to Requesting' }
+            ]}
+          />
 
-          <div className="flex items-center gap-1.5 rounded-2xl border border-border-card bg-secondary-bg p-1">
-            {CONDITION_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => setCondition(opt.value)}
-                className={`rounded-xl px-3 py-1.5 text-xs font-medium transition-colors ${condition === opt.value ? 'bg-quaternary-bg text-primary-text' : 'text-secondary-text hover:text-primary-text'
-                  }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
+          <Tabs fill={false} value={condition} onChange={setCondition} options={CONDITION_OPTIONS} />
 
           {robloxId && (
-            <div className="flex items-center gap-1.5 rounded-2xl border border-border-card bg-secondary-bg p-1">
-              <button
-                type="button"
-                onClick={() => setSource('catalog')}
-                className={`rounded-xl px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors ${source === 'catalog' ? 'bg-quaternary-bg text-primary-text' : 'text-secondary-text hover:text-primary-text'
-                  }`}
-              >
-                Values List
-              </button>
-              <button
-                type="button"
-                onClick={handleUseInventory}
-                className={`rounded-xl px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors ${source === 'inventory' ? 'bg-quaternary-bg text-primary-text' : 'text-secondary-text hover:text-primary-text'
-                  }`}
-              >
-                My Inventory
-              </button>
-            </div>
+            <Tabs
+              fill={false}
+              value={source}
+              onChange={(next) => (next === 'inventory' ? handleUseInventory() : setSource(next))}
+              options={[
+                { value: 'catalog', label: 'Values List' },
+                { value: 'inventory', label: 'My Inventory' }
+              ]}
+            />
           )}
         </div>
 

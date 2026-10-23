@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Tabs } from '@renderer/components/ui/tabs'
 import { resolveAvatarUrl } from '@renderer/lib/usersApi'
 import { formatFullValue } from '@renderer/lib/itemValueUtils'
 import { useRelativeTime } from '@renderer/hooks/useRelativeTime'
@@ -95,25 +96,15 @@ function VotersModal({ suggestion, onClose }: { suggestion: ValueSuggestion; onC
             <XIcon className="h-4 w-4" />
           </button>
         </div>
-        <div className="flex border-b border-border-primary">
-          <button
-            type="button"
-            onClick={() => setTab('upvotes')}
-            className={`flex-1 py-2 text-xs font-semibold uppercase tracking-wide transition-colors ${
-              tab === 'upvotes' ? 'border-b-2 border-status-success text-primary-text' : 'text-tertiary-text hover:text-secondary-text'
-            }`}
-          >
-            Upvotes ({suggestion.votes.upvotes.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab('downvotes')}
-            className={`flex-1 py-2 text-xs font-semibold uppercase tracking-wide transition-colors ${
-              tab === 'downvotes' ? 'border-b-2 border-status-error text-primary-text' : 'text-tertiary-text hover:text-secondary-text'
-            }`}
-          >
-            Downvotes ({suggestion.votes.downvotes.length})
-          </button>
+        <div className="px-3 pt-2">
+          <Tabs
+            value={tab}
+            onChange={setTab}
+            options={[
+              { value: 'upvotes', label: `Upvotes (${suggestion.votes.upvotes.length})` },
+              { value: 'downvotes', label: `Downvotes (${suggestion.votes.downvotes.length})` }
+            ]}
+          />
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-2">
           {voters.length === 0 ? (
@@ -193,7 +184,7 @@ export function SuggestionRow({
         <button
           type="button"
           onClick={() => setShowVoters(true)}
-          className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-status-success transition-colors hover:bg-quaternary-bg"
+          className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-button-success transition-colors hover:bg-quaternary-bg"
         >
           <ArrowUpIcon className="h-3.5 w-3.5" />
           {suggestion.upvotes}

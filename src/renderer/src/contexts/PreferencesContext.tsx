@@ -19,9 +19,14 @@ const DEFAULT_RICH_PRESENCE: Record<RichPresencePreferenceKey, boolean> = {
   rich_presence_show_website_button: true
 }
 
+export const TAB_STYLES = ['underline', 'filled'] as const
+export type TabStyle = (typeof TAB_STYLES)[number]
+
 interface PreferencesContextValue {
   twemojiEnabled: boolean
   setTwemojiEnabled: (value: boolean) => void
+  tabStyle: TabStyle
+  setTabStyle: (value: TabStyle) => void
   richPresence: Record<RichPresencePreferenceKey, boolean>
   setRichPresence: (key: RichPresencePreferenceKey, value: boolean) => void
 }
@@ -30,6 +35,7 @@ const PreferencesContext = createContext<PreferencesContextValue | null>(null)
 
 export function PreferencesProvider({ children }: { children: React.ReactNode }): React.JSX.Element {
   const [twemojiEnabled, setTwemojiEnabled] = useState(false)
+  const [tabStyle, setTabStyle] = useState<TabStyle>('underline')
   const [richPresence, setRichPresenceState] = useState(DEFAULT_RICH_PRESENCE)
 
   const setRichPresence = useCallback((key: RichPresencePreferenceKey, value: boolean) => {
@@ -38,7 +44,7 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
 
   return (
     <PreferencesContext.Provider
-      value={{ twemojiEnabled, setTwemojiEnabled, richPresence, setRichPresence }}
+      value={{ twemojiEnabled, setTwemojiEnabled, tabStyle, setTabStyle, richPresence, setRichPresence }}
     >
       {children}
     </PreferencesContext.Provider>

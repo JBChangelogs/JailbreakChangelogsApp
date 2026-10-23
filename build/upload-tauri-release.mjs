@@ -1,6 +1,8 @@
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
+import { createPublicKey, verify } from 'crypto'
 import { existsSync, readdirSync, readFileSync } from 'fs'
 import { join } from 'path'
+import { publicKeyMatches, signLegacy } from './minisign-legacy.mjs'
 
 try {
   process.loadEnvFile(join(import.meta.dirname, '.env'))
@@ -20,11 +22,35 @@ const { version } = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
 const BASE = 'https://updates.jailbreakchangelogs.com'
 
 const ARTIFACTS = [
-  { file: 'JBCLSetup.exe', platforms: ['windows-x86_64'], download: 'JBCLSetup.exe', type: 'application/octet-stream' },
-  { file: 'JBCLSetup.AppImage', platforms: ['linux-x86_64'], download: 'JBCLSetup.AppImage', type: 'application/octet-stream' },
+  { file: 'JBCLSetup.exe', platforms: ['windows-x86_64'], legacySignature: true, download: 'JBCLSetup.exe', type: 'application/octet-stream' },
+  { file: 'JBCLSetup.AppImage', platforms: ['linux-x86_64'], legacySignature: true, download: 'JBCLSetup.AppImage', type: 'application/octet-stream' },
   { file: 'JBCLSetup.app.tar.gz', platforms: ['darwin-aarch64', 'darwin-x86_64'], type: 'application/gzip' },
   { file: 'JBCLSetup.dmg', platforms: [], download: 'JBCLSetup.dmg', type: 'application/x-apple-diskimage' }
 ]
+
+const keyEnv = process.env.TAURI_SIGNING_PRIVATE_KEY ?? ''
+const signingKey = keyEnv && existsSync(keyEnv) ? readFileSync(keyEnv, 'utf8') : keyEnv
+const signingPassword = process.env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD ?? ''
+const { pubkey } = JSON.parse(readFileSync(join(root, 'src-tauri', 'tauri.conf.json'), 'utf8')).plugins.updater
+if (!signingKey || !publicKeyMatches(signingKey, signingPassword, pubkey)) {
+  console.error('TAURI_SIGNING_PRIVATE_KEY is missing or does not match the updater public key in tauri.conf.json.')
+  process.exit(1)
+}
+
+function legacySignature(body, fileName) {
+  const signature = signLegacy(body, signingKey, signingPassword, fileName, version)
+  const sigLine = Buffer.from(signature, 'base64').toString().split('\n')[1]
+  const keyLine = Buffer.from(pubkey, 'base64').toString().split('\n')[1]
+  const key = createPublicKey({
+    key: Buffer.concat([Buffer.from('302a300506032b6570032100', 'hex'), Buffer.from(keyLine, 'base64').subarray(10)]),
+    format: 'der',
+    type: 'spki'
+  })
+  if (!verify(null, body, key, Buffer.from(sigLine, 'base64').subarray(10))) {
+    throw new Error(`legacy signature for ${fileName} did not verify`)
+  }
+  return signature
+}
 
 const present = ARTIFACTS.filter((a) => existsSync(join(dir, a.file)))
 if (present.length === 0) {
@@ -62,7 +88,9 @@ for (const a of present) {
   const key = `tauri/${version}/${a.file}`
   await put(key, body, a.type, 'public, max-age=31536000, immutable')
   if (a.platforms.length) {
-    const signature = readFileSync(join(dir, `${a.file}.sig`), 'utf8').trim()
+    const signature = a.legacySignature
+      ? legacySignature(body, a.file)
+      : readFileSync(join(dir, `${a.file}.sig`), 'utf8').trim()
     for (const p of a.platforms) platforms[p] = { url: `${BASE}/${key}`, signature }
   }
 }

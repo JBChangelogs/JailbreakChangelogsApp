@@ -319,7 +319,7 @@ async fn pick_area(app: &AppHandle) -> Option<ScanArea> {
         let display_id = xcap_monitor_at((pos.x, pos.y), scale)?.id().ok()? as f64;
         let (tx, rx) = oneshot::channel();
         *PICK_RESULT.lock().unwrap() = Some(tx);
-        let overlay = WebviewWindowBuilder::new(app, "picker", WebviewUrl::App("picker.html".into()))
+        let builder = WebviewWindowBuilder::new(app, "picker", WebviewUrl::App("picker.html".into()))
             .title("Select an area")
             .decorations(false)
             .transparent(true)
@@ -327,9 +327,12 @@ async fn pick_area(app: &AppHandle) -> Option<ScanArea> {
             .skip_taskbar(true)
             .resizable(false)
             .shadow(false)
-            .visible(false)
-            .build()
-            .ok()?;
+            .visible(false);
+        #[cfg(windows)]
+        let builder = builder
+            .additional_browser_args(crate::WEBVIEW2_ARGS)
+            .data_directory(crate::webview2_data_dir(app).ok()?);
+        let overlay = builder.build().ok()?;
         let _ = overlay.set_position(pos);
         let _ = overlay.set_size(size);
         let _ = overlay.show();

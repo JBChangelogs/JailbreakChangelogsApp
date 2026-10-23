@@ -218,13 +218,22 @@ fn ensure_linux_protocol_handler(icon_png: &Path) {
 
 #[cfg(windows)]
 fn remove_velopack_install() {
-    use std::os::windows::process::CommandExt;
     let Some(local) = std::env::var_os("LOCALAPPDATA").map(PathBuf::from) else { return };
-    let root = local.join("com.jailbreakchangelogs.desktop");
-    let update_exe = root.join("Update.exe");
-    if !update_exe.is_file() || std::env::current_exe().is_ok_and(|exe| exe.starts_with(&root)) {
-        return;
+    let current_exe = std::env::current_exe().ok();
+    let installs: Vec<PathBuf> = ["com.jailbreakchangelogs.desktop", "jailbreak-changelogs-desktop"]
+        .iter()
+        .map(|name| local.join(name))
+        .filter(|root| root.join("Update.exe").is_file() && root.join("current").join("Jailbreak Changelogs.exe").is_file())
+        .filter(|root| !current_exe.as_ref().is_some_and(|exe| exe.starts_with(root)))
+        .collect();
+    for root in installs {
+        uninstall_velopack(root.join("Update.exe"));
     }
+}
+
+#[cfg(windows)]
+fn uninstall_velopack(update_exe: PathBuf) {
+    use std::os::windows::process::CommandExt;
     std::thread::spawn(move || {
         for _ in 0..60 {
             std::thread::sleep(Duration::from_secs(10));
@@ -239,6 +248,14 @@ fn remove_velopack_install() {
             return;
         }
     });
+}
+
+#[cfg(windows)]
+pub const WEBVIEW2_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,CalculateNativeWinOcclusion";
+
+#[cfg(windows)]
+pub fn webview2_data_dir(app: &AppHandle) -> tauri::Result<PathBuf> {
+    Ok(app.path().local_data_dir()?.join("jailbreak-changelogs").join("WebView2"))
 }
 
 fn create_main_window(app: &AppHandle) -> tauri::Result<WebviewWindow> {
@@ -283,8 +300,8 @@ fn create_main_window(app: &AppHandle) -> tauri::Result<WebviewWindow> {
     let builder = builder.decorations(false);
     #[cfg(windows)]
     let builder = builder
-        .additional_browser_args("--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,CalculateNativeWinOcclusion")
-        .data_directory(app.path().local_data_dir()?.join("jailbreak-changelogs").join("WebView2"));
+        .additional_browser_args(WEBVIEW2_ARGS)
+        .data_directory(webview2_data_dir(app)?);
 
     builder.build()
 }

@@ -998,7 +998,7 @@ function MessageRow({
     <>
       <ContextMenu onOpenChange={setIsContextMenuOpen}>
         <ContextMenuTrigger asChild>{rowContent}</ContextMenuTrigger>
-        <ContextMenuContent className="w-40">
+        <ContextMenuContent className="w-40" onCloseAutoFocus={(e) => e.preventDefault()}>
           <ContextMenuItem onClick={() => onReply(message)}>
             <ReplyIcon className="h-4 w-4" />
             Reply
@@ -1157,10 +1157,11 @@ export function ConversationThread({
     setScrollNode(node)
   }, [])
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const replyAndFocus = useCallback((message: MessageItem) => {
-    setReplyTo(message)
-    textareaRef.current?.focus()
-  }, [])
+  useEffect(() => {
+    if (!replyTo) return
+    const timer = setTimeout(() => textareaRef.current?.focus(), 0)
+    return () => clearTimeout(timer)
+  }, [replyTo])
   const prevRecipientRef = useRef<string | null>(null)
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map())
   const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -1536,7 +1537,7 @@ export function ConversationThread({
                             profiles={profiles}
                             parentMessage={parentMessage}
                             parentSenderProfile={parentSenderProfile}
-                            onReply={replyAndFocus}
+                            onReply={setReplyTo}
                             onEdit={editMessage}
                             onDelete={deleteMessage}
                             onReport={reportMessage}

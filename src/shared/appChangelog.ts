@@ -22,6 +22,11 @@ export function formatChangelogMarkdown(entry: AppChangelogEntry): string {
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.6.9',
+    date: '2026-10-23',
+    fixed: ['Buttons at the bottom of dialogs now have even spacing on every side']
+  },
+  {
     version: '0.6.8',
     date: '2026-10-23',
     fixed: ['Clicking Reply now puts the cursor in the message box']

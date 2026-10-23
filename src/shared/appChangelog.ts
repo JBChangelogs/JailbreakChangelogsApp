@@ -22,6 +22,14 @@ export function formatChangelogMarkdown(entry: AppChangelogEntry): string {
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.6.1',
+    date: '2026-10-23',
+    fixed: [
+      'Updating from the previous version of the app now works. Pressing Update no longer just hides the banner',
+      'The previous version of the app is now removed after updating, including older installs that were missed before'
+    ]
+  },
+  {
     version: '0.6.0',
     date: '2026-10-22',
     added: [

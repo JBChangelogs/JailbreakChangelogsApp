@@ -127,6 +127,9 @@ mod engine {
             return json!({ "available": false, "reason": "The scanner isn't included in this build." });
         };
         if installed(&pack).is_some() {
+            std::thread::spawn(|| {
+                let _ = with_ocr(|_| ());
+            });
             json!({ "available": true, "provider": PROVIDER })
         } else {
             json!({ "available": false, "reason": "The trade scanner needs a one-time download.", "installSize": pack.size })
@@ -281,24 +284,57 @@ fn logical_width(app: &AppHandle, monitor: &xcap::Monitor) -> Option<f64> {
     })
 }
 
-fn capture_area(area: &ScanArea) -> Option<xcap::image::RgbaImage> {
-    let app = APP.get()?;
+fn find_monitor(display_id: f64) -> Option<xcap::Monitor> {
     let monitors = xcap::Monitor::all().ok()?;
-    let monitor = monitors
+    let index = monitors
         .iter()
-        .find(|m| m.id().ok().map(f64::from) == Some(area.display_id))
-        .or_else(|| (monitors.len() == 1).then(|| &monitors[0]))
-        .or_else(|| monitors.iter().find(|m| m.is_primary().unwrap_or(false)))?;
-    let image = monitor.capture_image().ok()?;
-    let k = image.width() as f64 / logical_width(app, monitor)?;
+        .position(|m| m.id().ok().map(f64::from) == Some(display_id))
+        .or_else(|| (monitors.len() == 1).then_some(0))
+        .or_else(|| monitors.iter().position(|m| m.is_primary().unwrap_or(false)))?;
+    monitors.into_iter().nth(index)
+}
+
+fn pixels_per_point(monitor: &xcap::Monitor, pixel_width: u32) -> Option<f64> {
+    Some(pixel_width as f64 / logical_width(APP.get()?, monitor)?)
+}
+
+fn area_rect(area: &ScanArea, k: f64, max_w: u32, max_h: u32) -> Option<(u32, u32, u32, u32)> {
     let x = (area.x * k).round().max(0.0) as u32;
     let y = (area.y * k).round().max(0.0) as u32;
-    let w = ((area.width * k).round() as u32).min(image.width().saturating_sub(x));
-    let h = ((area.height * k).round() as u32).min(image.height().saturating_sub(y));
-    if w == 0 || h == 0 {
-        return None;
+    let w = ((area.width * k).round() as u32).min(max_w.saturating_sub(x));
+    let h = ((area.height * k).round() as u32).min(max_h.saturating_sub(y));
+    (w > 0 && h > 0).then_some((x, y, w, h))
+}
+
+struct Frozen {
+    image: xcap::image::RgbaImage,
+    k: f64,
+}
+
+fn capture_monitor(display_id: f64) -> Option<Frozen> {
+    let monitor = find_monitor(display_id)?;
+    let image = monitor.capture_image().ok()?;
+    let k = pixels_per_point(&monitor, image.width())?;
+    Some(Frozen { image, k })
+}
+
+fn crop_frozen(frozen: &Frozen, area: &ScanArea) -> Option<xcap::image::RgbaImage> {
+    let (x, y, w, h) = area_rect(area, frozen.k, frozen.image.width(), frozen.image.height())?;
+    Some(xcap::image::imageops::crop_imm(&frozen.image, x, y, w, h).to_image())
+}
+
+fn capture_area(area: &ScanArea) -> Option<xcap::image::RgbaImage> {
+    #[cfg(windows)]
+    {
+        let monitor = find_monitor(area.display_id)?;
+        let (width, height) = (monitor.width().ok()?, monitor.height().ok()?);
+        let (x, y, w, h) = area_rect(area, pixels_per_point(&monitor, width)?, width, height)?;
+        monitor.capture_region(x, y, w, h).ok()
     }
-    Some(xcap::image::imageops::crop_imm(&image, x, y, w, h).to_image())
+    #[cfg(not(windows))]
+    {
+        crop_frozen(&capture_monitor(area.display_id)?, area)
+    }
 }
 
 pub fn pick_done(rect: Option<(f64, f64, f64, f64)>) {
@@ -308,7 +344,7 @@ pub fn pick_done(rect: Option<(f64, f64, f64, f64)>) {
     }
 }
 
-async fn pick_area(app: &AppHandle) -> Option<ScanArea> {
+async fn pick_area(app: &AppHandle, freeze: bool) -> Option<(ScanArea, Option<Frozen>)> {
     if PICKING.swap(true, Ordering::SeqCst) {
         return None;
     }
@@ -317,6 +353,11 @@ async fn pick_area(app: &AppHandle) -> Option<ScanArea> {
         let monitor = app.monitor_from_point(cursor.x, cursor.y).ok().flatten().or_else(|| app.primary_monitor().ok().flatten())?;
         let (pos, size, scale) = (*monitor.position(), *monitor.size(), monitor.scale_factor());
         let display_id = xcap_monitor_at((pos.x, pos.y), scale)?.id().ok()? as f64;
+        let frozen = if freeze {
+            tauri::async_runtime::spawn_blocking(move || capture_monitor(display_id)).await.ok().flatten()
+        } else {
+            None
+        };
         let (tx, rx) = oneshot::channel();
         *PICK_RESULT.lock().unwrap() = Some(tx);
         let builder = WebviewWindowBuilder::new(app, "picker", WebviewUrl::App("picker.html".into()))
@@ -346,7 +387,7 @@ async fn pick_area(app: &AppHandle) -> Option<ScanArea> {
         let rect = rx.await.ok().flatten();
         let _ = overlay.destroy();
         let (x, y, width, height) = rect?;
-        Some(ScanArea { display_id, x, y, width, height })
+        Some((ScanArea { display_id, x, y, width, height }, frozen))
     }
     .await;
     PICKING.store(false, Ordering::SeqCst);
@@ -369,9 +410,14 @@ async fn with_app_hidden<T>(app: &AppHandle, f: impl std::future::Future<Output 
 
 pub async fn snip(app: AppHandle) -> Value {
     let captured = with_app_hidden(&app, async {
-        let area = pick_area(&app).await?;
-        tokio::time::sleep(Duration::from_millis(150)).await;
-        Some(tauri::async_runtime::spawn_blocking(move || capture_area(&area)).await.ok().flatten())
+        let (area, frozen) = pick_area(&app, true).await?;
+        Some(match frozen {
+            Some(frozen) => crop_frozen(&frozen, &area),
+            None => {
+                tokio::time::sleep(Duration::from_millis(150)).await;
+                tauri::async_runtime::spawn_blocking(move || capture_area(&area)).await.ok().flatten()
+            }
+        })
     })
     .await;
     match captured {
@@ -404,8 +450,8 @@ pub fn set_auto_enabled(enabled: bool) -> AutoScanSettings {
 }
 
 pub async fn pick_auto_area(app: AppHandle) -> AutoScanSettings {
-    match with_app_hidden(&app, pick_area(&app)).await {
-        Some(area) => save(AutoScanSettings { area: Some(area), ..get_auto() }),
+    match with_app_hidden(&app, pick_area(&app, false)).await {
+        Some((area, _)) => save(AutoScanSettings { area: Some(area), ..get_auto() }),
         None => get_auto(),
     }
 }

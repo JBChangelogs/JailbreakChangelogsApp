@@ -122,6 +122,9 @@ impl Ocr {
         for &provider in providers() {
             let session = |path: &Path| -> ort::Result<Session> {
                 let mut builder = Session::builder(&env)?;
+                if provider == "cpu" {
+                    builder = builder.with_intra_threads(cpu_threads())?;
+                }
                 builder = match provider {
                     #[cfg(target_os = "macos")]
                     "coreml" => builder.with_execution_providers([ep::CoreML::default().build().error_on_failure()])?,
@@ -251,6 +254,10 @@ impl Ocr {
             .map(|(b, (text, conf))| Detection { x0: b.x, y0: b.y, x1: b.x + b.w, y1: b.y + b.h, text, conf })
             .collect())
     }
+}
+
+fn cpu_threads() -> usize {
+    std::thread::available_parallelism().map_or(1, |n| n.get() / 2).clamp(1, 4)
 }
 
 fn providers() -> &'static [&'static str] {

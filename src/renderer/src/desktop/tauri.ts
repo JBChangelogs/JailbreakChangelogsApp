@@ -76,6 +76,10 @@ const api: DesktopApi = {
   },
   discordRpc: {
     setPreference: (key, value) => fireAndForget('discord_set_preference', { key, value })
+  },
+  uninstall: {
+    supported: () => invoke('app_can_uninstall'),
+    run: () => invoke('app_uninstall')
   }
 }
 

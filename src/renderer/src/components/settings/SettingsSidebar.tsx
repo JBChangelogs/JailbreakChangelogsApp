@@ -1,4 +1,7 @@
+import { useEffect, useState } from 'react'
 import { useSettingsPage, type SettingsSectionId } from '@renderer/contexts/SettingsPageContext'
+import { Button } from '@renderer/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@renderer/components/ui/dialog'
 
 function ShieldIcon({ className }: { className?: string }): React.JSX.Element {
   return (
@@ -72,6 +75,78 @@ function BackIcon({ className }: { className?: string }): React.JSX.Element {
   )
 }
 
+function TrashIcon({ className }: { className?: string }): React.JSX.Element {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h16M10 11v6M14 11v6M5 7l1 13h12l1-13M9 7V4h6v3" />
+    </svg>
+  )
+}
+
+function UninstallButton(): React.JSX.Element | null {
+  const [supported, setSupported] = useState(false)
+  const [open, setOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    void window.api.uninstall
+      ?.supported()
+      .then((ok) => !cancelled && setSupported(ok))
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  if (!supported) return null
+
+  const uninstall = async (): Promise<void> => {
+    setBusy(true)
+    setError(null)
+    try {
+      await window.api.uninstall?.run()
+    } catch (err) {
+      setError(typeof err === 'string' ? err : "The app couldn't be uninstalled. Please try again.")
+      setBusy(false)
+    }
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm font-medium text-secondary-text transition-colors hover:bg-status-error/10 hover:text-status-error"
+      >
+        <TrashIcon className="h-4 w-4 shrink-0" />
+        Uninstall
+      </button>
+      <Dialog open={open} onOpenChange={(next) => !busy && setOpen(next)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Uninstall Jailbreak Changelogs?</DialogTitle>
+            <DialogDescription>The app will close and be removed from this computer.</DialogDescription>
+          </DialogHeader>
+          <div className="px-5 py-4 text-sm text-secondary-text">
+            <p>Your account isn't affected, and your settings stay on this computer in case you reinstall.</p>
+            {error && <p className="mt-3 text-xs text-status-error">{error}</p>}
+          </div>
+          <div className="flex shrink-0 justify-end gap-2 border-t border-border-primary px-5 py-4">
+            <Button type="button" size="sm" variant="secondary" disabled={busy} onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" size="sm" variant="destructive" disabled={busy} onClick={() => void uninstall()}>
+              {busy ? 'Uninstalling…' : 'Uninstall'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}
+
 function UserIcon({ className }: { className?: string }): React.JSX.Element {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -133,7 +208,8 @@ export function SettingsSidebar(): React.JSX.Element {
         ))}
       </nav>
 
-      <div className="border-t border-border-primary p-2">
+      <div className="space-y-0.5 border-t border-border-primary p-2">
+        <UninstallButton />
         <button
           type="button"
           onClick={close}

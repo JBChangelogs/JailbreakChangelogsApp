@@ -7,6 +7,7 @@ mod notify;
 mod ocr;
 mod roblox;
 mod scanner;
+mod uninstall;
 mod updater;
 
 use std::collections::HashMap;
@@ -438,6 +439,16 @@ fn app_reload(window: WebviewWindow) {
     let _ = window.reload();
 }
 
+#[tauri::command]
+fn app_can_uninstall() -> bool {
+    uninstall::supported()
+}
+
+#[tauri::command]
+fn app_uninstall(app: AppHandle) -> Result<(), String> {
+    uninstall::run(&app)
+}
+
 pub fn run() {
     let _ = rustls::crypto::ring::default_provider().install_default();
 
@@ -475,6 +486,8 @@ pub fn run() {
             legacy_local_storage_done,
             devtools_open,
             app_reload,
+            app_can_uninstall,
+            app_uninstall,
         ])
         .setup(|app| {
             let handle = app.handle().clone();

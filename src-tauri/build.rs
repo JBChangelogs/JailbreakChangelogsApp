@@ -22,6 +22,8 @@ const COMMANDS: &[&str] = &[
     "legacy_local_storage_done",
     "devtools_open",
     "app_reload",
+    "app_can_uninstall",
+    "app_uninstall",
 ];
 
 fn main() {

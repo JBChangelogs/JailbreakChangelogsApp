@@ -34,6 +34,8 @@
     "allow-legacy-local-storage",
     "allow-legacy-local-storage-done",
     "allow-devtools-open",
-    "allow-app-reload"
+    "allow-app-reload",
+    "allow-app-can-uninstall",
+    "allow-app-uninstall"
   ]
 }

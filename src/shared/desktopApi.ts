@@ -73,4 +73,8 @@ export interface DesktopApi {
   discordRpc: {
     setPreference: (key: RichPresencePreferenceKey, value: boolean) => void
   }
+  uninstall?: {
+    supported: () => Promise<boolean>
+    run: () => Promise<void>
+  }
 }

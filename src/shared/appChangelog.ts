@@ -22,6 +22,15 @@ export function formatChangelogMarkdown(entry: AppChangelogEntry): string {
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.6.3',
+    date: '2026-10-23',
+    changed: [
+      "Group chats no longer show the member count next to the name, and the owner's edit pencil is centred with an Edit Group tooltip",
+      'The Uninstall button now sits above the Back to app divider in the Settings sidebar'
+    ],
+    fixed: ['The Uninstall button now removes the app on Windows']
+  },
+  {
     version: '0.6.2',
     date: '2026-10-23',
     added: ['An Uninstall button at the bottom of the Settings sidebar removes the app from this computer, after asking to confirm'],

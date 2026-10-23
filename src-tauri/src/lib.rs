@@ -235,9 +235,10 @@ fn remove_velopack_install() {
 fn uninstall_velopack(update_exe: PathBuf) {
     use std::os::windows::process::CommandExt;
     std::thread::spawn(move || {
-        for _ in 0..60 {
-            std::thread::sleep(Duration::from_secs(10));
+        std::thread::sleep(Duration::from_secs(10));
+        loop {
             if roblox::process_start_time("Jailbreak Changelogs.exe").is_some() {
+                std::thread::sleep(Duration::from_secs(15));
                 continue;
             }
             const CREATE_NO_WINDOW: u32 = 0x0800_0000;

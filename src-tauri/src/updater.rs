@@ -5,7 +5,7 @@ use serde_json::json;
 use tauri::{AppHandle, Emitter};
 use tauri_plugin_updater::{Update, UpdaterExt};
 
-const CHECK_INTERVAL: Duration = Duration::from_secs(30 * 60);
+const CHECK_INTERVAL: Duration = Duration::from_secs(6 * 60 * 60);
 
 static PENDING: Mutex<Option<(Update, Vec<u8>)>> = Mutex::new(None);
 static AVAILABLE: Mutex<Option<Update>> = Mutex::new(None);

@@ -15,6 +15,7 @@ import { useRealtimePreferences } from '@renderer/hooks/useRealtimePreferences'
 import { useNotificationToasts } from '@renderer/hooks/useNotificationToasts'
 import { useDesktopNotificationClicks } from '@renderer/hooks/useDesktopNotificationClicks'
 import { useRobloxPresence } from '@renderer/hooks/useRobloxPresence'
+import { useRealtimeUpdates } from '@renderer/hooks/useRealtimeUpdates'
 
 const TRANSITION_SPLASH_MS = 550
 const TRANSITION_FADE_MS = 450
@@ -30,6 +31,7 @@ function App(): React.JSX.Element {
   useNotificationToasts()
   useDesktopNotificationClicks()
   useRobloxPresence()
+  useRealtimeUpdates()
   const prevStatusRef = useRef(status)
   const [showTransitionSplash, setShowTransitionSplash] = useState(false)
   const [transitionSplashVisible, setTransitionSplashVisible] = useState(false)

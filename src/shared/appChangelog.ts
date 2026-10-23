@@ -22,6 +22,15 @@ export function formatChangelogMarkdown(entry: AppChangelogEntry): string {
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.6.2',
+    date: '2026-10-23',
+    added: ['An Uninstall button at the bottom of the Settings sidebar removes the app from this computer, after asking to confirm'],
+    changed: [
+      'Installing on Windows is now one click: the installer shows a progress bar and opens the app when it finishes',
+      'Updating from the previous version now closes and removes the old app straight away'
+    ]
+  },
+  {
     version: '0.6.1',
     date: '2026-10-23',
     fixed: [

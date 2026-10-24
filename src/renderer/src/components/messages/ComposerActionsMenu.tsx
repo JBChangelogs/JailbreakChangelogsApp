@@ -277,7 +277,7 @@ export function ComposerActionsMenu({ recipientId, onSendMessage }: ComposerActi
 
   const handleSendGift = async (gift: SupporterGift): Promise<void> => {
     if (!token || !recipientId) return
-    await giftsApi.redeem(token, gift.share_id, recipientId)
+    await giftsApi.redeem(token, gift.share_id, recipientId, true)
   }
 
   return (

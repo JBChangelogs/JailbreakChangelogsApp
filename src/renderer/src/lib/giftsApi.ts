@@ -21,11 +21,12 @@ export const giftsApi = {
     return data.levels ?? []
   },
 
-  redeem: async (token: string, shareId: string, userId: string): Promise<void> => {
+  // dm: also post the gift in your DM with them. Gifts from outside a conversation leave it off.
+  redeem: async (token: string, shareId: string, userId: string, dm = false): Promise<void> => {
     const res = await fetch(`${API_BASE}/v2/gifts/${encodeURIComponent(shareId)}/redemptions`, {
       method: 'POST',
       headers: { Authorization: token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: userId })
+      body: JSON.stringify({ user_id: userId, dm })
     })
     if (!res.ok) throw new Error(extractError(await res.json().catch(() => null), res.status))
   }

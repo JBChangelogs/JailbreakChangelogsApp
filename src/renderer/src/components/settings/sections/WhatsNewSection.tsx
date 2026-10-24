@@ -131,6 +131,39 @@ function CheckForUpdatesRow(): React.JSX.Element {
   )
 }
 
+function UninstallRow(): React.JSX.Element | null {
+  const [supported, setSupported] = useState(false)
+  const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    void window.api.uninstall
+      .supported()
+      .then((ok) => !cancelled && setSupported(ok))
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  if (!supported) return null
+
+  return (
+    <SettingRow
+      title="Uninstall"
+      description="Remove Jailbreak Changelogs from this computer."
+      action={
+        <>
+          <Button type="button" size="sm" variant="destructive" onClick={() => setOpen(true)}>
+            Uninstall
+          </Button>
+          <UninstallDialog open={open} onOpenChange={setOpen} />
+        </>
+      }
+    />
+  )
+}
+
 function UsageDataRow(): React.JSX.Element {
   const [enabled, setEnabled] = useState<boolean | null>(null)
   useEffect(() => {
@@ -159,6 +192,7 @@ export function WhatsNewSection(): React.JSX.Element {
         <div className={SETTINGS_LIST}>
           <CheckForUpdatesRow />
           <UsageDataRow />
+          <UninstallRow />
         </div>
       </SettingsCard>
 

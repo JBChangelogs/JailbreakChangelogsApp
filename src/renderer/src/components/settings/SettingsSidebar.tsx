@@ -177,38 +177,6 @@ export function UninstallDialog({
   )
 }
 
-function UninstallButton(): React.JSX.Element | null {
-  const [supported, setSupported] = useState(false)
-  const [open, setOpen] = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-    void window.api.uninstall
-      .supported()
-      .then((ok) => !cancelled && setSupported(ok))
-      .catch(() => {})
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  if (!supported) return null
-
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm font-medium text-secondary-text transition-colors hover:bg-status-error/10 hover:text-status-error"
-      >
-        <TrashIcon className="h-4 w-4 shrink-0" />
-        Uninstall
-      </button>
-      <UninstallDialog open={open} onOpenChange={setOpen} />
-    </>
-  )
-}
-
 export function UserIcon({ className }: { className?: string }): React.JSX.Element {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -265,10 +233,6 @@ export function SettingsSidebar(): React.JSX.Element {
           </button>
         ))}
       </nav>
-
-      <div className="px-2 pb-2">
-        <UninstallButton />
-      </div>
 
       <div className="border-t border-border-primary p-2">
         <button

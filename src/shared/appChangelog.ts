@@ -22,6 +22,14 @@ export function formatChangelogMarkdown(entry: AppChangelogEntry): string {
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.7.1',
+    date: '2026-10-24',
+    fixed: [
+      "The What's new window has tidier spacing and bulleted lists",
+      'Notification descriptions have tighter spacing'
+    ]
+  },
+  {
     version: '0.7.0',
     date: '2026-10-24',
     added: [

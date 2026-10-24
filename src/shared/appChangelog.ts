@@ -22,6 +22,34 @@ export function formatChangelogMarkdown(entry: AppChangelogEntry): string {
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.7.0',
+    date: '2026-10-24',
+    added: [
+      'React to messages, with your most-used emoji one click away',
+      'Mention people with @ in messages, with suggestions as you type',
+      'Right-click a message to react, reply, copy its text and more',
+      'Join history shows how many times you have joined each robbery',
+      'Search and grouped sections in Privacy settings'
+    ],
+    changed: [
+      'Game invites show the game icon, and can only be sent from Jailbreak',
+      'Discord status shows the icon of the game you are playing',
+      'Clearer screens when the robbery or bounty tracker is empty, connecting or offline',
+      'Clearer screens in the Dupe Finder before and after searching',
+      'Sidebars have consistent spacing, with search first and filters last',
+      'The notification popover matches the website',
+      'Message hover highlight is brighter'
+    ],
+    fixed: [
+      'Reacting to a message no longer jumps you to the bottom of the chat',
+      'Read receipts no longer reappear when you reopen a chat',
+      'Selecting a filter no longer shifts the sidebar',
+      'Desktop notifications on Windows show the app icon',
+      'People who joined a server show their Roblox avatar again',
+      'Robbery status badges are easier to read'
+    ]
+  },
+  {
     version: '0.6.9',
     date: '2026-10-23',
     fixed: ['Buttons at the bottom of dialogs now have even spacing on every side']

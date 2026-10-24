@@ -63,6 +63,7 @@ export const APP_CHANGELOG: AppChangelogEntry[] = [
       'Tabs in the title bar: open messages, trades, trackers, values, calculators and dupe finders side by side',
       'Open as many values, calculator and dupe finder tabs as you need',
       'Drag tabs to reorder them',
+      'Trade History: look up anyone’s trades, with a chart of how many they made each day',
       'Your tabs, and what you had open in them, are saved between sessions',
       'Prefer the sidebar icons? Switch to Simple navigation in Display settings',
       "The What's new window now shows every change since the version you were on"

@@ -1,6 +1,12 @@
 import type { ReactNode } from 'react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { TAB_TYPES, type TabType } from '@renderer/contexts/TabsContext'
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger
+} from '@renderer/components/ui/dropdown-menu'
 
 export function MessagesIcon({ className = 'h-4.5 w-4.5' }: { className?: string }): React.JSX.Element {
     return (
@@ -70,13 +76,33 @@ function DupeFinderIcon(): React.JSX.Element {
     )
 }
 
+function TradeHistoryIcon(): React.JSX.Element {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4.5 w-4.5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v5h5M12 7v5l3 2" />
+        </svg>
+    )
+}
+
+function MoreIcon(): React.JSX.Element {
+    return (
+        <svg viewBox="0 0 24 24" fill="currentColor" className="h-4.5 w-4.5">
+            <circle cx="5" cy="12" r="1.75" />
+            <circle cx="12" cy="12" r="1.75" />
+            <circle cx="19" cy="12" r="1.75" />
+        </svg>
+    )
+}
+
 export const TAB_INFO: Record<TabType, { label: string; title: string; Icon: () => React.JSX.Element }> = {
     messages: { label: 'Messages', title: 'Messages', Icon: () => <MessagesIcon /> },
     trades: { label: 'Trades', title: 'Trades', Icon: TradesIcon },
     tracker: { label: 'Trackers', title: 'Robbery & Bounty Tracker', Icon: RobberyIcon },
     values: { label: 'Values', title: 'Values', Icon: GemIcon },
     calculator: { label: 'Calculator', title: 'Value Calculator', Icon: CalculatorIcon },
-    dupefinder: { label: 'Dupe Finder', title: 'Dupe Finder', Icon: DupeFinderIcon }
+    dupefinder: { label: 'Dupe Finder', title: 'Dupe Finder', Icon: DupeFinderIcon },
+    tradehistory: { label: 'Trade History', title: 'Trade History', Icon: TradeHistoryIcon }
 }
 
 interface NavItemProps {
@@ -113,6 +139,8 @@ function NavItem({ active, label, badge, onClick, children }: NavItemProps): Rea
     )
 }
 
+const OVERFLOW_TABS: readonly TabType[] = ['dupefinder', 'tradehistory']
+
 export function NavBar({
     activeTab,
     onSelect,
@@ -124,7 +152,7 @@ export function NavBar({
 }): React.JSX.Element {
     return (
         <div className="flex shrink-0 items-center justify-between border-b border-border-primary p-2">
-            {TAB_TYPES.map((type) => {
+            {TAB_TYPES.filter((type) => !OVERFLOW_TABS.includes(type)).map((type) => {
                 const { title, Icon } = TAB_INFO[type]
                 return (
                     <NavItem
@@ -138,6 +166,38 @@ export function NavBar({
                     </NavItem>
                 )
             })}
+            <DropdownMenu>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <DropdownMenuTrigger asChild>
+                            <button
+                                type="button"
+                                aria-label="More pages"
+                                className={`flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${OVERFLOW_TABS.includes(activeTab)
+                                    ? 'bg-button-info text-form-button-text'
+                                    : 'text-secondary-text hover:bg-quaternary-bg hover:text-primary-text data-[state=open]:bg-quaternary-bg data-[state=open]:text-primary-text'
+                                    }`}
+                            >
+                                <MoreIcon />
+                            </button>
+                        </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">More</TooltipContent>
+                </Tooltip>
+                <DropdownMenuContent align="end" className="w-52">
+                    {OVERFLOW_TABS.map((type) => {
+                        const { title, Icon } = TAB_INFO[type]
+                        return (
+                            <DropdownMenuItem key={type} onSelect={() => onSelect(type)} className="gap-2.5">
+                                <span className={activeTab === type ? 'text-button-info' : 'text-secondary-text'}>
+                                    <Icon />
+                                </span>
+                                {title}
+                            </DropdownMenuItem>
+                        )
+                    })}
+                </DropdownMenuContent>
+            </DropdownMenu>
         </div>
     )
 }

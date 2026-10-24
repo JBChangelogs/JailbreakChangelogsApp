@@ -26,10 +26,14 @@ function XIcon({ className }: { className?: string }): React.JSX.Element {
 export function DupeSearchBar({
   initialValue = '',
   loading = false,
+  placeholder = 'Search Duplicates',
+  suggestDupeOwners = true,
   onSearch
 }: {
   initialValue?: string
   loading?: boolean
+  placeholder?: string
+  suggestDupeOwners?: boolean
   onSearch: (input: string) => void
 }): React.JSX.Element {
   const [value, setValue] = useState(initialValue)
@@ -53,7 +57,7 @@ export function DupeSearchBar({
     abortRef.current?.abort()
 
     const query = value.trim()
-    if (!isUserEditRef.current || !query) {
+    if (!suggestDupeOwners || !isUserEditRef.current || !query) {
       setSuggestions([])
       setSuggestionsOpen(false)
       setSuggestionsLoading(false)
@@ -157,7 +161,7 @@ export function DupeSearchBar({
             onFocus={() => {
               if (isUserEditRef.current && value.trim()) setSuggestionsOpen(true)
             }}
-            placeholder="Search Duplicates"
+            placeholder={placeholder}
             disabled={loading}
             required
             className="h-10 w-full rounded-xl border border-border-card bg-secondary-bg py-2 pr-8 pl-9 text-sm text-primary-text placeholder-secondary-text transition-colors focus:border-button-info focus:outline-none disabled:opacity-60 [&::-webkit-search-cancel-button]:hidden"

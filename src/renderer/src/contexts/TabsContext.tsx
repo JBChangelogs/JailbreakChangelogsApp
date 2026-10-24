@@ -16,9 +16,17 @@ import {
   type NavigationMode
 } from '@renderer/lib/localPreferences'
 
-export type TabType = 'messages' | 'trades' | 'tracker' | 'values' | 'calculator' | 'dupefinder'
+export type TabType = 'messages' | 'trades' | 'tracker' | 'values' | 'calculator' | 'dupefinder' | 'tradehistory'
 
-export const TAB_TYPES: readonly TabType[] = ['messages', 'trades', 'tracker', 'values', 'calculator', 'dupefinder']
+export const TAB_TYPES: readonly TabType[] = [
+  'messages',
+  'trades',
+  'tracker',
+  'values',
+  'calculator',
+  'dupefinder',
+  'tradehistory'
+]
 
 export const SINGLE_INSTANCE_TABS: ReadonlySet<TabType> = new Set(['messages', 'trades', 'tracker'])
 

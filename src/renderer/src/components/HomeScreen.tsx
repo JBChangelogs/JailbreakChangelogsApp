@@ -32,6 +32,9 @@ import { CalculatorScreen } from '@renderer/components/calculator/CalculatorScre
 import { CalculatorSidebar } from '@renderer/components/calculator/CalculatorSidebar'
 import { DupeFinderScreen } from '@renderer/components/dupefinder/DupeFinderScreen'
 import { DupeFinderSidebar } from '@renderer/components/dupefinder/DupeFinderSidebar'
+import { TradeHistoryProvider } from '@renderer/contexts/TradeHistoryContext'
+import { TradeHistoryScreen } from '@renderer/components/tradehistory/TradeHistoryScreen'
+import { TradeHistorySidebar } from '@renderer/components/tradehistory/TradeHistorySidebar'
 import { TradesProvider } from '@renderer/contexts/TradesContext'
 import { TradesScreen } from '@renderer/components/trading/TradesScreen'
 import { TradesSidebar } from '@renderer/components/trading/TradesSidebar'
@@ -332,6 +335,8 @@ const TabContent = memo(function TabContent({
       )
     case 'values':
       return <ValuesProvider>{pane(<ValuesSidebarFilters />, <ValuesScreen />)}</ValuesProvider>
+    case 'tradehistory':
+      return <TradeHistoryProvider>{pane(<TradeHistorySidebar />, <TradeHistoryScreen />)}</TradeHistoryProvider>
     case 'dupefinder':
       return <DupeFinderProvider>{pane(<DupeFinderSidebar />, <DupeFinderScreen />)}</DupeFinderProvider>
     case 'trades':

@@ -23,7 +23,6 @@ const DRAG_THRESHOLD = 5
 
 const REORDER_ANIMATION: KeyframeAnimationOptions = { duration: 200, easing: 'cubic-bezier(0.2, 0, 0, 1)' }
 
-const NO_DRAG = { WebkitAppRegion: 'no-drag' } as React.CSSProperties
 
 function PlusIcon({ className }: { className?: string }): React.JSX.Element {
   return (
@@ -299,7 +298,6 @@ export function TabBar(): React.JSX.Element {
                 role="tab"
                 aria-selected={active}
                 tabIndex={active ? 0 : -1}
-                style={NO_DRAG}
                 data-tauri-drag-region="false"
                 onPointerDown={(e) => {
                   if (e.button === 1) e.preventDefault()
@@ -381,7 +379,7 @@ export function TabBar(): React.JSX.Element {
                 type="button"
                 aria-label="New tab"
                 ref={plusRef}
-                style={plusShift ? { ...NO_DRAG, transform: `translateX(${plusShift}px)` } : NO_DRAG}
+                style={plusShift ? { transform: `translateX(${plusShift}px)` } : undefined}
                 data-tauri-drag-region="false"
                 className={cn(
                   'mb-[5px] ml-1 flex h-6 w-6 shrink-0 items-center justify-center self-end rounded-full transition-[color,background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-quaternary-bg hover:text-primary-text motion-reduce:transition-none',

@@ -7,10 +7,6 @@ import { useNavigationMode } from '@renderer/contexts/TabsContext'
 import { useSettingsPage } from '@renderer/contexts/SettingsPageContext'
 import { TabBar } from '@renderer/components/TabBar'
 
-type DragCSS = React.CSSProperties & { WebkitAppRegion?: 'drag' | 'no-drag' }
-
-const DRAG: DragCSS = { WebkitAppRegion: 'drag' }
-const NO_DRAG: DragCSS = { WebkitAppRegion: 'no-drag' }
 function MinimizeIcon(): React.JSX.Element {
   return (
     <svg width="10" height="10" viewBox="0 0 10 10">
@@ -67,7 +63,6 @@ export function TitleBar({ canOpenSettings }: { canOpenSettings: boolean }): Rea
   return (
     <div
       className="flex h-9 shrink-0 select-none items-center border-b border-border-primary bg-secondary-bg"
-      style={DRAG}
       data-tauri-drag-region="deep"
     >
       <div className={`flex shrink-0 items-center gap-2 px-3 text-xs font-semibold text-secondary-text ${isMac ? 'pl-20' : ''} ${showTabs ? 'h-[34px] w-64 self-end' : ''}`}>
@@ -79,7 +74,7 @@ export function TitleBar({ canOpenSettings }: { canOpenSettings: boolean }): Rea
       ) : (
         <div className="min-w-0 flex-1 text-center text-xs text-secondary-text">{location && capitalize(location)}</div>
       )}
-      <div className="flex h-full shrink-0 items-center" style={NO_DRAG} data-tauri-drag-region="false">
+      <div className="flex h-full shrink-0 items-center" data-tauri-drag-region="false">
         <NotificationsPopover />
         <AnimatedThemeToggler
           size="sm"

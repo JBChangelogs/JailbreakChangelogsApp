@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { SearchInput } from '@renderer/components/ui/search-input'
 import { Switch } from '@renderer/components/ui/switch'
 import { CountryFilterMenu } from '@renderer/components/tracker/FilterMenus'
-import { SectionHeader, SidebarHeader } from '@renderer/components/tracker/SidebarParts'
+import { SectionHeader } from '@renderer/components/tracker/SidebarParts'
 import { BackgroundAlertsNotice, BountyAlertsSection } from '@renderer/components/tracker/TrackerAlertsSection'
 import { useBountyTracker } from '@renderer/contexts/BountyTrackerContext'
 import { BOUNTY_RANGE_MAX } from '@renderer/hooks/useBountyFilters'
@@ -16,7 +16,7 @@ const PRESETS: readonly { label: string; min: number }[] = [
 ]
 
 const inputClass =
-  'h-8 w-full min-w-0 rounded-md border border-border-card bg-primary-bg px-2 text-xs tabular-nums text-primary-text focus:border-button-info focus:outline-none'
+  'h-10 w-full min-w-0 rounded-xl border border-border-card bg-secondary-bg px-3 text-sm tabular-nums text-primary-text transition-colors focus:border-button-info focus:outline-none'
 
 export function BountySidebarFilters(): React.JSX.Element {
   const {
@@ -50,17 +50,9 @@ export function BountySidebarFilters(): React.JSX.Element {
   }
 
   const rangeActive = minBounty !== 0 || maxBounty !== BOUNTY_RANGE_MAX
-  const activeCount = selectedCountries.size + (rangeActive ? 1 : 0)
-  const clearAll = (): void => {
-    clearCountries()
-    setBountyRange([0, BOUNTY_RANGE_MAX])
-  }
-
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
-      <SidebarHeader title="Filters" activeCount={activeCount} onClearAll={clearAll} />
-
-      <div className="flex flex-col gap-2 px-3 pb-3">
+      <div className="flex flex-col gap-2 p-2">
         <SearchInput value={searchQuery} onChange={setSearchQuery} placeholder="Search bounties..." />
         {topCountries.length > 0 && (
           <CountryFilterMenu
@@ -70,13 +62,13 @@ export function BountySidebarFilters(): React.JSX.Element {
             onClear={clearCountries}
           />
         )}
-        <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-border-card bg-tertiary-bg px-3 py-2">
+        <label className="flex h-10 cursor-pointer items-center justify-between gap-3 rounded-xl border border-border-card bg-secondary-bg px-3">
           <span className="text-xs font-medium text-primary-text">Hide Joined Servers</span>
           <Switch checked={hideJoinedServers} onCheckedChange={setHideJoinedServers} />
         </label>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto border-t border-border-primary px-2 pt-3 pb-2">
+      <div className="min-h-0 flex-1 overflow-y-auto border-t border-border-primary p-2">
         <SectionHeader
           label="Total Server Bounty"
           onClear={rangeActive ? () => setBountyRange([0, BOUNTY_RANGE_MAX]) : undefined}
@@ -114,7 +106,7 @@ export function BountySidebarFilters(): React.JSX.Element {
                 className={inputClass}
               />
             </label>
-            <span className="pb-2 text-xs text-tertiary-text">–</span>
+            <span className="pb-3 text-xs text-tertiary-text">–</span>
             <label className="min-w-0 flex-1">
               <span className="mb-1 block text-[10px] font-medium text-tertiary-text">Max</span>
               <input

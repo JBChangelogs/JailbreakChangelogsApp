@@ -224,9 +224,13 @@ async fn compute() -> Option<Presence> {
     if pref("rich_presence_show_website_button") {
         buttons.push(("Visit website".to_owned(), "https://jailbreakchangelogs.com".to_owned()));
     }
-    let badge = game
-        .filter(|_| pref("rich_presence_show_roblox_badge"))
-        .map(|g| (ROBLOX_SMALL_IMAGE_KEY.to_owned(), format!("Inside {g}")));
+    let badge = match (game.filter(|_| pref("rich_presence_show_roblox_badge")), &roblox) {
+        (Some(g), Some((place, _))) => {
+            let icon = crate::roblox::game_icons().await.remove(place).unwrap_or_else(|| ROBLOX_SMALL_IMAGE_KEY.to_owned());
+            Some((icon, format!("Inside {g}")))
+        }
+        _ => None,
+    };
     let mut presence = Presence { details: None, state: None, badge, buttons };
     let Some(token) = crate::auth::load_token() else { return Some(presence) };
     let (location, identity) = tokio::join!(get_json("/v2/users/me/location", &token), own_identity(&token));

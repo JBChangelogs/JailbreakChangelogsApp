@@ -248,11 +248,7 @@ export function SettingsSidebar(): React.JSX.Element {
 
   return (
     <div className="flex w-60 shrink-0 flex-col border-r border-border-primary bg-secondary-bg">
-      <div className="px-4 py-4">
-        <h1 className="text-xs font-bold tracking-wide text-quaternary-text uppercase">Settings</h1>
-      </div>
-
-      <nav className="flex-1 space-y-0.5 px-2">
+      <nav className="flex-1 space-y-0.5 p-2">
         {SECTIONS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}

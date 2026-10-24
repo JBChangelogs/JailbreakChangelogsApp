@@ -8,7 +8,7 @@ export function MakeOfferSidebar(): React.JSX.Element {
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
-      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
+      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2">
         <TradeSideList
           title="You Offer"
           side="offering"

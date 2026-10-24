@@ -160,3 +160,28 @@ export function setSettingsPageSection(section: string): void {
   } catch {
   }
 }
+
+const ACKNOWLEDGED_READS_KEY = 'jbcl:acknowledged-reads'
+const ACKNOWLEDGED_READS_LIMIT = 500
+
+function getAcknowledgedReads(): string[] {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(ACKNOWLEDGED_READS_KEY) ?? '[]')
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+export function isReadAcknowledged(messageId: string): boolean {
+  return getAcknowledgedReads().includes(messageId)
+}
+
+export function acknowledgeRead(messageId: string): void {
+  const ids = getAcknowledgedReads().filter((id) => id !== messageId)
+  ids.push(messageId)
+  try {
+    localStorage.setItem(ACKNOWLEDGED_READS_KEY, JSON.stringify(ids.slice(-ACKNOWLEDGED_READS_LIMIT)))
+  } catch {
+  }
+}

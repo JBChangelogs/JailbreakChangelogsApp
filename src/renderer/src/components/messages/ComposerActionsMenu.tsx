@@ -5,6 +5,7 @@ import { serversApi } from '@renderer/lib/serversApi'
 import { giftsApi } from '@renderer/lib/giftsApi'
 import { supporterBadgeUrl } from '@renderer/lib/badgeAssets'
 import { KNOWN_ROBLOX_GAMES } from '@shared/robloxGames'
+import { JAILBREAK_PLACE_ID } from '@renderer/lib/robberyUtils'
 import type { OutgoingMessageMetadata } from '@renderer/lib/messagesApi'
 import type { VipServer } from '@shared/servers'
 import type { SupporterGift } from '@shared/gifts'
@@ -248,7 +249,11 @@ export function ComposerActionsMenu({ recipientId, onSendMessage }: ComposerActi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [menuOpen, token])
 
-  const canInviteToGame = ownActivity.placeId !== null
+  const canInviteToGame = ownActivity.placeId === JAILBREAK_PLACE_ID
+  const inviteBlockedReason =
+    ownActivity.placeId === null
+      ? "You're not in a game right now"
+      : `Roblox doesn't let people join you in ${KNOWN_ROBLOX_GAMES[ownActivity.placeId] ?? 'this game'} directly`
 
   const handleInviteToGame = (): void => {
     if (!ownActivity.placeId) return
@@ -304,7 +309,7 @@ export function ComposerActionsMenu({ recipientId, onSendMessage }: ComposerActi
               Invite to Game
             </button>
           </TooltipTrigger>
-          {!canInviteToGame && <TooltipContent side="right">You're not in a game right now</TooltipContent>}
+          {!canInviteToGame && <TooltipContent side="right">{inviteBlockedReason}</TooltipContent>}
         </Tooltip>
 
         <FlyoutMenuItem

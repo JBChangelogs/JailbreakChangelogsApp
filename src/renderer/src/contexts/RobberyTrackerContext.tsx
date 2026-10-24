@@ -3,7 +3,7 @@ import { useCurrentUser } from '@renderer/hooks/useCurrentUser'
 import { useRobberyAlerts } from '@renderer/lib/trackerAlerts'
 import { useRobberyTrackerWebSocket } from '@renderer/hooks/useRobberyTrackerWebSocket'
 import { useRobberyFilters, type ServerSizeFilter, type TimeSort } from '@renderer/hooks/useRobberyFilters'
-import { useJoinHistory, type JoinHistoryEntry } from '@renderer/hooks/useJoinHistory'
+import { useJoinHistory, type JoinCount } from '@renderer/hooks/useJoinHistory'
 import type { JoinRosterEntry } from '@renderer/hooks/useTrackerWebSocket'
 import { useJoinedJobIds } from '@renderer/hooks/useJoinedJobIds'
 import { useServerRegions } from '@renderer/hooks/useServerRegions'
@@ -34,10 +34,10 @@ interface RobberyTrackerContextValue {
   toggleCountry: (countryCode: string) => void
   clearCountries: () => void
   topCountries: [string, number][]
-  joinHistory: JoinHistoryEntry[]
+  joinHistory: JoinCount[]
   totalJoined: number
   joinHistoryLoading: boolean
-  addJoinHistoryEntry: (entry: Omit<JoinHistoryEntry, 'id' | 'joinedAt'> & { serverId: string }) => void
+  addJoinHistoryEntry: (entry: { markerName: string; displayName: string; serverId: string }) => void
   getRegionData: (regionId: string) => ServerRegionData | null | undefined
   getRoster: (serverId: string) => JoinRosterEntry[]
   markJoined: (jobId: string) => void
@@ -76,7 +76,7 @@ export function RobberyTrackerProvider({
   const filters = useRobberyFilters()
   const { selectedTypes, serverSize, timeSort, searchQuery, selectedCountries } = filters
   const {
-    history: joinHistory,
+    counts: joinHistory,
     totalJoined,
     loading: joinHistoryLoading,
     addEntry: addJoinHistoryEntryLocal
@@ -89,8 +89,8 @@ export function RobberyTrackerProvider({
     setHideJoinedServersEnabled(hide)
   }
 
-  const addJoinHistoryEntry = (entry: Omit<JoinHistoryEntry, 'id' | 'joinedAt'> & { serverId: string }): void => {
-    addJoinHistoryEntryLocal({ markerName: entry.markerName, displayName: entry.displayName })
+  const addJoinHistoryEntry = (entry: { markerName: string; displayName: string; serverId: string }): void => {
+    addJoinHistoryEntryLocal(entry.markerName)
     sendTrackerMessage({
       action: 'join_server',
       marker_name: entry.markerName,

@@ -30,7 +30,8 @@ export interface UserProfile {
   id: string
   username: string
   name: string
-  roblox_id?: string | null
+  /** Set on /users/{id} and /users/batch; /users/me nests these under `roblox` instead. */
+  roblox_id?: string | number | null
   roblox_username?: string | null
   avatar: string | null
   banner: string | null

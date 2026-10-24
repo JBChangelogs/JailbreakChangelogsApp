@@ -25,7 +25,7 @@ export const DropdownTriggerButton = forwardRef<
   <button
     ref={ref}
     type="button"
-    className="flex h-10 w-full items-center justify-between gap-1.5 rounded-xl border border-border-card bg-secondary-bg px-3.5 text-left text-sm font-medium text-primary-text transition-colors hover:border-border-focus focus:border-button-info focus:outline-none"
+    className="flex h-10 w-full items-center justify-between gap-1.5 rounded-xl border border-border-card bg-secondary-bg px-3 text-left text-sm font-medium text-primary-text transition-colors hover:border-border-focus focus:border-button-info focus:outline-none"
     {...props}
   >
     <span className="min-w-0 truncate">

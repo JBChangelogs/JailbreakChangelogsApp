@@ -1,5 +1,6 @@
 import appIcon from '@renderer/assets/icon.png'
 import controllerIcon from '@renderer/assets/discord-controller-icon.png'
+import { useRobloxGameIcons } from '@renderer/hooks/useRobloxGameIcons'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import type { RichPresencePreferenceKey } from '@renderer/contexts/PreferencesContext'
 
@@ -18,6 +19,7 @@ export function RichPresencePreview({ richPresence, hideRobloxActivity }: RichPr
   }
 
   const showBadge = richPresence.rich_presence_show_roblox_badge && !hideRobloxActivity
+  const badgeIcon = useRobloxGameIcons()['606849621'] ?? controllerIcon
   const showDetails = richPresence.rich_presence_show_details
   const showState = richPresence.rich_presence_show_state
   const showJoin = richPresence.rich_presence_show_join_button
@@ -32,7 +34,7 @@ export function RichPresencePreview({ richPresence, hideRobloxActivity }: RichPr
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="absolute -right-1 -bottom-1 h-7 w-7 overflow-hidden rounded-full bg-[#232428] ring-[3px] ring-[#232428]">
-                  <img src={controllerIcon} alt="" className="h-full w-full object-cover" />
+                  <img src={badgeIcon} alt="" className="h-full w-full object-cover" />
                 </div>
               </TooltipTrigger>
               <TooltipContent>Inside Jailbreak</TooltipContent>

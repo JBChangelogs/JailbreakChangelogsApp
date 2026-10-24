@@ -54,6 +54,7 @@ const api: DesktopApi = {
     download: () => fireAndForget('updater_download'),
     onStatus: (callback) => subscribe('updater:status', callback)
   },
+  robloxGameIcons: () => invoke<Record<string, string>>('roblox_game_icons'),
   notifications: {
     show: (options) => invoke('notifications_show', { options }),
     onClick: (callback) => subscribe('notifications:clicked', callback)

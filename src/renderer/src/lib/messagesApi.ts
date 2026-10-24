@@ -124,6 +124,13 @@ export const messagesApi = {
   deleteMessage: (token: string, path: string, messageId: string) =>
     request<void>(token, `${path}/messages/${messageId}`, { method: 'DELETE' }),
 
+  toggleReaction: (token: string, path: string, messageId: string, emoji: string) =>
+    request<{ reactions: Record<string, string[]> }>(
+      token,
+      `${path}/messages/${messageId}/reactions?emoji=${encodeURIComponent(emoji)}`,
+      { method: 'POST' }
+    ),
+
   reportMessage: (token: string, path: string, messageId: string, reason: string) =>
     request<void>(token, `${path}/messages/${messageId}/reports`, {
       method: 'POST',

@@ -1,7 +1,7 @@
 import { Popover, PopoverContent, PopoverTrigger } from '@renderer/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { useRelativeTime } from '@renderer/hooks/useRelativeTime'
-import type { JoinHistoryEntry } from '@renderer/hooks/useJoinHistory'
+import type { JoinCount } from '@renderer/hooks/useJoinHistory'
 
 function HistoryIcon({ className }: { className?: string }): React.JSX.Element {
   return (
@@ -12,19 +12,38 @@ function HistoryIcon({ className }: { className?: string }): React.JSX.Element {
   )
 }
 
-function HistoryRow({ entry }: { entry: JoinHistoryEntry }): React.JSX.Element {
-  const relativeTime = useRelativeTime(entry.joinedAt)
+function CountRow({
+  count,
+  label,
+  image,
+  lastLabel
+}: {
+  count: JoinCount
+  label: string
+  image?: string
+  lastLabel: string
+}): React.JSX.Element {
+  const relativeTime = useRelativeTime(count.lastJoined)
 
   return (
-    <div className="rounded-lg px-2.5 py-1.5 hover:bg-quaternary-bg">
-      <p className="truncate text-[13px] font-medium text-primary-text">{entry.displayName}</p>
-      <p className="text-[11px] text-tertiary-text">Joined {relativeTime ?? 'just now'}</p>
+    <div className="flex items-center gap-3 rounded-lg p-2 hover:bg-quaternary-bg">
+      {image && (
+        <img src={image} alt="" draggable={false} className="aspect-video h-10 shrink-0 rounded-lg object-cover" />
+      )}
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[13px] font-semibold text-primary-text">{label}</p>
+        <p className="text-[11px] text-tertiary-text">{lastLabel} {relativeTime ?? 'just now'}</p>
+      </div>
+      <span className="shrink-0 text-sm font-bold text-primary-text tabular-nums">{count.joins.toLocaleString()}</span>
     </div>
   )
 }
 
 interface JoinHistoryPopoverProps {
-  history: JoinHistoryEntry[]
+  counts: JoinCount[]
+  markerLabel: (markerName: string) => string
+  markerImage?: (markerName: string) => string
+  lastLabel?: string
   totalJoined: number
   loading: boolean
   totalLabel: string
@@ -32,7 +51,10 @@ interface JoinHistoryPopoverProps {
 }
 
 export function JoinHistoryPopover({
-  history,
+  counts,
+  markerLabel,
+  markerImage,
+  lastLabel = 'Last joined',
   totalJoined,
   loading,
   totalLabel,
@@ -54,24 +76,30 @@ export function JoinHistoryPopover({
         </TooltipTrigger>
         <TooltipContent side="bottom">Join history</TooltipContent>
       </Tooltip>
-      <PopoverContent align="end" className="w-72 p-1">
-        <div className="flex items-center justify-between px-2 py-1.5">
-          <span className="text-xs font-bold uppercase tracking-wide text-quaternary-text">Join History</span>
-        </div>
-        {totalJoined > 0 && (
-          <div className="mx-1 mb-1 flex items-center justify-between rounded-md bg-tertiary-bg px-2.5 py-2">
-            <span className="text-xs text-secondary-text">{totalLabel}</span>
-            <span className="text-sm font-bold text-primary-text">{totalJoined}</span>
+      <PopoverContent align="end" collisionPadding={8} className="flex max-h-[min(var(--radix-popover-content-available-height),640px)] w-80 flex-col overflow-hidden p-0">
+        <div className="flex shrink-0 items-center gap-3 border-b border-border-primary p-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-button-info/15 text-button-info">
+            <HistoryIcon className="h-5 w-5" />
           </div>
-        )}
-        {loading && history.length === 0 ? (
-          <p className="px-2.5 py-4 text-center text-xs text-quaternary-text">Loading…</p>
-        ) : history.length === 0 ? (
-          <p className="px-2.5 py-4 text-center text-xs text-quaternary-text">{emptyLabel}</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs text-secondary-text">{totalLabel}</p>
+            <p className="text-xl leading-tight font-bold text-primary-text tabular-nums">{totalJoined.toLocaleString()}</p>
+          </div>
+        </div>
+        {loading && counts.length === 0 ? (
+          <p className="px-3 py-6 text-center text-xs text-quaternary-text">Loading…</p>
+        ) : counts.length === 0 ? (
+          <p className="px-3 py-6 text-center text-xs text-quaternary-text">{emptyLabel}</p>
         ) : (
-          <div className="max-h-80 space-y-0.5 overflow-y-auto">
-            {history.map((entry) => (
-              <HistoryRow key={entry.id} entry={entry} />
+          <div className="min-h-0 space-y-0.5 overflow-y-auto p-1">
+            {counts.map((count) => (
+              <CountRow
+                key={count.markerName}
+                count={count}
+                label={markerLabel(count.markerName)}
+                image={markerImage?.(count.markerName)}
+                lastLabel={lastLabel}
+              />
             ))}
           </div>
         )}

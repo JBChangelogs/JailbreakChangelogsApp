@@ -23,6 +23,7 @@ interface RealtimeMessagePayload {
   metadata?: Record<string, unknown> | null
   created_at?: number
   updated_at?: number
+  reactions?: Record<string, string[]>
 }
 
 interface MessagesReadPayload {
@@ -79,6 +80,7 @@ export function useConversation(
   editMessage: (messageId: string, content: string) => Promise<void>
   deleteMessage: (messageId: string) => Promise<void>
   reportMessage: (messageId: string, reason: string) => Promise<void>
+  toggleReaction: (messageId: string, emoji: string) => Promise<void>
   notifyTyping: () => void
 } {
   const { token } = useAuth()
@@ -284,7 +286,8 @@ export function useConversation(
           receiverId: existing?.receiver_id ?? recipientId,
           createdAt: existing?.created_at
         }),
-        updated_at: raw.updated_at ?? Math.floor(Date.now() / 1000)
+        updated_at: raw.updated_at ?? Math.floor(Date.now() / 1000),
+        reactions: existing?.reactions
       }
       updateItems((prev) => prev.map((m) => (m.id === messageId ? updated : m)))
     },
@@ -308,8 +311,39 @@ export function useConversation(
     [token, path]
   )
 
+  const toggleReaction = useCallback(
+    async (messageId: string, emoji: string) => {
+      if (!token || !path || !currentUserId) return
+      const previous = items.find((m) => m.id === messageId)?.reactions ?? {}
+      const users = previous[emoji] ?? []
+      const optimistic = { ...previous }
+      if (users.includes(currentUserId)) {
+        optimistic[emoji] = users.filter((id) => id !== currentUserId)
+        if (optimistic[emoji].length === 0) delete optimistic[emoji]
+      } else {
+        optimistic[emoji] = [...users, currentUserId]
+      }
+      const setReactions = (reactions: Record<string, string[]>): void =>
+        updateItems((prev) => prev.map((m) => (m.id === messageId ? { ...m, reactions } : m)))
+      setReactions(optimistic)
+      try {
+        const res = await messagesApi.toggleReaction(token, path, messageId, emoji)
+        setReactions(res.reactions)
+      } catch {
+        setReactions(previous)
+      }
+    },
+    [token, path, currentUserId, items, updateItems]
+  )
+
   useEffect(() => {
     if (!recipientId) return
+
+    const applyReactions = (data: RealtimeMessagePayload): void => {
+      if (!data.reactions) return
+      const reactions = data.reactions
+      updateItems((prev) => prev.map((m) => (m.id === data.id ? { ...m, reactions } : m)))
+    }
 
     if (isGroup) {
       return subscribe((message) => {
@@ -341,6 +375,8 @@ export function useConversation(
           )
         } else if (message.action === 'group_message_deleted') {
           updateItems((prev) => prev.filter((m) => m.id !== data.id))
+        } else if (message.action === 'group_message_reaction') {
+          applyReactions(data)
         }
       })
     }
@@ -396,6 +432,8 @@ export function useConversation(
         )
       } else if (message.action === 'message_deleted') {
         updateItems((prev) => prev.filter((m) => m.id !== data.id))
+      } else if (message.action === 'message_reaction') {
+        if (data.user_id === recipientId || data.recipient_id === recipientId) applyReactions(data)
       }
     })
   }, [recipientId, isGroup, subscribe, send, updateItems])
@@ -412,6 +450,7 @@ export function useConversation(
     editMessage,
     deleteMessage,
     reportMessage,
+    toggleReaction,
     notifyTyping
   }
 }

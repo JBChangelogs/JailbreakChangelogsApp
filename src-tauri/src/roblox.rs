@@ -8,6 +8,28 @@ pub struct RobloxActivity {
     pub game: Option<String>,
 }
 
+const GAME_ICONS_URL: &str = "https://thumbnails.roblox.com/v1/places/gameicons?placeIds=606849621,9780994092&size=150x150&format=Png&returnPolicy=PlaceHolder";
+
+static GAME_ICONS: std::sync::Mutex<Option<std::collections::HashMap<String, String>>> = std::sync::Mutex::new(None);
+
+pub async fn game_icons() -> std::collections::HashMap<String, String> {
+    if let Some(icons) = GAME_ICONS.lock().unwrap().clone() {
+        return icons;
+    }
+    let mut icons = std::collections::HashMap::new();
+    let Ok(res) = crate::api_client().get(GAME_ICONS_URL).send().await else { return icons };
+    let Ok(body) = res.json::<serde_json::Value>().await else { return icons };
+    for entry in body["data"].as_array().into_iter().flatten() {
+        if let (Some(id), Some(url)) = (entry["targetId"].as_u64(), entry["imageUrl"].as_str()) {
+            icons.insert(id.to_string(), url.to_string());
+        }
+    }
+    if !icons.is_empty() {
+        *GAME_ICONS.lock().unwrap() = Some(icons.clone());
+    }
+    icons
+}
+
 pub fn known_game(place_id: &str) -> Option<&'static str> {
     match place_id {
         "606849621" => Some("Jailbreak"),

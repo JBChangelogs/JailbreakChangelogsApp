@@ -3,7 +3,7 @@ import { SearchInput } from '@renderer/components/ui/search-input'
 import { Switch } from '@renderer/components/ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { CountryFilterMenu, FilterMenu } from '@renderer/components/tracker/FilterMenus'
-import { SectionHeader, SidebarHeader } from '@renderer/components/tracker/SidebarParts'
+import { SectionHeader } from '@renderer/components/tracker/SidebarParts'
 import { BackgroundAlertsNotice, BellIcon, DesktopAlertsHint } from '@renderer/components/tracker/TrackerAlertsSection'
 import { useRobberyTracker } from '@renderer/contexts/RobberyTrackerContext'
 import { ROBBERY_TYPES, robberyImageUrl } from '@renderer/lib/robberyUtils'
@@ -116,13 +116,6 @@ export function RobberySidebarFilters(): React.JSX.Element {
     return counts
   }, [robberies, serverSize])
 
-  const activeCount = selectedTypes.size + selectedCountries.size + (serverSize !== 'all' ? 1 : 0)
-  const clearAll = (): void => {
-    clearTypes()
-    clearCountries()
-    setServerSize('all')
-  }
-
   const toggleAlert = (markerName: string): void => {
     updateTrackerAlerts({
       robberyTypes: alerting.has(markerName)
@@ -133,12 +126,10 @@ export function RobberySidebarFilters(): React.JSX.Element {
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
-      <SidebarHeader title="Filters" activeCount={activeCount} onClearAll={clearAll} />
-
-      <div className="flex flex-col gap-2 px-3 pb-3">
+      <div className="flex flex-col gap-2 p-2">
         <SearchInput value={searchQuery} onChange={setSearchQuery} placeholder="Search robberies..." />
-        <FilterMenu label="Size" value={serverSize} options={SERVER_SIZE_OPTIONS} onChange={setServerSize} />
         <FilterMenu label="Sort" value={timeSort} options={TIME_SORT_OPTIONS} onChange={setTimeSort} />
+        <FilterMenu label="Size" value={serverSize} options={SERVER_SIZE_OPTIONS} onChange={setServerSize} />
         {topCountries.length > 0 && (
           <CountryFilterMenu
             countries={topCountries}
@@ -147,13 +138,13 @@ export function RobberySidebarFilters(): React.JSX.Element {
             onClear={clearCountries}
           />
         )}
-        <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-border-card bg-tertiary-bg px-3 py-2">
+        <label className="flex h-10 cursor-pointer items-center justify-between gap-3 rounded-xl border border-border-card bg-secondary-bg px-3">
           <span className="text-xs font-medium text-primary-text">Hide Joined Servers</span>
           <Switch checked={hideJoinedServers} onCheckedChange={setHideJoinedServers} />
         </label>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto border-t border-border-primary px-2 pt-3 pb-2">
+      <div className="min-h-0 flex-1 overflow-y-auto border-t border-border-primary p-2">
         <SectionHeader
           label="Robberies"
           hint={alertTypes.length > 0 ? `${alertTypes.length} alert${alertTypes.length === 1 ? '' : 's'} on` : 'Bell for alerts'}

@@ -77,6 +77,6 @@ export function SettingsSubsectionHeading({ title }: { title: string }): React.J
 export function formatSettingName(name: string): string {
   return name
     .split('_')
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .map((w) => (w === 'dms' ? 'DMs' : w.charAt(0).toUpperCase() + w.slice(1)))
     .join(' ')
 }

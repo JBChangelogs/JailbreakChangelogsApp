@@ -3,6 +3,7 @@ import { originalOwnerId, useDupeFinder } from '@renderer/contexts/DupeFinderCon
 import { DupeItemCard } from '@renderer/components/dupefinder/DupeItemCard'
 import { DupeCompareModal } from '@renderer/components/dupefinder/DupeCompareModal'
 import { userDisplay } from '@renderer/lib/dupeDisplay'
+import { EmptyState } from '@renderer/components/ui/empty-state'
 import type { Item } from '@shared/item'
 
 const PAGE_SIZE = 20
@@ -49,34 +50,52 @@ export function DupeFinderScreen(): React.JSX.Element {
 
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto p-5">
         {state.status === 'idle' && (
-          <p className="pt-10 text-center text-sm text-quaternary-text">
-            Enter a Roblox ID or username in the sidebar to check for any duped items associated with that account.
-          </p>
+          <EmptyState
+            status={{
+              icon: 'search',
+              tone: 'neutral',
+              title: 'Check an account for dupes',
+              description: 'Search a Roblox username or ID in the sidebar to see any duped items tied to that account.'
+            }}
+          />
         )}
 
         {state.status === 'loading' && (
-          <div className="flex items-center justify-center py-10">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-border-primary border-t-status-info" />
-          </div>
+          <EmptyState
+            status={{
+              icon: 'spinner',
+              tone: 'neutral',
+              title: 'Searching for dupes',
+              description: 'Checking this account against the dupe records.'
+            }}
+          />
         )}
 
         {state.status === 'not-found' && (
-          <div className="rounded-2xl border border-border-card bg-secondary-bg p-6 text-center">
-            <p className="mb-1 text-base font-semibold text-status-error">Not Found</p>
-            <p className="text-sm text-secondary-text">{state.message}</p>
-          </div>
+          <EmptyState status={{ icon: 'userMinus', tone: 'error', title: 'Account not found', description: state.message }} />
         )}
 
         {state.status === 'no-dupes' && (
-          <div className="rounded-2xl border border-border-card bg-secondary-bg p-5 text-center">
-            <p className="font-medium text-primary-text">No duped items found</p>
-            <p className="mt-1 text-sm text-secondary-text">No duplicated items have been recorded for this user yet.</p>
-          </div>
+          <EmptyState
+            status={{
+              icon: 'shieldCheck',
+              tone: 'neutral',
+              title: 'No duped items found',
+              description: `No duplicated items have been recorded for ${userDisplay(state.user, state.robloxId)} yet.`
+            }}
+          />
         )}
 
         {state.status === 'success' &&
           (sortedData.length === 0 ? (
-            <p className="py-8 text-center text-sm text-quaternary-text">No items match the current filters.</p>
+            <EmptyState
+              status={{
+                icon: 'funnel',
+                tone: 'neutral',
+                title: 'No items match your filters',
+                description: `${state.items.length} duped ${state.items.length === 1 ? 'item is' : 'items are'} hidden. Try changing the search or categories in the sidebar.`
+              }}
+            />
           ) : (
             <>
               <div className="grid grid-cols-[repeat(auto-fit,minmax(275px,1fr))] gap-4">

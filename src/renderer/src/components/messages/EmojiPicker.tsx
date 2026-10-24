@@ -3,8 +3,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@renderer/components/ui
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { Emoji } from '@renderer/components/messages/Emoji'
 import { useEmojis } from '@renderer/hooks/useEmojis'
+import { recordEmojiUse } from '@renderer/hooks/useFrequentEmojis'
 
-function EmojiIcon({ className }: { className?: string }): React.JSX.Element {
+export function EmojiIcon({ className }: { className?: string }): React.JSX.Element {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
       <path
@@ -48,6 +49,7 @@ export function EmojiPicker({ onSelect }: { onSelect: (emoji: string) => void })
                 type="button"
                 title={`:${name}:`}
                 onClick={() => {
+                  recordEmojiUse(emoji)
                   onSelect(emoji)
                   setOpen(false)
                 }}

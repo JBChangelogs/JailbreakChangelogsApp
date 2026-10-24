@@ -1,33 +1,25 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '@renderer/contexts/AuthContext'
-import { joinHistoryApi, type JoinHistoryApiItem, type TrackerType } from '@renderer/lib/joinHistoryApi'
+import { joinHistoryApi, type TrackerType } from '@renderer/lib/joinHistoryApi'
 
-export interface JoinHistoryEntry {
-  id: string
+export interface JoinCount {
   markerName: string
-  displayName: string
-  joinedAt: number
+  joins: number
+  lastJoined: number
 }
 
-const MAX_ENTRIES = 50
-
-function toEntry(item: JoinHistoryApiItem): JoinHistoryEntry {
-  return {
-    id: `${item.timestamp}-${item.marker_name}`,
-    markerName: item.marker_name,
-    displayName: item.display_name,
-    joinedAt: Math.floor(new Date(item.timestamp).getTime() / 1000)
-  }
+function sortCounts(counts: JoinCount[]): JoinCount[] {
+  return counts.sort((a, b) => b.joins - a.joins || a.markerName.localeCompare(b.markerName))
 }
 
 export function useJoinHistory(trackerType: TrackerType): {
-  history: JoinHistoryEntry[]
+  counts: JoinCount[]
   totalJoined: number
   loading: boolean
-  addEntry: (entry: Omit<JoinHistoryEntry, 'id' | 'joinedAt'>) => void
+  addEntry: (markerName: string) => void
 } {
   const { token } = useAuth()
-  const [history, setHistory] = useState<JoinHistoryEntry[]>([])
+  const [counts, setCounts] = useState<JoinCount[]>([])
   const [totalJoined, setTotalJoined] = useState(0)
   const [loading, setLoading] = useState(false)
 
@@ -35,9 +27,15 @@ export function useJoinHistory(trackerType: TrackerType): {
     if (!token) return
     setLoading(true)
     joinHistoryApi
-      .getJoinHistory(token, trackerType, 1)
+      .getJoinCounts(token, trackerType)
       .then((res) => {
-        setHistory(res.items.map(toEntry))
+        setCounts(
+          Object.entries(res.counts).map(([markerName, { joins, last_joined }]) => ({
+            markerName,
+            joins,
+            lastJoined: Math.floor(new Date(last_joined).getTime() / 1000)
+          }))
+        )
         setTotalJoined(res.total)
       })
       .catch(() => {
@@ -45,11 +43,15 @@ export function useJoinHistory(trackerType: TrackerType): {
       .finally(() => setLoading(false))
   }, [token, trackerType])
 
-  const addEntry = useCallback((entry: Omit<JoinHistoryEntry, 'id' | 'joinedAt'>) => {
-    const joinedAt = Math.floor(Date.now() / 1000)
-    setHistory((prev) => [{ ...entry, id: crypto.randomUUID(), joinedAt }, ...prev].slice(0, MAX_ENTRIES))
+  const addEntry = useCallback((markerName: string) => {
+    const lastJoined = Math.floor(Date.now() / 1000)
+    setCounts((prev) => {
+      const existing = prev.find((count) => count.markerName === markerName)
+      const others = prev.filter((count) => count.markerName !== markerName)
+      return sortCounts([...others, { markerName, joins: (existing?.joins ?? 0) + 1, lastJoined }])
+    })
     setTotalJoined((prev) => prev + 1)
   }, [])
 
-  return { history, totalJoined, loading, addEntry }
+  return { counts, totalJoined, loading, addEntry }
 }

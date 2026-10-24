@@ -54,6 +54,7 @@ export interface DesktopApi {
     onClick: (callback: (id: string) => void) => () => void
   }
   onRobloxActivityChanged: (callback: (event: RobloxActivityEvent) => void) => () => void
+  robloxGameIcons: () => Promise<Record<string, string>>
   scanner: {
     status: () => Promise<ScannerStatus>
     install: () => Promise<ScannerStatus>

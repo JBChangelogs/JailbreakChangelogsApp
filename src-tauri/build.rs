@@ -7,6 +7,7 @@ const COMMANDS: &[&str] = &[
     "updater_download",
     "updater_quit_and_install",
     "notifications_show",
+    "roblox_game_icons",
     "scanner_status",
     "scanner_install",
     "scanner_snip",

@@ -12,32 +12,13 @@ import { demandOrder, getDemandColor, getTrendColor, trendOrder } from '@rendere
 export function CalculatorSidebar(): React.JSX.Element {
   const { browse } = useCalculator()
   const { user } = useCurrentUser()
-  const activeCount = browse.types.size + browse.demand.size + browse.trend.size
   const [shortcutsOpen, setShortcutsOpen] = useState(getClearShortcutsExpanded)
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
-      <div className="flex items-center justify-between px-3 py-2.5">
-        <h1 className="text-xs font-bold tracking-wide text-quaternary-text uppercase">
-          Filters
-          {activeCount > 0 && (
-            <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-button-info px-1 text-[10px] text-form-button-text">
-              {activeCount}
-            </span>
-          )}
-        </h1>
-        {activeCount > 0 && (
-          <button
-            type="button"
-            onClick={browse.clearFilters}
-            className="text-[11px] font-semibold text-link hover:text-link-hover"
-          >
-            Clear all
-          </button>
-        )}
-      </div>
-
-      <div className="flex flex-col gap-2 px-3 pb-3">
+      <div className="flex flex-col gap-2 p-2">
+        <SearchInput value={browse.search} onChange={browse.setSearch} placeholder="Search items..." />
+        <SortMenu value={browse.sort} onChange={browse.setSort} groups={LOCAL_SORT_GROUPS} />
         {user?.roblox?.roblox_id && (
           <Tabs
             value={browse.source}
@@ -48,11 +29,9 @@ export function CalculatorSidebar(): React.JSX.Element {
             ]}
           />
         )}
-        <SearchInput value={browse.search} onChange={browse.setSearch} placeholder="Search items..." />
-        <SortMenu value={browse.sort} onChange={browse.setSort} groups={LOCAL_SORT_GROUPS} />
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto border-t border-border-primary px-2 pt-3 pb-2">
+      <div className="min-h-0 flex-1 overflow-y-auto border-t border-border-primary p-2">
         <SectionHeader label="Type" count={browse.types.size} onClear={() => browse.types.forEach(browse.toggleType)} />
         <TypeTiles selected={browse.types} onToggle={browse.toggleType} />
 
@@ -92,7 +71,7 @@ export function CalculatorSidebar(): React.JSX.Element {
       </div>
 
       {/* Stays at the bottom while the filters scroll. */}
-      <div className="shrink-0 border-t border-border-primary px-3 py-2.5">
+      <div className="shrink-0 border-t border-border-primary p-2">
         <button
           type="button"
           aria-expanded={shortcutsOpen}

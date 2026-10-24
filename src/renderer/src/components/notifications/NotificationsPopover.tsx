@@ -3,11 +3,13 @@ import { useAuth } from '@renderer/contexts/AuthContext'
 import { useSettingsPage } from '@renderer/contexts/SettingsPageContext'
 import { useNotificationCount } from '@renderer/hooks/useNotificationCount'
 import { notificationsApi } from '@renderer/lib/notificationsApi'
-import { formatMessageTimestamp } from '@renderer/lib/messageFormatting'
+import { formatMessageTimestamp, normalizeToMs } from '@renderer/lib/messageFormatting'
+import { useRelativeTime } from '@renderer/hooks/useRelativeTime'
 import { isWhitelistedNotificationLink } from '@renderer/lib/notificationUrl'
 import { Popover, PopoverContent, PopoverTrigger } from '@renderer/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { Tabs } from '@renderer/components/ui/tabs'
+import { Button } from '@renderer/components/ui/button'
 import type { NotificationHistory, NotificationItem } from '@shared/notification'
 
 const Markdown = lazy(() => import('@renderer/components/ui/markdown').then((m) => ({ default: m.Markdown })))
@@ -26,24 +28,113 @@ function BellIcon({ className }: { className?: string }): React.JSX.Element {
   )
 }
 
-function CheckCheckIcon({ className }: { className?: string }): React.JSX.Element {
+function TrashIcon({ className }: { className?: string }): React.JSX.Element {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M18 6 7 17l-5-5" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="m22 10-7.5 7.5L13 16" />
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M9 3a1 1 0 0 0-1 1v1H4a1 1 0 0 0 0 2h1v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7h1a1 1 0 1 0 0-2h-4V4a1 1 0 0 0-1-1H9Zm1 7a1 1 0 0 1 1 1v6a1 1 0 1 1-2 0v-6a1 1 0 0 1 1-1Zm4 0a1 1 0 0 1 1 1v6a1 1 0 1 1-2 0v-6a1 1 0 0 1 1-1Z" />
     </svg>
   )
 }
 
-function TrashIcon({ className }: { className?: string }): React.JSX.Element {
+function ChevronIcon({ className, left = false }: { className?: string; left?: boolean }): React.JSX.Element {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m3 0v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7h12Z"
-      />
+      <path strokeLinecap="round" strokeLinejoin="round" d={left ? 'm15 18-6-6 6-6' : 'm9 18 6-6-6-6'} />
     </svg>
+  )
+}
+
+function pageItems(page: number, count: number): (number | 'gap-start' | 'gap-end')[] {
+  if (count <= 7) return Array.from({ length: count }, (_, i) => i + 1)
+  const siblingsStart = Math.max(Math.min(page, count - 2), 3)
+  const siblingsEnd = Math.min(Math.max(page, 3), count - 2)
+  const middle = Array.from({ length: siblingsEnd - siblingsStart + 1 }, (_, i) => siblingsStart + i)
+  return [
+    1,
+    siblingsStart > 3 ? 'gap-start' : 2,
+    ...middle,
+    siblingsEnd < count - 2 ? 'gap-end' : count - 1,
+    count
+  ]
+}
+
+function Pagination({
+  page,
+  count,
+  onChange
+}: {
+  page: number
+  count: number
+  onChange: (page: number) => void
+}): React.JSX.Element {
+  const navButton = 'flex h-8 w-8 items-center justify-center rounded-full text-secondary-text transition-colors hover:bg-quaternary-bg hover:text-primary-text disabled:pointer-events-none disabled:opacity-40'
+  return (
+    <nav className="flex items-center gap-2">
+      <button type="button" aria-label="Previous page" disabled={page <= 1} onClick={() => onChange(page - 1)} className={navButton}>
+        <ChevronIcon left className="h-5 w-5" />
+      </button>
+      <ul className="flex items-center gap-1">
+        {pageItems(page, count).map((item) =>
+          typeof item === 'number' ? (
+            <li key={item}>
+              <button
+                type="button"
+                aria-current={item === page ? 'page' : undefined}
+                onClick={() => onChange(item)}
+                className={`flex h-8 min-w-8 items-center justify-center rounded-full px-3 text-sm font-medium transition-colors ${item === page ? 'bg-button-info text-form-button-text' : 'text-secondary-text hover:bg-quaternary-bg hover:text-primary-text'
+                  }`}
+              >
+                {item}
+              </button>
+            </li>
+          ) : (
+            <li key={item} className="px-1 text-sm text-secondary-text">
+              …
+            </li>
+          )
+        )}
+      </ul>
+      <button type="button" aria-label="Next page" disabled={page >= count} onClick={() => onChange(page + 1)} className={navButton}>
+        <ChevronIcon className="h-5 w-5" />
+      </button>
+    </nav>
+  )
+}
+
+function NotificationRow({ notif }: { notif: NotificationItem }): React.JSX.Element {
+  const unixSeconds = Math.floor(normalizeToMs(notif.last_updated) / 1000)
+  const relativeTime = useRelativeTime(unixSeconds)
+  const hideAction = notif.title.trim().toLowerCase() === 'login detected'
+  const showButton = !hideAction && !!notif.link && isWhitelistedNotificationLink(notif.link)
+  const showRawLink = !hideAction && !!notif.link && !isWhitelistedNotificationLink(notif.link)
+
+  return (
+    <div className="border-b border-border-secondary px-4 py-3 transition-colors last:border-b-0 hover:bg-secondary-bg">
+      <p className="text-sm font-semibold wrap-break-word whitespace-normal text-primary-text">{notif.title}</p>
+      {notif.description && (
+        <div className="mt-1 text-xs wrap-break-word text-secondary-text">
+          <Suspense fallback={<p className="text-xs leading-relaxed">{notif.description}</p>}>
+            <Markdown className="text-xs leading-relaxed text-secondary-text [&_p]:my-0 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0">
+              {notif.description}
+            </Markdown>
+          </Suspense>
+        </div>
+      )}
+      {showButton && (
+        <Button size="sm" className="mt-2" onClick={() => void window.api.openExternal(notif.link)}>
+          View
+        </Button>
+      )}
+      {showRawLink && <p className="mt-1 text-xs break-all text-secondary-text">{notif.link}</p>}
+      <p className="mt-1 text-right text-xs text-secondary-text">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="cursor-help">{relativeTime ?? 'just now'}</span>
+          </TooltipTrigger>
+          <TooltipContent>{formatMessageTimestamp(notif.last_updated)}</TooltipContent>
+        </Tooltip>
+      </p>
+    </div>
   )
 }
 
@@ -60,18 +151,29 @@ export function NotificationsPopover(): React.JSX.Element {
   const [loading, setLoading] = useState(false)
   const [clearing, setClearing] = useState(false)
 
+  const [error, setError] = useState(false)
+
   const load = (nextTab: Tab, nextPage: number): void => {
     if (!token) return
     setLoading(true)
+    setError(false)
     const request = nextTab === 'unread' ? notificationsApi.unread : notificationsApi.history
     request(token, nextPage, PAGE_SIZE)
       .then((res) => {
+        if (nextTab === 'unread' && nextPage > 1 && res.items.length === 0) {
+          setPage(nextPage - 1)
+          load(nextTab, nextPage - 1)
+          return
+        }
         setData(res)
         if (nextTab === 'unread' && typeof res.unread_count === 'number') {
           setCount(res.unread_count)
         }
       })
-      .catch(() => setData(null))
+      .catch(() => {
+        setData(null)
+        setError(true)
+      })
       .finally(() => setLoading(false))
   }
 
@@ -108,56 +210,7 @@ export function NotificationsPopover(): React.JSX.Element {
     }
   }
 
-  const handleMarkAllRead = async (): Promise<void> => {
-    if (!token) return
-    setClearing(true)
-    try {
-      await notificationsApi.markAllRead(token)
-      setCount(0)
-      load('unread', 1)
-      setPage(1)
-    } catch {
-    } finally {
-      setClearing(false)
-    }
-  }
-
-  const renderItem = (notif: NotificationItem): React.JSX.Element => {
-    const hideAction = notif.title.trim().toLowerCase() === 'login detected'
-    const showButton = !hideAction && !!notif.link && isWhitelistedNotificationLink(notif.link)
-    const showRawLink = !hideAction && !!notif.link && !isWhitelistedNotificationLink(notif.link)
-
-    return (
-      <div
-        key={notif.id}
-        className="border-b border-border-primary px-4 py-3 transition-colors last:border-b-0 hover:bg-quaternary-bg/50"
-      >
-        <p className="text-sm font-semibold text-primary-text">{notif.title}</p>
-        {notif.description && (
-          <Suspense fallback={<p className="mt-1 text-xs">{notif.description}</p>}>
-            <Markdown className="mt-1 text-xs [&_p]:my-0 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0">
-              {notif.description}
-            </Markdown>
-          </Suspense>
-        )}
-        {showRawLink && <p className="mt-1 text-xs break-all text-quaternary-text">{notif.link}</p>}
-        <div className="mt-2 flex items-center justify-between gap-2">
-          {showButton ? (
-            <button
-              type="button"
-              onClick={() => void window.api.openExternal(notif.link)}
-              className="rounded-md bg-button-info/10 px-2 py-1 text-xs font-semibold text-link transition-colors hover:bg-button-info/20 hover:text-link-hover"
-            >
-              View
-            </button>
-          ) : (
-            <span />
-          )}
-          <span className="text-[11px] text-quaternary-text">{formatMessageTimestamp(notif.last_updated)}</span>
-        </div>
-      </div>
-    )
-  }
+  const total = data?.total ?? 0
 
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
@@ -181,49 +234,36 @@ export function NotificationsPopover(): React.JSX.Element {
         <TooltipContent>Notifications</TooltipContent>
       </Tooltip>
 
-      <PopoverContent align="end" sideOffset={8} className="z-[2147483647] w-80 overflow-hidden p-0">
-        <div className="flex items-center justify-between border-b border-border-primary bg-secondary-bg px-4 py-3">
-          <h3 className="text-sm font-semibold text-primary-text">
-            {data ? `${data.total} ${tab === 'unread' ? 'Unread ' : ''}Notification${data.total !== 1 ? 's' : ''}` : 'Notifications'}
-          </h3>
-          {tab === 'unread' && data && data.total > 0 && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => void handleMarkAllRead()}
-                  disabled={clearing}
-                  aria-label="Mark all as read"
-                  className="flex h-7 w-7 items-center justify-center rounded-md text-secondary-text transition-colors hover:bg-quaternary-bg hover:text-primary-text disabled:opacity-50"
-                >
-                  <CheckCheckIcon className="h-4 w-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>Mark All Read</TooltipContent>
-            </Tooltip>
-          )}
-          {tab === 'history' && data && data.total > 0 && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => void handleClearHistory()}
-                  disabled={clearing}
-                  aria-label="Clear history"
-                  className="flex h-7 w-7 items-center justify-center rounded-md text-secondary-text transition-colors hover:bg-status-error/10 hover:text-status-error disabled:opacity-50"
-                >
-                  <TrashIcon className="h-4 w-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>Clear History</TooltipContent>
-            </Tooltip>
-          )}
+      <PopoverContent align="end" className="z-[2147483647] w-80 overflow-hidden rounded-2xl p-0">
+        <div className="border-b border-border-secondary px-4 py-3">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-primary-text">
+              {`${total} ${tab === 'unread' ? 'Unread ' : ''}Notification${total !== 1 ? 's' : ''}`}
+            </h3>
+            {tab === 'history' && total > 0 && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => void handleClearHistory()}
+                    disabled={clearing}
+                    aria-label="Clear history"
+                    className="cursor-pointer text-secondary-text transition-colors hover:text-status-error disabled:opacity-50"
+                  >
+                    <TrashIcon className="h-5 w-5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Clear History</TooltipContent>
+              </Tooltip>
+            )}
+          </div>
         </div>
 
-        <div className="bg-secondary-bg px-3 pt-1 pb-2">
+        <div className="border-b border-border-secondary">
           <Tabs
             value={tab}
             onChange={switchTab}
+            className="rounded-none border-0"
             options={[
               { value: 'unread', label: 'Unread' },
               { value: 'history', label: 'History' }
@@ -231,7 +271,7 @@ export function NotificationsPopover(): React.JSX.Element {
           />
         </div>
 
-        <div className="border-b border-border-primary bg-secondary-bg/30 px-4 py-2">
+        <div className="border-b border-border-secondary bg-secondary-bg/30 px-4 py-2">
           <p className="text-xs text-secondary-text">
             Manage which notifications you receive in{' '}
             <button
@@ -249,39 +289,32 @@ export function NotificationsPopover(): React.JSX.Element {
 
         <div className="max-h-96 overflow-y-auto">
           {loading ? (
-            <p className="px-4 py-8 text-center text-sm text-quaternary-text">Loading…</p>
+            <div className="flex min-h-50 flex-col items-center justify-center px-4 py-8">
+              <span className="h-8 w-8 animate-spin rounded-full border-2 border-border-primary border-t-status-info" />
+              <p className="mt-3 text-center text-sm text-secondary-text">Loading notifications...</p>
+            </div>
+          ) : error ? (
+            <p className="px-4 py-8 text-center text-sm text-secondary-text">Could not load notifications. Please try again.</p>
           ) : data && data.items.length > 0 ? (
-            data.items.map(renderItem)
+            <>
+              <div className="py-2">
+                {data.items.map((notif) => (
+                  <NotificationRow key={notif.id} notif={notif} />
+                ))}
+              </div>
+              {data.total_pages > 1 && (
+                <div className="flex justify-center border-t border-border-secondary py-3">
+                  <Pagination page={page} count={data.total_pages} onChange={goToPage} />
+                </div>
+              )}
+            </>
           ) : (
-            <p className="px-4 py-8 text-center text-sm text-quaternary-text">
-              {tab === 'unread' ? 'No new notifications' : 'No notification history'}
-            </p>
+            <div className="flex min-h-50 flex-col items-center justify-center px-4 py-8">
+              <BellIcon className="mb-3 h-12 w-12 text-secondary-text" />
+              <p className="text-center text-sm text-secondary-text">No new notifications</p>
+            </div>
           )}
         </div>
-
-        {data && data.total_pages > 1 && (
-          <div className="flex items-center justify-between border-t border-border-primary px-4 py-2">
-            <button
-              type="button"
-              onClick={() => goToPage(page - 1)}
-              disabled={page <= 1}
-              className="text-xs font-semibold text-link hover:text-link-hover disabled:pointer-events-none disabled:text-tertiary-text"
-            >
-              Previous
-            </button>
-            <span className="text-[11px] text-quaternary-text">
-              Page {page} of {data.total_pages}
-            </span>
-            <button
-              type="button"
-              onClick={() => goToPage(page + 1)}
-              disabled={page >= data.total_pages}
-              className="text-xs font-semibold text-link hover:text-link-hover disabled:pointer-events-none disabled:text-tertiary-text"
-            >
-              Next
-            </button>
-          </div>
-        )}
       </PopoverContent>
     </Popover>
   )

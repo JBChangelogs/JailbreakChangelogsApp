@@ -6,14 +6,22 @@ import { useBlockedUsers } from '@renderer/hooks/useBlockedUsers'
 import { groupTypingKey, useRealtime } from '@renderer/contexts/RealtimeContext'
 import { useUserProfiles } from '@renderer/hooks/useUserProfiles'
 import { useEmojis } from '@renderer/hooks/useEmojis'
+import { recordEmojiUse, useFrequentEmojis } from '@renderer/hooks/useFrequentEmojis'
+import { acknowledgeRead, isReadAcknowledged } from '@renderer/lib/localPreferences'
+import { useRobloxGameIcons } from '@renderer/hooks/useRobloxGameIcons'
+import { KNOWN_ROBLOX_GAMES } from '@shared/robloxGames'
 import {
   formatMessageTimestamp,
   formatTimeOnly,
   formatDayDivider,
   describeMetadata,
-  normalizeToMs
+  normalizeToMs,
+  MENTION_PATTERN,
+  mentionsToIds,
+  mentionsToText,
+  splitDraftMentions
 } from '@renderer/lib/messageFormatting'
-import { EmojiPicker } from '@renderer/components/messages/EmojiPicker'
+import { EmojiIcon, EmojiPicker } from '@renderer/components/messages/EmojiPicker'
 import { Emoji, EmojiText } from '@renderer/components/messages/Emoji'
 import { GroupAvatar, UserAvatar, UserAvatarWithPresence } from '@renderer/components/messages/UserAvatar'
 import {
@@ -29,11 +37,20 @@ import { UserNameSkeleton } from '@renderer/components/messages/UserNameSkeleton
 import { UserProfilePopover } from '@renderer/components/user/UserProfilePopover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { Popover, PopoverContent, PopoverTrigger } from '@renderer/components/ui/popover'
-import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@renderer/components/ui/context-menu'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuTrigger
+} from '@renderer/components/ui/context-menu'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@renderer/components/ui/dialog'
 import { ComposerActionsMenu } from '@renderer/components/messages/ComposerActionsMenu'
 import { serversApi } from '@renderer/lib/serversApi'
-import { buildRobloxGameDeepLink } from '@renderer/lib/robberyUtils'
+import { JAILBREAK_PLACE_ID, buildRobloxGameDeepLink } from '@renderer/lib/robberyUtils'
 import { FLOATING_PANEL_SURFACE } from '@renderer/lib/floatingPanelSurface'
 import type { ChatTarget, GroupChat, MessageItem } from '@renderer/lib/messagesApi'
 import { useAuth } from '@renderer/contexts/AuthContext'
@@ -68,6 +85,33 @@ function SystemCheckIcon({ className }: { className?: string }): React.JSX.Eleme
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor">
       <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+    </svg>
+  )
+}
+
+const TOOLBAR_BUTTON =
+  'flex h-7 w-7 items-center justify-center rounded-md text-secondary-text transition-colors hover:bg-quaternary-bg hover:text-primary-text'
+
+function CopyIcon({ className }: { className?: string }): React.JSX.Element {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75"
+      />
+    </svg>
+  )
+}
+
+function IdIcon({ className }: { className?: string }): React.JSX.Element {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Zm6-10.125a1.875 1.875 0 1 1-3.75 0 1.875 1.875 0 0 1 3.75 0Zm1.294 6.336a6.721 6.721 0 0 1-3.17.789 6.721 6.721 0 0 1-3.168-.789 3.376 3.376 0 0 1 6.338 0Z"
+      />
     </svg>
   )
 }
@@ -241,6 +285,7 @@ function ServerIcon({ className }: { className?: string }): React.JSX.Element {
 }
 
 const READ_RECEIPT_FLASH_MS = 4000
+const READ_RECEIPT_FADE_MS = 500
 
 function VipServerJoinAction({ serverId }: { serverId: number }): React.JSX.Element {
   const [server, setServer] = useState<VipServerWithOwner | null>()
@@ -309,6 +354,7 @@ function SystemEmbedCard({
     title = `Supporter ${level} Gift`
     description = isMine ? `Sent a Supporter ${level} gift!` : `${senderLabel} sent you a Supporter ${level} gift!`
   }
+  const gameIcons = useRobloxGameIcons()
   const accentClass = metaType === 'gift_sent' ? 'bg-status-success-vibrant' : 'bg-status-info'
   const iconClass = metaType === 'gift_sent' ? 'text-status-success-vibrant' : 'text-status-info'
 
@@ -319,26 +365,47 @@ function SystemEmbedCard({
         {icon}
         {title}
       </p>
-      <p className="mt-0.5 text-sm text-secondary-text">{description}</p>
-      {metaType === 'game_invite' && typeof metadata.place_id === 'string' && (
-        <div className="mt-2">
-          <Button
-            type="button"
-            size="sm"
-            onClick={() => {
-              track('server_join_click', { source: 'game_invite' })
-              void window.api.openExternal(
-                buildRobloxGameDeepLink(
-                  metadata.place_id as string,
-                  typeof metadata.job_id === 'string' ? metadata.job_id : null
+      {metaType === 'game_invite' && typeof metadata.place_id === 'string' ? (
+        <div className="mt-2 flex items-center gap-3">
+          {gameIcons[metadata.place_id] ? (
+            <img
+              src={gameIcons[metadata.place_id]}
+              alt=""
+              draggable={false}
+              className="h-14 w-14 shrink-0 rounded-xl object-cover"
+            />
+          ) : (
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-tertiary-bg text-tertiary-text">
+              <GameControllerIcon className="h-6 w-6" />
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-base font-semibold text-primary-text">
+              {KNOWN_ROBLOX_GAMES[metadata.place_id] ?? 'Roblox'}
+            </p>
+            <p className="text-sm text-secondary-text">{description}</p>
+          </div>
+          {metadata.place_id === JAILBREAK_PLACE_ID && (
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => {
+                track('server_join_click', { source: 'game_invite' })
+                void window.api.openExternal(
+                  buildRobloxGameDeepLink(
+                    metadata.place_id as string,
+                    typeof metadata.job_id === 'string' ? metadata.job_id : null
+                  )
                 )
-              )
-            }}
-          >
-            <ExternalLinkIcon className="h-3.5 w-3.5" />
-            Join Game
-          </Button>
+              }}
+            >
+              <ExternalLinkIcon className="h-3.5 w-3.5" />
+              Join
+            </Button>
+          )}
         </div>
+      ) : (
+        <p className="mt-0.5 text-sm text-secondary-text">{description}</p>
       )}
       {metaType === 'vip_server_invite' && typeof metadata.server_id === 'number' && (
         <div className="mt-2">
@@ -481,6 +548,92 @@ function SystemMessageText({ metadata }: { metadata: Record<string, unknown> }):
   return <>{describeMetadata(metadata)}</>
 }
 
+function profileLabel(profile?: UserProfile): string | undefined {
+  return profile?.username || profile?.name || undefined
+}
+
+function MessageText({
+  text,
+  profileOf
+}: {
+  text: string
+  profileOf: (id: string) => UserProfile | undefined
+}): React.JSX.Element {
+  const parts = text.split(new RegExp(MENTION_PATTERN.source))
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (i % 2 === 0) return part ? <EmojiText key={i} text={part} /> : null
+        const profile = profileOf(part)
+        const label = profileLabel(profile)
+        if (!label) {
+          return (
+            <span key={i} className="rounded-[3px] bg-button-info/30 px-0.5 font-medium text-[color-mix(in_srgb,var(--color-button-info)_25%,white)]">
+              @unknown-user
+            </span>
+          )
+        }
+        return (
+          <UserProfilePopover key={i} userId={part} profile={profile}>
+            <button type="button" className="rounded-[3px] bg-button-info/30 px-0.5 font-medium text-[color-mix(in_srgb,var(--color-button-info)_25%,white)] transition-colors hover:bg-button-info hover:text-white">
+              @{label}
+            </button>
+          </UserProfilePopover>
+        )
+      })}
+    </>
+  )
+}
+
+function ReactionPicker({ onSelect }: { onSelect: (emoji: string) => void }): React.JSX.Element {
+  const [open, setOpen] = useState(false)
+  const [tooltipOpen, setTooltipOpen] = useState(false)
+  const emojis = Object.values(useEmojis())
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next)
+        setTooltipOpen(false)
+      }}
+    >
+      <Tooltip open={tooltipOpen} onOpenChange={setTooltipOpen}>
+        <TooltipTrigger asChild>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              aria-label="Add reaction"
+              className={TOOLBAR_BUTTON}
+            >
+              <EmojiIcon className="h-4 w-4" />
+            </button>
+          </PopoverTrigger>
+        </TooltipTrigger>
+        <TooltipContent>Add Reaction</TooltipContent>
+      </Tooltip>
+      <PopoverContent align="end" className="w-auto p-1.5" onCloseAutoFocus={(e) => e.preventDefault()}>
+        <div className="grid grid-cols-7 gap-1">
+          {emojis.map((emoji) => (
+            <button
+              key={emoji}
+              type="button"
+              onClick={() => {
+                setOpen(false)
+                setTooltipOpen(false)
+                onSelect(emoji)
+              }}
+              className="flex h-8 w-8 items-center justify-center rounded-md text-lg transition-colors hover:bg-quaternary-bg"
+            >
+              <Emoji emoji={emoji} />
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 function MessageActionsMenu({
   isMine,
   canDelete,
@@ -542,7 +695,7 @@ function MessageActionsMenu({
             <button
               type="button"
               aria-label="More options"
-              className={`flex h-7 w-7 border border-border-primary bg-secondary-bg items-center justify-center rounded-md text-secondary-text opacity-0 transition-opacity group-hover:opacity-100 hover:bg-quaternary-bg hover:text-primary-text ${open ? 'opacity-100' : ''}`}
+              className={TOOLBAR_BUTTON}
             >
               <MoreIcon className="h-4 w-4" />
             </button>
@@ -570,6 +723,11 @@ function MessageRow({
   senderId,
   senderProfile,
   profiles,
+  profileOf,
+  toMentionIds,
+  currentUserId,
+  frequentEmojis,
+  allEmojis,
   isMine,
   canDelete,
   parentMessage,
@@ -578,6 +736,7 @@ function MessageRow({
   onEdit,
   onDelete,
   onReport,
+  onToggleReaction,
   onRetry,
   onDiscard,
   onJumpToMessage,
@@ -592,6 +751,11 @@ function MessageRow({
   senderId: string
   senderProfile?: UserProfile
   profiles: Map<string, UserProfile>
+  profileOf: (id: string) => UserProfile | undefined
+  toMentionIds: (text: string) => string
+  currentUserId: string | null
+  frequentEmojis: string[]
+  allEmojis: string[]
   isMine: boolean
   canDelete: boolean
   parentMessage?: MessageItem
@@ -600,6 +764,7 @@ function MessageRow({
   onEdit: (messageId: string, content: string) => Promise<void>
   onDelete: (messageId: string) => Promise<void>
   onReport: (messageId: string, reason: string) => Promise<void>
+  onToggleReaction: (messageId: string, emoji: string) => Promise<void>
   onRetry: (localId: string) => void
   onDiscard: (localId: string) => void
   onJumpToMessage: (messageId: string) => void
@@ -619,15 +784,23 @@ function MessageRow({
   const [showReadFlash, setShowReadFlash] = useState(false)
   const [readIndicatorMounted, setReadIndicatorMounted] = useState(false)
   useEffect(() => {
-    if (!isRead) {
+    if (!isRead || isReadAcknowledged(message.id)) {
       setShowReadFlash(false)
+      setReadIndicatorMounted(false)
       return
     }
     setReadIndicatorMounted(true)
     setShowReadFlash(true)
-    const timeout = setTimeout(() => setShowReadFlash(false), READ_RECEIPT_FLASH_MS)
-    return () => clearTimeout(timeout)
-  }, [isRead])
+    const hide = setTimeout(() => {
+      setShowReadFlash(false)
+      acknowledgeRead(message.id)
+    }, READ_RECEIPT_FLASH_MS)
+    const unmount = setTimeout(() => setReadIndicatorMounted(false), READ_RECEIPT_FLASH_MS + READ_RECEIPT_FADE_MS)
+    return () => {
+      clearTimeout(hide)
+      clearTimeout(unmount)
+    }
+  }, [isRead, message.id])
   const isFailed = message.status === 'failed'
 
   if (message.metadata) {
@@ -636,7 +809,7 @@ function MessageRow({
 
     if (metaType === 'offer_accepted' && typeof metadata.trade === 'number') {
       return (
-        <div className="group rounded px-5 py-1.5 pt-1 hover:bg-secondary-bg/60">
+        <div className="group rounded px-5 py-1.5 pt-1 hover:bg-tertiary-bg">
           <OfferAcceptedCard
             message={message}
             tradeId={metadata.trade}
@@ -656,7 +829,7 @@ function MessageRow({
           <ArrowIcon left className="h-4.5 w-4.5 text-[color-mix(in_srgb,var(--color-status-error)_70%,black)]" />
         )
       return (
-        <div className="group mt-2 flex items-center gap-3 rounded px-5 py-1 hover:bg-secondary-bg/60">
+        <div className="group mt-2 flex items-center gap-3 rounded px-5 py-1 hover:bg-tertiary-bg">
           <div className="flex w-9 shrink-0 justify-center">{icon}</div>
           <p className="min-w-0 flex-1 text-sm text-tertiary-text">
             <GroupEventText message={message} metadata={metadata} profiles={profiles} />{' '}
@@ -668,7 +841,7 @@ function MessageRow({
 
     if (metaType === 'game_invite' || metaType === 'vip_server_invite' || metaType === 'gift_sent') {
       return (
-        <div className="group rounded px-5 py-1.5 pt-1 hover:bg-secondary-bg/60">
+        <div className="group rounded px-5 py-1.5 pt-1 hover:bg-tertiary-bg">
           <SystemEmbedCard
             message={message}
             metadata={metadata}
@@ -680,7 +853,7 @@ function MessageRow({
     }
 
     return (
-      <div className="group flex items-center gap-3 rounded px-5 py-1.5 hover:bg-secondary-bg/60">
+      <div className="group flex items-center gap-3 rounded px-5 py-1.5 hover:bg-tertiary-bg">
         <div className="flex w-9 shrink-0 items-center justify-center">
           <SystemCheckIcon className="h-5 w-5 text-status-success-vibrant" />
         </div>
@@ -698,7 +871,7 @@ function MessageRow({
   const parentLabel = parentSenderProfile?.username || parentSenderProfile?.name
 
   const saveEdit = async (): Promise<void> => {
-    const content = editDraft.trim()
+    const content = toMentionIds(editDraft.trim())
     if (!content || content === message.content) {
       setIsEditing(false)
       setEditDraft(message.content)
@@ -712,6 +885,18 @@ function MessageRow({
     } finally {
       setEditSaving(false)
     }
+  }
+
+  const react = (emoji: string): void => {
+    if (!currentUserId || !message.reactions?.[emoji]?.includes(currentUserId)) recordEmojiUse(emoji)
+    void onToggleReaction(message.id, emoji)
+  }
+
+  const displayText = (): string => mentionsToText(message.content, (id) => profileLabel(profileOf(id)))
+
+  const startEditing = (): void => {
+    setEditDraft(displayText())
+    setIsEditing(true)
   }
 
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -744,7 +929,7 @@ function MessageRow({
   const rowContent = (
     <div
       ref={(el) => registerRef(message.id, el)}
-      className={`group px-5 py-0.5 transition-colors duration-150 hover:bg-secondary-bg/60 ${showSenderInfo || message.parent_id ? 'mt-[17px]' : ''
+      className={`group relative px-5 py-0.5 transition-colors duration-150 hover:bg-tertiary-bg ${showSenderInfo || message.parent_id ? 'mt-[17px]' : ''
         } ${isHighlighted
           ? 'bg-status-info/15'
           : isReplyTarget
@@ -752,7 +937,7 @@ function MessageRow({
             : isReplyToMe
               ? 'bg-status-warning/10 shadow-[inset_2px_0_0_var(--color-status-warning)] hover:bg-status-warning/15!'
               : isContextMenuOpen
-                ? 'bg-secondary-bg/60'
+                ? 'bg-tertiary-bg'
                 : ''
         }`}
     >
@@ -776,7 +961,9 @@ function MessageRow({
                 ) : (
                   <UserNameSkeleton className="w-14" />
                 )}
-                <span className="min-w-0 truncate">{parentMessage.content || '(a message)'}</span>
+                <span className="min-w-0 truncate">
+                  {mentionsToText(parentMessage.content, (id) => profileLabel(profileOf(id))) || '(a message)'}
+                </span>
               </>
             ) : (
               <span>Replying to a message</span>
@@ -880,11 +1067,35 @@ function MessageRow({
                     : 'text-message-text'
                   }`}
               >
-                <EmojiText text={message.content} />
+                <MessageText text={message.content} profileOf={profileOf} />
                 {message.updated_at != null && message.updated_at > message.created_at && (
                   <span className="ml-1 text-xs text-quaternary-text">(edited)</span>
                 )}
               </p>
+              {message.reactions && Object.keys(message.reactions).length > 0 && (
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {Object.entries(message.reactions).map(([emoji, users]) => (
+                    <Tooltip key={emoji}>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => react(emoji)}
+                          className={`flex items-center gap-1.5 rounded-lg border px-2 py-1 text-lg leading-none transition-colors ${currentUserId && users.includes(currentUserId)
+                            ? 'border-button-info/40 bg-button-info/20'
+                            : 'border-border-card bg-tertiary-bg hover:bg-quaternary-bg'
+                            }`}
+                        >
+                          <Emoji emoji={emoji} />
+                          <span className="text-sm font-semibold text-secondary-text">{users.length}</span>
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {users.map((id) => profileLabel(profileOf(id)) ?? 'unknown-user').join(', ')}
+                      </TooltipContent>
+                    </Tooltip>
+                  ))}
+                </div>
+              )}
               {isFailed && (
                 <p className="mt-0.5 flex items-center gap-1.5 text-xs text-status-error">
                   <span>Failed to send</span>
@@ -908,20 +1119,26 @@ function MessageRow({
             </>
           )}
         </div>
-
-        {canShowActions && (
-          <div className="absolute top-0 right-2 -translate-y-1/2">
-            <MessageActionsMenu
-              isMine={isMine}
-              canDelete={canDelete}
-              onReply={() => onReply(message)}
-              onEdit={() => setIsEditing(true)}
-              onDelete={handleDelete}
-              onReport={handleReport}
-            />
-          </div>
-        )}
       </div>
+      {canShowActions && (
+        <div className="absolute -top-1 right-7 z-10 flex -translate-y-1/2 items-center gap-0.5 rounded-md border border-border-primary bg-secondary-bg p-0.5 opacity-0 transition-opacity group-hover:opacity-100 has-[[data-state=open]]:opacity-100">
+          {frequentEmojis.slice(0, 3).map((emoji) => (
+            <button key={emoji} type="button" aria-label={`React with ${emoji}`} onClick={() => react(emoji)} className={TOOLBAR_BUTTON}>
+              <Emoji emoji={emoji} />
+            </button>
+          ))}
+          {frequentEmojis.length > 0 && <span aria-hidden className="mx-0.5 h-4 w-px bg-border-primary" />}
+          <ReactionPicker onSelect={react} />
+          <MessageActionsMenu
+            isMine={isMine}
+            canDelete={canDelete}
+            onReply={() => onReply(message)}
+            onEdit={startEditing}
+            onDelete={handleDelete}
+            onReport={handleReport}
+          />
+        </div>
+      )}
     </div>
   )
 
@@ -998,17 +1215,57 @@ function MessageRow({
     <>
       <ContextMenu onOpenChange={setIsContextMenuOpen}>
         <ContextMenuTrigger asChild>{rowContent}</ContextMenuTrigger>
-        <ContextMenuContent className="w-40" onCloseAutoFocus={(e) => e.preventDefault()}>
+        <ContextMenuContent className="w-52" onCloseAutoFocus={(e) => e.preventDefault()}>
+          {frequentEmojis.length > 0 && (
+            <div className="flex gap-1 p-1">
+              {frequentEmojis.map((emoji) => (
+                <ContextMenuItem
+                  key={emoji}
+                  aria-label={`React with ${emoji}`}
+                  onClick={() => react(emoji)}
+                  className="h-9 flex-1 justify-center bg-tertiary-bg p-0 text-lg"
+                >
+                  <Emoji emoji={emoji} />
+                </ContextMenuItem>
+              ))}
+            </div>
+          )}
+          <ContextMenuSub>
+            <ContextMenuSubTrigger>
+              <EmojiIcon className="h-4 w-4" />
+              Add Reaction
+            </ContextMenuSubTrigger>
+            <ContextMenuSubContent className="p-1.5">
+              <div className="grid grid-cols-7 gap-1">
+                {allEmojis.map((emoji) => (
+                  <ContextMenuItem
+                    key={emoji}
+                    aria-label={`React with ${emoji}`}
+                    onClick={() => react(emoji)}
+                    className="h-8 w-8 justify-center p-0 text-lg"
+                  >
+                    <Emoji emoji={emoji} />
+                  </ContextMenuItem>
+                ))}
+              </div>
+            </ContextMenuSubContent>
+          </ContextMenuSub>
+          <ContextMenuSeparator />
           <ContextMenuItem onClick={() => onReply(message)}>
             <ReplyIcon className="h-4 w-4" />
             Reply
           </ContextMenuItem>
           {isMine && (
-            <ContextMenuItem onClick={() => setIsEditing(true)}>
+            <ContextMenuItem onClick={startEditing}>
               <EditIcon className="h-4 w-4" />
               Edit
             </ContextMenuItem>
           )}
+          <ContextMenuItem onClick={() => void navigator.clipboard.writeText(displayText())}>
+            <CopyIcon className="h-4 w-4" />
+            Copy Text
+          </ContextMenuItem>
+          <ContextMenuSeparator />
           {canDelete && (
             <ContextMenuItem destructive onClick={handleDelete}>
               <DeleteIcon className="h-4 w-4" />
@@ -1021,6 +1278,11 @@ function MessageRow({
               Report
             </ContextMenuItem>
           )}
+          <ContextMenuSeparator />
+          <ContextMenuItem onClick={() => void navigator.clipboard.writeText(message.id)}>
+            <IdIcon className="h-4 w-4" />
+            Copy Message ID
+          </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
       {reportDialog}
@@ -1029,10 +1291,16 @@ function MessageRow({
   )
 }
 
-function emojiQueryAtCursor(text: string, cursor: number): string | null {
-  const upToCursor = text.slice(0, cursor)
-  const match = upToCursor.match(/(?:^|\s):([a-z0-9_]{0,20})$/i)
-  return match ? match[1] : null
+interface ComposerQuery {
+  trigger: ':' | '@'
+  text: string
+}
+
+const COMPOSER_QUERY_PATTERN = /(?:^|\s)([:@])([a-z0-9_.]{0,32})$/i
+
+function composerQueryAtCursor(text: string, cursor: number): ComposerQuery | null {
+  const match = text.slice(0, cursor).match(COMPOSER_QUERY_PATTERN)
+  return match ? { trigger: match[1] as ComposerQuery['trigger'], text: match[2] } : null
 }
 
 interface ConversationThreadProps {
@@ -1090,6 +1358,7 @@ export function ConversationThread({
     editMessage,
     deleteMessage,
     reportMessage,
+    toggleReaction,
     notifyTyping
   } = useConversation(target, currentUser?.id ?? null, onRead)
   const { typingUserIds } = useRealtime()
@@ -1104,17 +1373,23 @@ export function ConversationThread({
         : []
   const recipientIsTyping = typerIds.length > 0
   // Groups also need senders who have since left, so their old messages keep a name.
+  const mentionIds = items.flatMap((m) => Array.from(m.content.matchAll(MENTION_PATTERN), (match) => match[1]))
   const profileIds = !recipientId
     ? []
-    : isGroup
-      ? [
-        ...new Set([
-          ...(group?.member_ids ?? []),
-          ...items.flatMap((m) => [m.sender_id, ...metadataUserIds(m.metadata)])
-        ])
-      ]
-      : [recipientId]
+    : [
+      ...new Set([
+        ...(isGroup
+          ? [
+            ...(group?.member_ids ?? []),
+            ...items.flatMap((m) => [m.sender_id, ...metadataUserIds(m.metadata), ...Object.values(m.reactions ?? {}).flat()])
+          ]
+          : [recipientId]),
+        ...mentionIds
+      ])
+    ]
   const profiles = useUserProfiles(profileIds)
+  const profileOf = (id: string): UserProfile | undefined =>
+    currentUser && id === currentUser.id ? currentUser : profiles.get(id)
   const { isBlocked, block, unblock } = useBlockedUsers()
   const blocked = !isGroup && recipientId !== null && isBlocked(recipientId)
   const [blockConfirmOpen, setBlockConfirmOpen] = useState(false)
@@ -1134,9 +1409,11 @@ export function ConversationThread({
     await block(recipientId).catch(() => { })
   }
   const emojis = useEmojis()
+  const allEmojis = Object.values(emojis)
+  const frequentEmojis = useFrequentEmojis(4)
 
   const [draft, setDraft] = useState('')
-  const [emojiQuery, setEmojiQuery] = useState<string | null>(null)
+  const [composerQuery, setComposerQuery] = useState<ComposerQuery | null>(null)
   const [activeSuggestion, setActiveSuggestion] = useState(0)
   const [replyTo, setReplyTo] = useState<MessageItem | null>(null)
   const [pendingReplyTo, setPendingReplyTo] = useState<MessageItem | null>(null)
@@ -1157,6 +1434,7 @@ export function ConversationThread({
     setScrollNode(node)
   }, [])
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const draftMirrorRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!replyTo) return
     const timer = setTimeout(() => textareaRef.current?.focus(), 0)
@@ -1186,31 +1464,73 @@ export function ConversationThread({
     }
   }, [])
 
-  const suggestions =
-    emojiQuery !== null
-      ? Object.entries(emojis)
-        .filter(([name]) => name.toLowerCase().startsWith(emojiQuery.toLowerCase()))
+  const mentionCandidates = (isGroup ? group?.member_ids ?? [] : recipientId ? [recipientId] : [])
+    .filter((id) => id !== currentUser?.id)
+    .map((id) => profiles.get(id))
+    .filter((profile): profile is UserProfile => Boolean(profile?.username))
+  const toMentionIds = (text: string): string => mentionsToIds(text, mentionCandidates)
+
+  const queryText = composerQuery?.text.toLowerCase() ?? ''
+  const suggestions: { key: string; insert: string; label: React.ReactNode }[] = !composerQuery
+    ? []
+    : composerQuery.trigger === '@'
+      ? mentionCandidates
+        .filter((p) => p.username.toLowerCase().startsWith(queryText) || p.name?.toLowerCase().startsWith(queryText))
         .slice(0, 8)
-      : []
+        .map((p) => ({
+          key: p.id,
+          insert: `@${p.username}`,
+          label: (
+            <>
+              <UserAvatar id={p.id} profile={p} className="h-6 w-6 shrink-0" />
+              <span className="text-primary-text">{p.name || p.username}</span>
+              <span className="text-tertiary-text">{p.username}</span>
+            </>
+          )
+        }))
+      : Object.entries(emojis)
+        .filter(([name]) => name.toLowerCase().startsWith(queryText))
+        .slice(0, 8)
+        .map(([name, emoji]) => ({
+          key: name,
+          insert: emoji,
+          label: (
+            <>
+              <span className="text-lg">
+                <Emoji emoji={emoji} />
+              </span>
+              <span className="text-primary-text">:{name}:</span>
+            </>
+          )
+        }))
+  const outgoing = toMentionIds(draft.trim())
+
+  const [isScrolledUp, setIsScrolledUp] = useState(false)
+  const isScrolledUpRef = useRef(false)
+  isScrolledUpRef.current = isScrolledUp
+  const lastItemIdRef = useRef<string | null>(null)
 
   useEffect(() => {
+    const last = items[items.length - 1]
+    const sentNewMessage = last !== undefined && last.id !== lastItemIdRef.current && last.sender_id === currentUser?.id
+    lastItemIdRef.current = last?.id ?? null
     if (recipientId !== prevRecipientRef.current) {
       prevRecipientRef.current = recipientId
       return
     }
+    if (isScrolledUpRef.current && !sentNewMessage) return
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
-  }, [items, recipientId])
+  }, [items, recipientId, currentUser?.id])
 
   useEffect(() => {
     if (!scrollNode) return
     const observer = new ResizeObserver(() => {
-      scrollNode.scrollTop = scrollNode.scrollHeight
+      if (!isScrolledUpRef.current) scrollNode.scrollTop = scrollNode.scrollHeight
     })
     observer.observe(scrollNode)
     return () => observer.disconnect()
   }, [scrollNode])
 
-  const [isScrolledUp, setIsScrolledUp] = useState(false)
   useEffect(() => {
     if (!scrollNode) return
     const AT_BOTTOM_THRESHOLD_PX = 4
@@ -1268,19 +1588,20 @@ export function ConversationThread({
     })
   }
 
-  const acceptSuggestion = (emoji: string): void => {
+  const acceptSuggestion = (insert: string): void => {
     const el = textareaRef.current
     const cursor = el?.selectionStart ?? draft.length
     const upToCursor = draft.slice(0, cursor)
-    const match = upToCursor.match(/:([a-z0-9_]{0,20})$/i)
+    const match = upToCursor.match(/[:@][a-z0-9_.]{0,32}$/i)
     if (!match) return
     const startIdx = upToCursor.length - match[0].length
-    const next = `${draft.slice(0, startIdx)}${emoji} ${draft.slice(cursor)}`
+    if (composerQuery?.trigger === ':') recordEmojiUse(insert)
+    const next = `${draft.slice(0, startIdx)}${insert} ${draft.slice(cursor)}`
     setDraft(next)
-    setEmojiQuery(null)
+    setComposerQuery(null)
     requestAnimationFrame(() => {
       el?.focus()
-      const newCursor = startIdx + emoji.length + 1
+      const newCursor = startIdx + insert.length + 1
       el?.setSelectionRange(newCursor, newCursor)
     })
   }
@@ -1289,24 +1610,23 @@ export function ConversationThread({
     const value = e.target.value
     const cursor = e.target.selectionStart
     setDraft(value)
-    setEmojiQuery(emojiQueryAtCursor(value, cursor))
+    setComposerQuery(composerQueryAtCursor(value, cursor))
     setActiveSuggestion(0)
     notifyTyping()
   }
 
   const handleSend = (): void => {
-    const content = draft.trim()
-    if (!content || content.length > MAX_LENGTH) return
+    if (!outgoing || outgoing.length > MAX_LENGTH) return
 
     const parentId = replyTo?.id ?? null
     setDraft('')
-    setEmojiQuery(null)
+    setComposerQuery(null)
     setReplyTo(null)
-    void sendMessage(content, parentId)
+    void sendMessage(outgoing, parentId)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
-    if (emojiQuery !== null && suggestions.length > 0) {
+    if (suggestions.length > 0) {
       if (e.key === 'ArrowDown') {
         e.preventDefault()
         setActiveSuggestion((i) => (i + 1) % suggestions.length)
@@ -1319,13 +1639,12 @@ export function ConversationThread({
       }
       if (e.key === 'Enter' || e.key === 'Tab') {
         e.preventDefault()
-        const [, emoji] = suggestions[activeSuggestion]
-        acceptSuggestion(emoji)
+        acceptSuggestion(suggestions[activeSuggestion].insert)
         return
       }
       if (e.key === 'Escape') {
         e.preventDefault()
-        setEmojiQuery(null)
+        setComposerQuery(null)
         return
       }
     }
@@ -1535,12 +1854,18 @@ export function ConversationThread({
                             isMine={isMine}
                             canDelete={canDelete}
                             profiles={profiles}
+                            profileOf={profileOf}
+                            toMentionIds={toMentionIds}
+                            frequentEmojis={frequentEmojis}
+                            allEmojis={allEmojis}
+                            currentUserId={currentUser?.id ?? null}
                             parentMessage={parentMessage}
                             parentSenderProfile={parentSenderProfile}
                             onReply={setReplyTo}
                             onEdit={editMessage}
                             onDelete={deleteMessage}
                             onReport={reportMessage}
+                            onToggleReaction={toggleReaction}
                             onRetry={retrySend}
                             onDiscard={discardFailedSend}
                             onJumpToMessage={handleJumpToMessage}
@@ -1562,7 +1887,7 @@ export function ConversationThread({
                 >
                   <div className="min-h-0 overflow-hidden">
                     <div
-                      className={`flex items-center gap-2 bg-linear-to-t from-primary-bg from-45% to-transparent px-4 pt-6 pb-1.5 text-sm text-primary-text transition-[opacity,translate] duration-200 ease-out ${recipientIsTyping ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'
+                      className={`flex items-center gap-2 bg-linear-to-t from-primary-bg from-45% to-transparent px-4 pt-6 pb-1.5 text-sm text-secondary-text transition-[opacity,translate] duration-200 ease-out ${recipientIsTyping ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'
                         }`}
                     >
                       <span className="flex h-3 shrink-0 items-center gap-[3px]">
@@ -1585,7 +1910,7 @@ export function ConversationThread({
                 </div>
               </div>
 
-              <div className="relative flex flex-col justify-center border-border-primary bg-primary-bg px-2 pb-2">
+              <div className="relative flex flex-col justify-center border-border-primary bg-primary-bg px-2 pb-[9px]">
 
                 <div
                   style={{
@@ -1620,39 +1945,37 @@ export function ConversationThread({
                     </button>
                   </div>
                 )}
-                {draft.length >= MAX_LENGTH * 0.75 && (
+                {outgoing.length >= MAX_LENGTH * 0.75 && (
                   <p
-                    className={`mb-1 text-xs ${draft.length >= MAX_LENGTH * 0.95
+                    className={`mb-1 text-xs ${outgoing.length >= MAX_LENGTH * 0.95
                       ? 'text-status-error'
-                      : draft.length >= MAX_LENGTH * 0.85
+                      : outgoing.length >= MAX_LENGTH * 0.85
                         ? 'text-status-warning'
                         : 'text-tertiary-text'
                       }`}
                   >
-                    {draft.length}/{MAX_LENGTH}
+                    {outgoing.length}/{MAX_LENGTH}
                   </p>
                 )}
 
                 <div className="relative">
-                  {emojiQuery !== null && suggestions.length > 0 && (
+                  {composerQuery && suggestions.length > 0 && (
                     <div className={`absolute right-0 bottom-full left-0 mb-2 overflow-hidden ${FLOATING_PANEL_SURFACE}`}>
                       <div className="border-b border-border-primary px-3 py-2 text-[10px] font-bold tracking-wide text-tertiary-text uppercase">
-                        Emojis matching :{emojiQuery}
+                        {composerQuery.trigger === '@' ? 'Members' : 'Emojis'} matching {composerQuery.trigger}
+                        {composerQuery.text}
                       </div>
                       <div className="max-h-48 overflow-y-auto p-1">
-                        {suggestions.map(([name, emoji], index) => (
+                        {suggestions.map((suggestion, index) => (
                           <button
-                            key={name}
+                            key={suggestion.key}
                             type="button"
                             onMouseEnter={() => setActiveSuggestion(index)}
-                            onClick={() => acceptSuggestion(emoji)}
+                            onClick={() => acceptSuggestion(suggestion.insert)}
                             className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors ${index === activeSuggestion ? 'bg-quaternary-bg' : ''
                               }`}
                           >
-                            <span className="text-lg">
-                              <Emoji emoji={emoji} />
-                            </span>
-                            <span className="text-primary-text">:{name}:</span>
+                            {suggestion.label}
                           </button>
                         ))}
                       </div>
@@ -1667,15 +1990,37 @@ export function ConversationThread({
                       <ComposerActionsMenu recipientId={isGroup ? null : recipientId} onSendMessage={sendMessage} />
                     )}
                     <div className="relative min-w-0 flex-1 flex">
+                      <div
+                        ref={draftMirrorRef}
+                        aria-hidden
+                        className="pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words py-2 pl-3 pr-20 text-base leading-6 text-primary-text"
+                      >
+                        {splitDraftMentions(draft, mentionCandidates).map((part, i) =>
+                          i % 2 === 1 ? (
+                            <span
+                              key={i}
+                              className="rounded-[3px] bg-button-info/30 text-[color-mix(in_srgb,var(--color-button-info)_25%,white)]"
+                            >
+                              {part}
+                            </span>
+                          ) : (
+                            part
+                          )
+                        )}
+                        {'\u200b'}
+                      </div>
                       <textarea
                         ref={textareaRef}
                         value={draft}
                         onChange={handleChange}
                         onKeyDown={handleKeyDown}
+                        onScroll={(e) => {
+                          if (draftMirrorRef.current) draftMirrorRef.current.scrollTop = e.currentTarget.scrollTop
+                        }}
                         placeholder={`Message ${recipientLabel}...`}
                         rows={1}
                         maxLength={MAX_LENGTH}
-                        className="box-border w-full resize-none overflow-y-auto border-none bg-transparent py-2 pl-3 pr-20 text-base leading-6 text-primary-text placeholder-secondary-text shadow-none placeholder:whitespace-nowrap focus:outline-none"
+                        className="relative box-border w-full resize-none overflow-y-auto border-none bg-transparent py-2 pl-3 pr-20 text-base leading-6 text-transparent caret-primary-text placeholder-secondary-text shadow-none placeholder:whitespace-nowrap focus:outline-none"
                       />
                       <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1">
                         <EmojiPicker onSelect={insertAtCursor} />
@@ -1685,7 +2030,7 @@ export function ConversationThread({
                               type="button"
                               aria-label="Send message"
                               onClick={handleSend}
-                              disabled={!draft.trim() || draft.length > MAX_LENGTH}
+                              disabled={!outgoing || outgoing.length > MAX_LENGTH}
                               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-primary-text transition-colors hover:bg-secondary-bg disabled:cursor-not-allowed disabled:opacity-40"
                             >
                               <SendIcon className="h-4 w-4" />

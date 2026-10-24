@@ -259,9 +259,9 @@ export function HomeScreen(): React.JSX.Element {
         <div className="flex h-full w-64 shrink-0 flex-col border-r border-border-primary bg-secondary-bg">
           <NavBar activeTab={activeTab} onSelect={setActiveTab} unreadCount={unread} />
           <div ref={setSidebarSlot} className="relative flex min-h-0 flex-1 flex-col" />
-          <div className="m-2 shrink-0 overflow-hidden rounded-xl border border-border-primary">
+          <div className="mx-2 mt-2 mb-[9px] flex min-h-[64px] shrink-0 flex-col overflow-hidden rounded-xl border border-border-primary">
             <RobloxStatusBar />
-            <div className="flex h-[64px] items-center px-1.5">
+            <div className="flex min-h-[62px] flex-1 items-center px-[11px]">
               <AccountPanel />
             </div>
           </div>

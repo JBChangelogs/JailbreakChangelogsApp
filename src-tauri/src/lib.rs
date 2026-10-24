@@ -354,6 +354,11 @@ fn notifications_show(app: AppHandle, options: NotificationOptions) -> Result<()
 }
 
 #[tauri::command]
+async fn roblox_game_icons() -> HashMap<String, String> {
+    roblox::game_icons().await
+}
+
+#[tauri::command]
 async fn scanner_status() -> Value {
     scanner::status().await
 }
@@ -472,6 +477,7 @@ pub fn run() {
             updater_download,
             updater_quit_and_install,
             notifications_show,
+            roblox_game_icons,
             scanner_status,
             scanner_install,
             scanner_snip,
@@ -504,7 +510,7 @@ pub fn run() {
             legacy::clear_electron_caches();
             #[cfg(windows)]
             {
-                notify::register_windows_toast_identity(APP_USER_MODEL_ID, &resources.join("icon.ico"));
+                notify::register_windows_toast_identity(APP_USER_MODEL_ID, &resources.join("icon.png"));
                 if let Err(e) = app.deep_link().register(PROTOCOL) {
                     eprintln!("[protocol] failed to register: {e}");
                 }

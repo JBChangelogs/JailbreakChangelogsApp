@@ -115,7 +115,7 @@ export function NavBar({
     unreadCount: number
 }): React.JSX.Element {
     return (
-        <div className="flex shrink-0 items-center justify-center gap-1 border-b border-border-primary px-2 py-2">
+        <div className="flex shrink-0 items-center justify-between border-b border-border-primary p-2">
             <NavItem
                 label="Messages"
                 active={activeTab === 'messages'}

@@ -1,6 +1,7 @@
 import { useOwnRobloxActivity } from '@renderer/hooks/useOwnRobloxActivity'
 import { KNOWN_ROBLOX_GAMES } from '@shared/robloxGames'
 import jailbreakLogo from '@renderer/assets/jailbreak-logo.webp'
+import { useRobloxGameIcons } from '@renderer/hooks/useRobloxGameIcons'
 
 const GAME_ICONS: Record<string, string> = {
   Jailbreak: jailbreakLogo
@@ -8,9 +9,10 @@ const GAME_ICONS: Record<string, string> = {
 
 export function RobloxStatusBar(): React.JSX.Element | null {
   const { placeId } = useOwnRobloxActivity()
+  const gameIcons = useRobloxGameIcons()
   if (!placeId) return null
   const gameName = KNOWN_ROBLOX_GAMES[placeId] ?? 'Roblox'
-  const icon = GAME_ICONS[gameName]
+  const icon = gameIcons[placeId] ?? GAME_ICONS[gameName]
 
   return (
     <div className="flex items-center gap-2 border-b border-border-primary px-3 py-2 text-xs font-medium text-primary-text">

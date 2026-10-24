@@ -1,4 +1,5 @@
 import { SORT_OPTIONS, useDupeFinder, type SortOrder } from '@renderer/contexts/DupeFinderContext'
+import { Button } from '@renderer/components/ui/button'
 import { RobloxAvatar } from '@renderer/components/dupefinder/RobloxAvatar'
 import { DupeSearchBar } from '@renderer/components/dupefinder/DupeSearchBar'
 import { DupeHistoryList } from '@renderer/components/dupefinder/DupeHistoryList'
@@ -44,7 +45,7 @@ export function DupeFinderSidebar(): React.JSX.Element {
   if (selectedItem) {
     return (
       <div className="flex h-full min-h-0 flex-1 flex-col">
-        <div className="flex items-center gap-2 border-b border-border-primary px-3 py-2.5">
+        <div className="flex items-center gap-2 border-b border-border-primary p-2">
           <button
             type="button"
             onClick={() => selectItem(null)}
@@ -56,14 +57,10 @@ export function DupeFinderSidebar(): React.JSX.Element {
           <h1 className="truncate text-xs font-bold uppercase tracking-wide text-quaternary-text">{selectedItem.title}</h1>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-3">
-          <button
-            type="button"
-            onClick={() => openCompare(selectedItem.id)}
-            className="mb-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-button-info px-3 py-1.5 text-xs font-semibold text-form-button-text transition-colors hover:bg-button-info-hover"
-          >
+        <div className="min-h-0 flex-1 overflow-y-auto p-2">
+          <Button type="button" className="mb-3 w-full text-sm!" onClick={() => openCompare(selectedItem.id)}>
             Compare Variants
-          </button>
+          </Button>
 
           <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-quaternary-text">
             <HistoryIcon className="h-3 w-3" />
@@ -81,12 +78,11 @@ export function DupeFinderSidebar(): React.JSX.Element {
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
-      <div className="space-y-2 border-b border-border-primary px-3 py-2.5">
-        <h1 className="text-xs font-bold uppercase tracking-wide text-quaternary-text">Dupe Finder</h1>
+      <div className="flex flex-col gap-2 p-2">
         <DupeSearchBar onSearch={search} loading={state.status === 'loading'} />
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-3">
+      <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
         {identity ? (
           <div className="rounded-2xl border border-border-card bg-tertiary-bg p-3">
             <div className="flex items-center gap-3">
@@ -125,15 +121,7 @@ export function DupeFinderSidebar(): React.JSX.Element {
               </div>
             )}
           </div>
-        ) : (
-          <div className="space-y-3 text-xs text-secondary-text">
-            <p>Search a Roblox ID or username to check for any duped items associated with that account.</p>
-            <ul className="list-disc space-y-1.5 pl-4">
-              <li>Click a result card to see that item&apos;s ownership history.</li>
-              <li>From there, compare it against its original variant to help spot a false-positive dupe flag.</li>
-            </ul>
-          </div>
-        )}
+        ) : null}
 
         {state.status === 'success' && (
           <div className="mt-3 space-y-2">
@@ -146,7 +134,7 @@ export function DupeFinderSidebar(): React.JSX.Element {
                     key={category}
                     type="button"
                     onClick={() => toggleCategory(category)}
-                    className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                    className={`inline-flex h-7 items-center rounded-lg border px-2.5 text-[11px] font-semibold transition-colors ${
                       selectedCategories.has(category)
                         ? 'border-button-info/40 bg-button-info/20 text-primary-text'
                         : 'border-border-card bg-tertiary-bg text-secondary-text hover:bg-quaternary-bg'

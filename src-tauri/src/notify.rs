@@ -8,7 +8,8 @@ pub fn register_windows_toast_identity(aumid: &str, icon: &Path) {
     const CREATE_NO_WINDOW: u32 = 0x0800_0000;
     let key = format!(r"HKCU\Software\Classes\AppUserModelId\{aumid}");
     let icon = icon.to_string_lossy();
-    for (name, value) in [("DisplayName", "Jailbreak Changelogs"), ("IconUri", icon.as_ref())] {
+    let icon = icon.strip_prefix(r"\\?\").unwrap_or(&icon);
+    for (name, value) in [("DisplayName", "Jailbreak Changelogs"), ("IconUri", icon)] {
         let status = std::process::Command::new("reg")
             .args(["add", &key, "/v", name, "/t", "REG_SZ", "/d", value, "/f"])
             .stdout(std::process::Stdio::null())

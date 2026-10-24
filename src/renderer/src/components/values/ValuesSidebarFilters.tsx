@@ -88,7 +88,7 @@ export function SectionHeader({
   onClear: () => void
 }): React.JSX.Element {
   return (
-    <div className="flex items-center justify-between px-1 pb-1.5">
+    <div className="mb-1.5 flex h-4 items-center justify-between px-1">
       <span className="text-[10px] font-bold tracking-wide text-quaternary-text uppercase">
         {label}
         {count > 0 && <span className="ml-1 text-link">({count})</span>}
@@ -190,38 +190,14 @@ export function ValuesSidebarFilters(): React.JSX.Element {
 
   const advancedCount = selectedDemand.size + selectedTrend.size
   const [showAdvanced, setShowAdvanced] = useState(advancedCount > 0)
-  const activeCount = selectedTypes.size + selectedTags.size + advancedCount
 
   if (selectedItem) {
     return <ItemCommentsSidebar item={selectedItem} />
   }
 
-  const clearAll = (): void => {
-    clearTypes()
-    clearDemand()
-    clearTrend()
-    for (const tag of selectedTags) toggleTag(tag)
-  }
-
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
-      <div className="flex items-center justify-between px-3 py-2.5">
-        <h1 className="text-xs font-bold tracking-wide text-quaternary-text uppercase">
-          Filters
-          {activeCount > 0 && (
-            <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-button-info px-1 text-[10px] text-form-button-text">
-              {activeCount}
-            </span>
-          )}
-        </h1>
-        {activeCount > 0 && (
-          <button type="button" onClick={clearAll} className="text-[11px] font-semibold text-link hover:text-link-hover">
-            Clear all
-          </button>
-        )}
-      </div>
-
-      <div className="flex flex-col gap-2 px-3 pb-3">
+      <div className="flex flex-col gap-2 p-2">
         <SearchInput value={searchQuery} onChange={setSearchQuery} placeholder="Search items..." />
         <SortMenu value={sort} onChange={setSort} />
 
@@ -234,7 +210,7 @@ export function ValuesSidebarFilters(): React.JSX.Element {
                 type="button"
                 onClick={() => toggleTag(tag.value)}
                 aria-pressed={active}
-                className={`inline-flex h-7 items-center gap-1 rounded-full border px-2.5 text-[11px] font-medium transition-colors ${active
+                className={`inline-flex h-7 items-center gap-1 rounded-lg border px-2.5 text-[11px] font-semibold transition-colors ${active
                   ? 'border-button-info bg-button-info/20 text-primary-text'
                   : 'border-border-card bg-tertiary-bg text-secondary-text hover:bg-quaternary-bg hover:text-primary-text'
                   }`}
@@ -246,7 +222,7 @@ export function ValuesSidebarFilters(): React.JSX.Element {
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto border-t border-border-primary px-2 pt-3 pb-2">
+      <div className="min-h-0 flex-1 overflow-y-auto border-t border-border-primary p-2">
         <SectionHeader label="Type" count={selectedTypes.size} onClear={clearTypes} />
         <TypeTiles selected={selectedTypes} onToggle={toggleType} />
 

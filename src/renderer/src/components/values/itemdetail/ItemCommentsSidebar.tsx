@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Button } from '@renderer/components/ui/button'
 import { useAuth } from '@renderer/contexts/AuthContext'
 import { useCurrentUser } from '@renderer/hooks/useCurrentUser'
 import { commentsApi } from '@renderer/lib/commentsApi'
@@ -95,35 +96,30 @@ export function ItemCommentsSidebar({ item }: { item: Item }): React.JSX.Element
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
-      <div className="flex items-center justify-between px-3 py-2.5">
+      <div className="flex items-center justify-between p-3">
         <h1 className="text-xs font-bold uppercase tracking-wide text-quaternary-text">
           Comments {data ? `(${data.total})` : ''}
         </h1>
       </div>
 
-      <div className="px-3 pb-2">
+      <div className="px-2 pb-2">
         <FilterMenu<CommentSort> label="Sort" value={sort} options={SORT_OPTIONS} onChange={setSort} />
       </div>
 
-      <div className="px-3 pb-3">
+      <div className="flex flex-col gap-2 px-2 pb-2">
         <textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder="Add a comment..."
           rows={2}
-          className="w-full resize-none rounded-md border border-border-card bg-tertiary-bg px-2.5 py-1.5 text-sm text-primary-text placeholder-secondary-text focus:outline-none"
+          className="w-full resize-none rounded-xl border border-border-card bg-secondary-bg px-3 py-2 text-sm text-primary-text placeholder-secondary-text transition-colors focus:border-button-info focus:outline-none"
         />
-        <button
-          type="button"
-          onClick={() => void handlePost()}
-          disabled={posting || !draft.trim()}
-          className="mt-1.5 w-full rounded-md bg-button-info px-3 py-1.5 text-xs font-semibold text-form-button-text transition-colors hover:bg-button-info-hover disabled:cursor-not-allowed disabled:opacity-50"
-        >
+        <Button type="button" className="w-full text-sm!" onClick={() => void handlePost()} disabled={posting || !draft.trim()}>
           Post Comment
-        </button>
+        </Button>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3">
+      <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
         {error ? (
           <p className="py-8 text-center text-xs text-status-error">Failed to load comments.</p>
         ) : !data ? (
@@ -156,7 +152,7 @@ export function ItemCommentsSidebar({ item }: { item: Item }): React.JSX.Element
       </div>
 
       {data && data.total_pages > 1 && (
-        <div className="flex shrink-0 items-center justify-between border-t border-border-primary px-3 py-2">
+        <div className="flex shrink-0 items-center justify-between border-t border-border-primary p-2">
           <button
             type="button"
             onClick={() => setPage((p) => Math.max(1, p - 1))}

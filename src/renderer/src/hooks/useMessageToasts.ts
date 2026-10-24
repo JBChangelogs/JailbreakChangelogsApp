@@ -4,6 +4,7 @@ import { useRealtime } from '@renderer/contexts/RealtimeContext'
 import { usersApi } from '@renderer/lib/usersApi'
 import { showToast } from '@renderer/lib/toast'
 import { chatKey } from '@renderer/lib/messagesApi'
+import { mentionsToText } from '@renderer/lib/messageFormatting'
 
 const PREVIEW_MAX_LENGTH = 140
 
@@ -44,7 +45,9 @@ export function useMessageToasts(onOpenChat: (key: string) => void): void {
 
       const notify = (name?: string): void => {
         showToast(name ? (isGroup ? `${name} in a group chat` : name) : isGroup ? 'New group message' : 'New message', {
-          description: data.content ? truncate(data.content) : 'Check your messages.',
+          description: data.content
+            ? truncate(mentionsToText(data.content, (id) => namesRef.current.get(id) ?? 'someone'))
+            : 'Check your messages.',
           analyticsType: 'message',
           action: {
             label: 'Open chat',

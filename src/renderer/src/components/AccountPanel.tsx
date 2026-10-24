@@ -41,7 +41,7 @@ export function AccountPanel(): React.JSX.Element | null {
   const initials = displayName.slice(0, 2).toUpperCase()
 
   return (
-    <div className="flex w-full items-center gap-2.5 rounded-lg p-2">
+    <div className="flex w-full items-center gap-2.5">
       <div className="relative shrink-0">
         {user?.avatar && user.avatar !== failedSrc ? (
           <img

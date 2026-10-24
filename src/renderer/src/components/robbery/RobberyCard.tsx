@@ -97,7 +97,7 @@ const badgeBase =
 
 function StatusBadge({ robbery, planeCountdown }: { robbery: RobberyData; planeCountdown: string | null }): React.JSX.Element {
   if (isTrainNearClose(robbery)) {
-    return <div className={`${badgeBase} border-white/40 bg-status-warning text-white shadow-md ring-1 ring-black/20`}>Ends Soon</div>
+    return <div className={`${badgeBase} border-white/40 bg-status-warning text-black/85 shadow-md ring-1 ring-black/20`}>Ends Soon</div>
   }
 
   if (robbery.marker_name === 'Mansion') {
@@ -118,14 +118,14 @@ function StatusBadge({ robbery, planeCountdown }: { robbery: RobberyData; planeC
     case 1:
       if (robbery.marker_name === 'CargoPlane' && planeCountdown) {
         return (
-          <div className={`${badgeBase} border-white/40 bg-status-warning text-white shadow-md ring-1 ring-black/20`}>
+          <div className={`${badgeBase} border-white/40 bg-status-warning text-black/85 shadow-md ring-1 ring-black/20`}>
             {planeCountdown.includes('Departed') ? planeCountdown : `Departs in ${planeCountdown}`}
           </div>
         )
       }
       return <div className={`${badgeBase} border-white/40 bg-status-success text-white shadow-md ring-1 ring-black/20`}>Open</div>
     case 2:
-      return <div className={`${badgeBase} border-white/40 bg-status-warning text-white shadow-md ring-1 ring-black/20`}>Active</div>
+      return <div className={`${badgeBase} border-white/40 bg-status-warning text-black/85 shadow-md ring-1 ring-black/20`}>Active</div>
     case 3:
       return <div className={`${badgeBase} border-border-card bg-tertiary-bg text-secondary-text`}>Completed</div>
     default:

@@ -156,6 +156,18 @@ export function TradeItemPicker({ header, side, onSide, onAddItem, onAddCustomTy
         <p className="rounded-xl border border-border-card bg-secondary-bg px-3 py-2 text-xs text-secondary-text">
           Tip: <Kbd>Shift</Kbd> + click to add to Offering, <Kbd>Ctrl</Kbd> + click to add to Requesting.
         </p>
+        <div className="flex items-center gap-2">
+          <SearchInput value={search} onChange={setSearch} placeholder="Search items..." className="flex-1" />
+          <div className="w-44 shrink-0">
+            <FilterMenu<TypeFilterValue>
+              label="Type"
+              value={typeFilter}
+              options={TYPE_OPTIONS}
+              onChange={setTypeFilter}
+            />
+          </div>
+        </div>
+
         <div className="flex flex-wrap items-center gap-2">
           <Tabs
             fill={false}
@@ -180,18 +192,6 @@ export function TradeItemPicker({ header, side, onSide, onAddItem, onAddCustomTy
               ]}
             />
           )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          <SearchInput value={search} onChange={setSearch} placeholder="Search items..." className="flex-1" />
-          <div className="w-44 shrink-0">
-            <FilterMenu<TypeFilterValue>
-              label="Type"
-              value={typeFilter}
-              options={TYPE_OPTIONS}
-              onChange={setTypeFilter}
-            />
-          </div>
         </div>
 
         <div className="flex flex-wrap gap-1.5">

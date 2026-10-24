@@ -8,6 +8,7 @@ export interface MessageItem {
   created_at: number
   updated_at?: number
   read_at: number | null
+  reactions?: Record<string, string[]>
 }
 
 export interface ConversationSummary {

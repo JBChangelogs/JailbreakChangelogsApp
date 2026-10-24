@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-roblox-game-icons"
+description = "Enables the roblox_game_icons command without any pre-configured scope."
+commands.allow = ["roblox_game_icons"]
+
+[[permission]]
+identifier = "deny-roblox-game-icons"
+description = "Denies the roblox_game_icons command without any pre-configured scope."
+commands.deny = ["roblox_game_icons"]

@@ -354,7 +354,7 @@ export function TabBar(): React.JSX.Element {
                       }}
                       className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-tertiary-text hover:bg-quaternary-bg hover:text-primary-text"
                     >
-                      <PlusIcon className="h-3.5 w-3.5 rotate-45" />
+                      <PlusIcon className="h-4 w-4 rotate-45" />
                     </button>
                   )}
                 </span>
@@ -386,7 +386,7 @@ export function TabBar(): React.JSX.Element {
                   pickerOpen ? 'bg-quaternary-bg text-primary-text' : 'text-secondary-text'
                 )}
               >
-                <PlusIcon className={cn('h-3.5 w-3.5 transition-transform duration-200', pickerOpen && 'rotate-45')} />
+                <PlusIcon className={cn('h-4 w-4 transition-transform duration-200', pickerOpen && 'rotate-45')} />
               </button>
             </PopoverTrigger>
           </TooltipTrigger>

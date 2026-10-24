@@ -55,6 +55,11 @@ export function displayName(id: string, profile?: UserProfile): string {
   return profile?.username || profile?.name || `User #${id.slice(-6)}`
 }
 
+export function profileDisplayName(profile?: UserProfile): string | undefined {
+  const globalName = profile?.global_name && profile.global_name !== 'None' ? profile.global_name : undefined
+  return globalName || profile?.name || profile?.username || undefined
+}
+
 export function isOffline(profile?: UserProfile): boolean {
   const status = profile?.presence?.status?.toLowerCase()
   return !status || status === 'offline'
@@ -446,7 +451,7 @@ export function GroupMembersSidebar({
       <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2 pb-2">
         {group.member_ids.map((id) => {
           const profile = profiles.get(id)
-          const label = profile?.username || profile?.name
+          const label = profileDisplayName(profile)
           const typing = typingUserIds.has(groupTypingKey(group.id, id))
           // Offline members are dimmed, like Discord; hovering brings them back.
           const dim = isOffline(profile) && !typing ? 'opacity-35 transition-opacity group-hover:opacity-100' : ''

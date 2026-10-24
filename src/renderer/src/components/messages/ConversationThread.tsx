@@ -28,6 +28,7 @@ import {
   GroupMembersSidebar,
   RenameGroupDialog,
   MAX_GROUP_MEMBERS,
+  profileDisplayName,
   UserPickerDialog,
   UserPlusIcon
 } from '@renderer/components/messages/GroupChatDialogs'
@@ -491,7 +492,7 @@ function GroupEventText({
     return (
       <UserProfilePopover userId={id} profile={profile}>
         <button type="button" className="font-semibold text-primary-text hover:underline">
-          {profile?.username || profile?.name || `User #${id.slice(-6)}`}
+          {profileDisplayName(profile) ?? `User #${id.slice(-6)}`}
         </button>
       </UserProfilePopover>
     )
@@ -549,7 +550,7 @@ function SystemMessageText({ metadata }: { metadata: Record<string, unknown> }):
 }
 
 function profileLabel(profile?: UserProfile): string | undefined {
-  return profile?.username || profile?.name || undefined
+  return profileDisplayName(profile)
 }
 
 function MessageText({
@@ -846,7 +847,7 @@ function MessageRow({
             message={message}
             metadata={metadata}
             isMine={isMine}
-            senderLabel={senderProfile?.username || senderProfile?.name || `User #${senderId.slice(-6)}`}
+            senderLabel={profileDisplayName(senderProfile) ?? `User #${senderId.slice(-6)}`}
           />
         </div>
       )
@@ -867,8 +868,8 @@ function MessageRow({
     )
   }
 
-  const label = senderProfile?.username || senderProfile?.name
-  const parentLabel = parentSenderProfile?.username || parentSenderProfile?.name
+  const label = profileDisplayName(senderProfile)
+  const parentLabel = profileDisplayName(parentSenderProfile)
 
   const saveEdit = async (): Promise<void> => {
     const content = toMentionIds(editDraft.trim())
@@ -895,7 +896,7 @@ function MessageRow({
   const displayText = (): string => mentionsToText(message.content, (id) => profileLabel(profileOf(id)))
 
   const startEditing = (): void => {
-    setEditDraft(displayText())
+    setEditDraft(mentionsToText(message.content, (id) => profileOf(id)?.username || undefined))
     setIsEditing(true)
   }
 
@@ -947,28 +948,31 @@ function MessageRow({
             aria-hidden
             className="pointer-events-none absolute top-1/2 bottom-[-2px] left-[17px] -mt-px w-[27px] rounded-tl-md border-t-2 border-l-2 border-tertiary-text/70"
           />
-          <button
-            type="button"
-            onClick={() => parentMessage && onJumpToMessage(parentMessage.id)}
-            disabled={!parentMessage}
-            className="flex min-w-0 flex-1 items-center gap-1 text-left text-sm text-message-muted disabled:cursor-default"
-          >
+          <div className="flex min-w-0 flex-1 items-center gap-1 text-sm text-message-muted">
             {parentMessage ? (
               <>
-                <UserAvatar id={parentMessage.sender_id} profile={parentSenderProfile} className="h-4 w-4 shrink-0" />
-                {parentLabel ? (
-                  <span className="shrink-0 font-medium text-message-text">@{parentLabel}</span>
-                ) : (
-                  <UserNameSkeleton className="w-14" />
-                )}
-                <span className="min-w-0 truncate">
+                <UserProfilePopover userId={parentMessage.sender_id} profile={parentSenderProfile}>
+                  <button type="button" className="group/reply-name flex shrink-0 items-center gap-1">
+                    <UserAvatar id={parentMessage.sender_id} profile={parentSenderProfile} className="h-4 w-4 shrink-0" />
+                    {parentLabel ? (
+                      <span className="font-medium text-message-text group-hover/reply-name:underline">@{parentLabel}</span>
+                    ) : (
+                      <UserNameSkeleton className="w-14" />
+                    )}
+                  </button>
+                </UserProfilePopover>
+                <button
+                  type="button"
+                  onClick={() => onJumpToMessage(parentMessage.id)}
+                  className="min-w-0 truncate text-left transition-colors hover:text-message-text"
+                >
                   {mentionsToText(parentMessage.content, (id) => profileLabel(profileOf(id))) || '(a message)'}
-                </span>
+                </button>
               </>
             ) : (
               <span>Replying to a message</span>
             )}
-          </button>
+          </div>
         </div>
       )}
       <div className="relative flex gap-3">
@@ -1475,7 +1479,11 @@ export function ConversationThread({
     ? []
     : composerQuery.trigger === '@'
       ? mentionCandidates
-        .filter((p) => p.username.toLowerCase().startsWith(queryText) || p.name?.toLowerCase().startsWith(queryText))
+        .filter(
+          (p) =>
+            p.username.toLowerCase().startsWith(queryText) ||
+            profileDisplayName(p)?.toLowerCase().startsWith(queryText)
+        )
         .slice(0, 8)
         .map((p) => ({
           key: p.id,
@@ -1483,7 +1491,7 @@ export function ConversationThread({
           label: (
             <>
               <UserAvatar id={p.id} profile={p} className="h-6 w-6 shrink-0" />
-              <span className="text-primary-text">{p.name || p.username}</span>
+              <span className="text-primary-text">{profileDisplayName(p)}</span>
               <span className="text-tertiary-text">{p.username}</span>
             </>
           )
@@ -1550,8 +1558,17 @@ export function ConversationThread({
 
   const replyBarShown = Boolean(replyTo)
   useLayoutEffect(() => {
-    if (!scrollRef.current || isScrolledUp) return
-    scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    const el = scrollRef.current
+    if (!el || isScrolledUpRef.current) return
+    // The bottom padding animates for 200ms, so keep pinning until it settles.
+    const until = performance.now() + 250
+    let frame = 0
+    const pin = (): void => {
+      el.scrollTop = el.scrollHeight
+      if (performance.now() < until) frame = requestAnimationFrame(pin)
+    }
+    pin()
+    return () => cancelAnimationFrame(frame)
   }, [replyBarShown])
 
   useEffect(() => {
@@ -1660,7 +1677,7 @@ export function ConversationThread({
     ? ''
     : isGroup
       ? group?.name ?? 'Group'
-      : recipientProfile?.username || recipientProfile?.name || `User #${recipientId.slice(-6)}`
+      : profileDisplayName(recipientProfile) ?? `User #${recipientId.slice(-6)}`
   const typerProfile = typerIds[0] ? profiles.get(typerIds[0]) : undefined
   const groupOthers = (group?.member_ids ?? []).filter((id) => id !== currentUser?.id)
 
@@ -1780,7 +1797,7 @@ export function ConversationThread({
           <div ref={setChatRow} className="relative flex min-h-0 flex-1">
             <div className="flex min-w-0 flex-1 flex-col">
               <div className="relative min-h-0 flex-1">
-                <div ref={setScrollRef} className={`absolute inset-0 overflow-y-auto pt-1 ${replyTo ? 'pb-13' : 'pb-5 transition-[padding-bottom] duration-200 ease-out'}`}>
+                <div ref={setScrollRef} className={`absolute inset-0 overflow-y-auto pt-1 transition-[padding-bottom] duration-200 ease-out ${replyTo ? 'pb-16' : 'pb-8'}`}>
                   {hasMore && (
                     <div className="flex justify-center">
                       <Button variant="ghost" size="sm" onClick={loadOlder} disabled={loading}>
@@ -1883,11 +1900,11 @@ export function ConversationThread({
 
                 <div
                   className={`pointer-events-none absolute inset-x-0 z-10 grid transition-[grid-template-rows,bottom] duration-200 ease-out ${recipientIsTyping ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
-                    } ${replyTo ? 'bottom-8' : 'bottom-0'}`}
+                    } ${replyTo ? 'bottom-[30px]' : '-bottom-0.5'}`}
                 >
                   <div className="min-h-0 overflow-hidden">
                     <div
-                      className={`flex items-center gap-2 bg-linear-to-t from-primary-bg from-45% to-transparent px-4 pt-6 pb-1.5 text-sm text-secondary-text transition-[opacity,translate] duration-200 ease-out ${recipientIsTyping ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'
+                      className={`flex items-center gap-2 bg-linear-to-t from-primary-bg from-55% to-transparent px-4 pt-4 pb-2 text-sm text-secondary-text transition-[opacity,translate] duration-200 ease-out ${recipientIsTyping ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'
                         }`}
                     >
                       <span className="flex h-3 shrink-0 items-center gap-[3px]">
@@ -1910,7 +1927,7 @@ export function ConversationThread({
                 </div>
               </div>
 
-              <div className="relative flex flex-col justify-center border-border-primary bg-primary-bg px-2 pb-[9px]">
+              <div className="relative z-20 flex flex-col justify-center border-border-primary bg-primary-bg px-2 pb-[9px]">
 
                 <div
                   style={{
@@ -1929,10 +1946,7 @@ export function ConversationThread({
                     <p className="min-w-0 flex-1 truncate text-xs text-tertiary-text">
                       Replying to{' '}
                       <span className="font-semibold text-secondary-text">
-                        {(currentUser && pendingReplyTo.sender_id === currentUser.id
-                          ? currentUser
-                          : profiles.get(pendingReplyTo.sender_id)
-                        )?.username || `User #${pendingReplyTo.sender_id.slice(-6)}`}
+                        {profileDisplayName(profileOf(pendingReplyTo.sender_id)) ?? `User #${pendingReplyTo.sender_id.slice(-6)}`}
                       </span>
                     </p>
                     <button

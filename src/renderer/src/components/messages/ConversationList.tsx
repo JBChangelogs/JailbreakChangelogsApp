@@ -17,7 +17,7 @@ import {
   LeaveGroupDialog,
   MAX_GROUP_MEMBERS,
   UserPickerDialog,
-  displayName
+  profileDisplayName
 } from '@renderer/components/messages/GroupChatDialogs'
 import { UserProfilePopover } from '@renderer/components/user/UserProfilePopover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
@@ -54,7 +54,7 @@ function UnreadBadge({ count, isSelected }: { count: number; isSelected: boolean
 }
 
 export function groupTypingLabel(typerIds: string[], profiles: Map<string, UserProfile>): string {
-  const name = (id: string): string => profiles.get(id)?.username || profiles.get(id)?.name || 'Someone'
+  const name = (id: string): string => profileDisplayName(profiles.get(id)) ?? 'Someone'
   if (typerIds.length === 1) return `${name(typerIds[0])} is typing…`
   if (typerIds.length === 2) return `${name(typerIds[0])} and ${name(typerIds[1])} are typing…`
   return 'Several people are typing…'
@@ -112,7 +112,7 @@ export function ConversationList({
     const name =
       groupName ||
       users
-        .map((u) => displayName(u.id, u))
+        .map((u) => profileDisplayName(u) ?? `User #${u.id.slice(-6)}`)
         .join(', ')
         .slice(0, 64)
     const group = await groupChatsApi.create(
@@ -299,7 +299,7 @@ export function ConversationList({
 
           const { recipient_id, unread_count } = entry.conversation
           const profile = profiles.get(recipient_id)
-          const label = profile?.username || profile?.name
+          const label = profileDisplayName(profile)
           const isSelected = selectedId === recipient_id
           const activity = robloxActivity.get(recipient_id)
           const gameName = activity?.placeId ? (KNOWN_ROBLOX_GAMES[activity.placeId] ?? 'Roblox') : null

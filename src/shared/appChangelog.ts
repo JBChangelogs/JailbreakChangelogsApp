@@ -22,6 +22,20 @@ export function formatChangelogMarkdown(entry: AppChangelogEntry): string {
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.7.2',
+    date: '2026-10-24',
+    added: ['Click the name above a reply to open their profile'],
+    changed: [
+      'Messages show display names instead of usernames',
+      'Mention suggestions show the username next to the display name'
+    ],
+    fixed: [
+      'The typing indicator no longer covers the newest message',
+      'People who came online while you were away now show as online when you reconnect',
+      'Messages reconnect right away after your computer wakes from sleep'
+    ]
+  },
+  {
     version: '0.7.1',
     date: '2026-10-24',
     fixed: [

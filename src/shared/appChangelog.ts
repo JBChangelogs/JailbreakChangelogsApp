@@ -57,6 +57,28 @@ export function notesSince(notes: string, currentVersion: string | undefined): s
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.8.0',
+    date: '2026-10-24',
+    added: [
+      'Tabs in the title bar: open messages, trades, trackers, values, calculators and dupe finders side by side',
+      'Open as many values, calculator and dupe finder tabs as you need',
+      'Drag tabs to reorder them',
+      'Your tabs, and what you had open in them, are saved between sessions',
+      'Prefer the sidebar icons? Switch to Simple navigation in Display settings',
+      "The What's new window now shows every change since the version you were on"
+    ],
+    changed: [
+      'Uninstall moved to the About section in Settings',
+      'Tooltips across the app now match the rest of the app',
+      'The emoji picker shows the name of the emoji you hover',
+      'Switching pages is faster'
+    ],
+    fixed: [
+      'Choosing an option near the bottom of Settings no longer shifts the page out of place',
+      'Option cards in Settings no longer show an outline after you click them and press a key'
+    ]
+  },
+  {
     version: '0.7.3',
     date: '2026-10-24',
     changed: [

@@ -11,6 +11,7 @@ import { useCommonRegions } from '@renderer/hooks/useCommonRegions'
 import { getHideJoinedServersEnabled, setHideJoinedServersEnabled } from '@renderer/lib/localPreferences'
 import type { BountyData } from '@shared/bounty'
 import type { ServerRegionData } from '@shared/robbery'
+import { useStableValue } from '@renderer/hooks/useStableValue'
 
 export interface BountyServerGroup {
   serverId: string
@@ -201,7 +202,7 @@ export function BountyTrackerProvider({
       .sort((a, b) => b.lastUpdated - a.lastUpdated)
   }, [bounties, selectedCountries, searchQuery, minBounty, maxBounty, regionMap, joinedJobIds, hideJoinedServers])
 
-  const value: BountyTrackerContextValue = {
+  const value = useStableValue<BountyTrackerContextValue>({
     serverGroups,
     isConnecting,
     error,
@@ -229,7 +230,7 @@ export function BountyTrackerProvider({
     isJoined,
     hideJoinedServers,
     setHideJoinedServers
-  }
+  })
 
   return <BountyTrackerContext.Provider value={value}>{children}</BountyTrackerContext.Provider>
 }

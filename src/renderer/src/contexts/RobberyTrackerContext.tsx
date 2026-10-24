@@ -10,6 +10,7 @@ import { useServerRegions } from '@renderer/hooks/useServerRegions'
 import { useCommonRegions } from '@renderer/hooks/useCommonRegions'
 import { getHideJoinedServersEnabled, setHideJoinedServersEnabled } from '@renderer/lib/localPreferences'
 import type { RobberyData, ServerRegionData } from '@shared/robbery'
+import { useStableValue } from '@renderer/hooks/useStableValue'
 
 interface RobberyTrackerContextValue {
   robberies: RobberyData[]
@@ -188,7 +189,7 @@ export function RobberyTrackerProvider({
     hideJoinedServers
   ])
 
-  const value: RobberyTrackerContextValue = {
+  const value = useStableValue<RobberyTrackerContextValue>({
     robberies,
     filteredRobberies,
     isConnecting,
@@ -210,7 +211,7 @@ export function RobberyTrackerProvider({
     isJoined,
     hideJoinedServers,
     setHideJoinedServers
-  }
+  })
 
   return <RobberyTrackerContext.Provider value={value}>{children}</RobberyTrackerContext.Provider>
 }

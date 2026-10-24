@@ -43,7 +43,7 @@ export function UpdateNotesDialog({
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 text-sm text-secondary-text">
           {notes ? (
             <Suspense fallback={null}>
-              <Markdown className="[&_h3]:mt-4 [&_h3]:mb-1.5 [&_h3]:text-xs [&_h3]:font-bold [&_h3]:tracking-wide [&_h3]:text-primary-text [&_h3]:uppercase [&_h3:first-child]:mt-0 [&_li]:my-1">
+              <Markdown className="[&_h3]:mt-4 [&_h3]:mb-1.5 [&_h3]:text-xs [&_h3]:font-bold [&_h3]:tracking-wide [&_h3]:text-primary-text [&_h3]:uppercase [&_h3:first-child]:mt-0 [&_ul]:my-0 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:my-1 [&_li]:marker:text-tertiary-text">
                 {notes}
               </Markdown>
             </Suspense>

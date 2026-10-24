@@ -1,7 +1,7 @@
 // Records one loop of the built preview tour (preview/dist) for link embeds: dist/preview.mp4 (full size, used by
 // Discord) and dist/preview.gif (smaller, the Open Graph image elsewhere).
 // Needs Chrome and ffmpeg; CHROME_PATH and FFMPEG_PATH override where they're found.
-import { spawn, spawnSync } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import { createServer } from 'node:http'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -114,15 +114,18 @@ if (process.argv.includes('--frames-only')) process.exit(0)
 
 // Settings picked by comparing frames: CRF 26 looks the same as 22 at three quarters of the size, and a GIF
 // can't hold its own at full size, so it's 800px at 10fps with one shared palette (~10MB).
-const ffmpeg = (...args) => {
-  const run = spawnSync(process.env.FFMPEG_PATH ?? 'ffmpeg', ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', join(dir, 'list.txt'), ...args], { stdio: 'inherit' })
-  if (run.status !== 0) process.exit(run.status ?? 1)
-}
+const ffmpeg = (...args) =>
+  new Promise((resolve) => {
+    const run = spawn(process.env.FFMPEG_PATH ?? 'ffmpeg', ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', join(dir, 'list.txt'), ...args], { stdio: 'inherit' })
+    run.once('exit', (code) => (code === 0 ? resolve() : process.exit(code ?? 1)))
+  })
 const outPath = (name) => fileURLToPath(new URL(name, dist))
-ffmpeg('-vf', `${crop},fps=30,format=yuv420p`, '-c:v', 'libx264', '-preset', 'slow', '-crf', '26', '-tune', 'stillimage', '-movflags', '+faststart', '-an', outPath('preview.mp4'))
-ffmpeg(
-  '-vf', `${crop},fps=10,scale=800:-1:flags=lanczos,split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle`,
-  '-loop', '0', outPath('preview.gif')
-)
+await Promise.all([
+  ffmpeg('-vf', `${crop},fps=30,format=yuv420p`, '-c:v', 'libx264', '-preset', 'slow', '-crf', '26', '-tune', 'stillimage', '-movflags', '+faststart', '-an', outPath('preview.mp4')),
+  ffmpeg(
+    '-vf', `${crop},fps=10,scale=800:-1:flags=lanczos,split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle`,
+    '-loop', '0', outPath('preview.gif')
+  )
+])
 rmSync(dir, { recursive: true, force: true })
 for (const name of ['preview.mp4', 'preview.gif']) console.log(`${name} ${(statSync(outPath(name)).size / 1e6).toFixed(1)}MB`)

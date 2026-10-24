@@ -59,8 +59,7 @@ security-framework = "3"
 xcap = "0.4.1"
 
 [profile.release]
-codegen-units = 1
-lto = true
+lto = "thin"
 opt-level = "s"
 panic = "abort"
 strip = true

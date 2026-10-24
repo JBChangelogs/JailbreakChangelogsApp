@@ -30,10 +30,13 @@ jobs:
 
       - run: npm run preview:build
 
-      - name: Record preview video and GIF
+      - name: Install ffmpeg
         run: |
-          command -v ffmpeg || (sudo apt-get update && sudo apt-get install -y ffmpeg)
-          node preview/record.mjs
+          curl -fsSL https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz | tar -xJ -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/ffmpeg-master-latest-linux64-gpl/bin" >> "$GITHUB_PATH"
+
+      - name: Record preview video and GIF
+        run: node preview/record.mjs
 
       - uses: actions/upload-pages-artifact@v4
         with:

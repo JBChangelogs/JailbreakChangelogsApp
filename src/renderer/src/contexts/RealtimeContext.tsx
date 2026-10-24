@@ -6,6 +6,10 @@ const REALTIME_URL = 'wss://api.jailbreakchangelogs.com/realtime'
 const PING_INTERVAL_MS = 25_000
 const RECONNECT_BASE_MS = 2_000
 const RECONNECT_MAX_MS = 30_000
+// Background tabs are throttled to about one timer a minute, so only a much longer gap means the system slept.
+const SLEEP_GAP_MS = 100_000
+// Unauthorized and banned closes shouldn't retry; everything else, including 4008 ping timeouts, reconnects.
+const NO_RECONNECT_CODES = new Set([4001, 4004])
 const LOCATION_PING_MIN_GAP_MS = 5_000
 const TYPING_CLEAR_MS = 9_000
 
@@ -29,6 +33,8 @@ interface RealtimeContextValue {
   location: string | null
   typingUserIds: Set<string>
   presenceOverrides: Map<string, UserPresence>
+  /** Goes up on every (re)connect; anything cached from realtime events should refresh when it changes. */
+  connectionEpoch: number
   robloxActivity: Map<string, RobloxActivityOverride>
 }
 
@@ -53,6 +59,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }): R
   const typingTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
   const [presenceOverrides, setPresenceOverrides] = useState<Map<string, UserPresence>>(new Map())
+  const [connectionEpoch, setConnectionEpoch] = useState(0)
   const [robloxActivity, setRobloxActivity] = useState<Map<string, RobloxActivityOverride>>(new Map())
 
   const applyPresenceUpdate = useCallback((userId: string, status: string) => {
@@ -118,6 +125,22 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }): R
     let pingInterval: ReturnType<typeof setInterval> | null = null
     let reconnectDelay = RECONNECT_BASE_MS
 
+    const restart = (): void => {
+      const old = socketRef.current
+      if (old) {
+        old.onclose = null
+        old.onerror = null
+        old.onmessage = null
+        old.close()
+      }
+      if (pingInterval) clearInterval(pingInterval)
+      if (reconnectTimer) clearTimeout(reconnectTimer)
+      pingInterval = null
+      reconnectTimer = null
+      reconnectDelay = RECONNECT_BASE_MS
+      connect()
+    }
+
     const connect = (): void => {
       if (cancelled) return
 
@@ -127,8 +150,19 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }): R
 
       socket.onopen = () => {
         reconnectDelay = RECONNECT_BASE_MS
+        // Presence events sent while we were disconnected were missed, so drop overrides and let profiles refetch.
+        setPresenceOverrides(new Map())
+        setConnectionEpoch((epoch) => epoch + 1)
         sendLocationPing(locationRef.current)
+        let lastTick = Date.now()
         pingInterval = setInterval(() => {
+          const now = Date.now()
+          const slept = now - lastTick > SLEEP_GAP_MS
+          lastTick = now
+          if (slept) {
+            restart()
+            return
+          }
           sendLocationPing(locationRef.current)
         }, PING_INTERVAL_MS)
       }
@@ -162,13 +196,13 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }): R
         for (const listener of listenersRef.current) listener(message)
       }
 
-      socket.onclose = () => {
+      socket.onclose = (event) => {
         if (pingInterval) {
           clearInterval(pingInterval)
           pingInterval = null
         }
         socketRef.current = null
-        if (!cancelled) {
+        if (!cancelled && !NO_RECONNECT_CODES.has(event.code)) {
           reconnectTimer = setTimeout(connect, reconnectDelay)
           reconnectDelay = Math.min(reconnectDelay * 2, RECONNECT_MAX_MS)
         }
@@ -178,9 +212,11 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }): R
     }
 
     connect()
+    window.addEventListener('online', restart)
 
     return () => {
       cancelled = true
+      window.removeEventListener('online', restart)
       if (reconnectTimer) clearTimeout(reconnectTimer)
       if (pingInterval) clearInterval(pingInterval)
       socketRef.current?.close()
@@ -235,8 +271,8 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }): R
   )
 
   const value = useMemo(
-    () => ({ send, subscribe, setLocation, location, typingUserIds, presenceOverrides, robloxActivity }),
-    [send, subscribe, setLocation, location, typingUserIds, presenceOverrides, robloxActivity]
+    () => ({ send, subscribe, setLocation, location, typingUserIds, presenceOverrides, connectionEpoch, robloxActivity }),
+    [send, subscribe, setLocation, location, typingUserIds, presenceOverrides, connectionEpoch, robloxActivity]
   )
 
   return <RealtimeContext.Provider value={value}>{children}</RealtimeContext.Provider>

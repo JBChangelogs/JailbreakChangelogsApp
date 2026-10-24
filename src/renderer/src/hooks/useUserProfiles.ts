@@ -6,7 +6,8 @@ import type { UserProfile } from '@shared/user'
 
 export function useUserProfiles(ids: string[]): Map<string, UserProfile> {
   const { token } = useAuth()
-  const { presenceOverrides } = useRealtime()
+  const { presenceOverrides, connectionEpoch } = useRealtime()
+  const epochRef = useRef(connectionEpoch)
   const [profiles, setProfiles] = useState<Map<string, UserProfile>>(new Map())
   const fetchedRef = useRef<Set<string>>(new Set())
 
@@ -14,6 +15,11 @@ export function useUserProfiles(ids: string[]): Map<string, UserProfile> {
 
   useEffect(() => {
     if (!token || !key) return
+    if (connectionEpoch !== epochRef.current) {
+      // A reconnect after the first connect means presence may be stale, so fetch everyone again.
+      if (connectionEpoch > 1) fetchedRef.current.clear()
+      epochRef.current = connectionEpoch
+    }
     const missing = key.split(',').filter((id) => !fetchedRef.current.has(id))
     if (missing.length === 0) return
     missing.forEach((id) => fetchedRef.current.add(id))
@@ -30,7 +36,7 @@ export function useUserProfiles(ids: string[]): Map<string, UserProfile> {
       .catch(() => {
         missing.forEach((id) => fetchedRef.current.delete(id))
       })
-  }, [token, key])
+  }, [token, key, connectionEpoch])
 
   return useMemo(() => {
     if (presenceOverrides.size === 0) return profiles

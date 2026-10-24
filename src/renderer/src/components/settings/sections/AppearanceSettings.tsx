@@ -207,7 +207,7 @@ export function AccentColorSetting(): React.JSX.Element {
           {ACCENT_STYLES.map((style) => (
             <label
               key={style}
-              className="group cursor-pointer overflow-hidden rounded-lg border border-border-card transition-colors hover:border-border-focus/60 has-checked:border-button-info has-focus-visible:ring-2 has-focus-visible:ring-border-focus"
+              className="group relative cursor-pointer overflow-hidden rounded-lg border border-border-card transition-colors hover:border-border-focus/60 has-checked:border-button-info in-[.keyboard-nav]:has-focus-visible:ring-2 in-[.keyboard-nav]:has-focus-visible:ring-border-focus"
             >
               <input
                 type="radio"

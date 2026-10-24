@@ -335,7 +335,7 @@ export function TabBar(): React.JSX.Element {
                     className="pointer-events-none absolute inset-x-[3px] -top-px bottom-[4px] rounded-lg transition-colors group-hover:bg-quaternary-bg/50"
                   />
                 )}
-                <span className="relative mb-[5px] flex min-w-0 flex-1 items-center gap-2 overflow-hidden pr-2 pl-3">
+                <span className="relative mb-[5px] flex min-w-0 flex-1 items-center gap-2 overflow-hidden pr-[7px] pl-3">
                   <span className="relative flex shrink-0 [&_svg]:h-4 [&_svg]:w-4">
                     <Icon />
                     {!!badge && !active && (
@@ -354,7 +354,7 @@ export function TabBar(): React.JSX.Element {
                         e.stopPropagation()
                         startClose(tab.id)
                       }}
-                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-tertiary-text hover:bg-quaternary-bg hover:text-primary-text"
+                      className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-tertiary-text hover:bg-quaternary-bg hover:text-primary-text"
                     >
                       <PlusIcon className="h-3.5 w-3.5 rotate-45" />
                     </button>

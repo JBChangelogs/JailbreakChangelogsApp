@@ -5,6 +5,7 @@ import { computeDuplicateInfo, getDupedValueForItem, mergeDupeFinderWithMetadata
 import type { DupeFinderItem, RobloxUserSummary } from '@shared/dupe'
 import type { Item } from '@shared/item'
 import { track } from '@renderer/lib/analytics'
+import { useTabState, useTabTitle } from '@renderer/contexts/TabsContext'
 
 export type SortOrder = 'duplicates' | 'alpha-asc' | 'alpha-desc' | 'created-asc' | 'created-desc' | 'duped-desc' | 'duped-asc'
 
@@ -72,7 +73,8 @@ export function DupeFinderProvider({ children }: { children: React.ReactNode }):
   const [state, setState] = useState<SearchState>({ status: 'idle' })
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set())
-  const [sortOrder, setSortOrder] = useState<SortOrder>('duplicates')
+  const [sortOrder, setSortOrder] = useTabState<SortOrder>('dupefinder.sort', 'duplicates')
+  const [lastSearch, setLastSearch] = useTabState<string | null>('dupefinder.search', null)
   const [ownerProfiles, setOwnerProfiles] = useState<Record<string, RobloxUserSummary>>({})
   const [selectedItem, setSelectedItem] = useState<DupeFinderItem | null>(null)
   const [compareState, setCompareState] = useState<CompareState>({ status: 'closed' })
@@ -85,6 +87,7 @@ export function DupeFinderProvider({ children }: { children: React.ReactNode }):
   }, [state])
 
   const search = (input: string): void => {
+    setLastSearch(input)
     searchedLength.current = input.trim().length
     setState({ status: 'loading' })
     setSearchTerm('')
@@ -189,6 +192,13 @@ export function DupeFinderProvider({ children }: { children: React.ReactNode }):
       }
     }
   }
+
+  useEffect(() => {
+    if (lastSearch) search(lastSearch)
+  }, [])
+
+  const searchedUser = state.status === 'success' || state.status === 'no-dupes' ? state.user : null
+  useTabTitle(searchedUser?.name ?? lastSearch ?? undefined)
 
   const mergedDupeData = useMemo(
     () => (state.status === 'success' ? mergeDupeFinderWithMetadata(state.items, itemsData) : []),

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
+import { TAB_TYPES, type TabType } from '@renderer/contexts/TabsContext'
 
 export function MessagesIcon({ className = 'h-4.5 w-4.5' }: { className?: string }): React.JSX.Element {
     return (
@@ -69,7 +70,14 @@ function DupeFinderIcon(): React.JSX.Element {
     )
 }
 
-export type HomeTab = 'messages' | 'tracker' | 'values' | 'calculator' | 'dupefinder' | 'trades'
+export const TAB_INFO: Record<TabType, { label: string; title: string; Icon: () => React.JSX.Element }> = {
+    messages: { label: 'Messages', title: 'Messages', Icon: () => <MessagesIcon /> },
+    trades: { label: 'Trades', title: 'Trades', Icon: TradesIcon },
+    tracker: { label: 'Trackers', title: 'Robbery & Bounty Tracker', Icon: RobberyIcon },
+    values: { label: 'Values', title: 'Values', Icon: GemIcon },
+    calculator: { label: 'Calculator', title: 'Value Calculator', Icon: CalculatorIcon },
+    dupefinder: { label: 'Dupe Finder', title: 'Dupe Finder', Icon: DupeFinderIcon }
+}
 
 interface NavItemProps {
     active?: boolean
@@ -110,39 +118,26 @@ export function NavBar({
     onSelect,
     unreadCount
 }: {
-    activeTab: HomeTab
-    onSelect: (tab: HomeTab) => void
+    activeTab: TabType
+    onSelect: (tab: TabType) => void
     unreadCount: number
 }): React.JSX.Element {
     return (
         <div className="flex shrink-0 items-center justify-between border-b border-border-primary p-2">
-            <NavItem
-                label="Messages"
-                active={activeTab === 'messages'}
-                badge={activeTab === 'messages' ? 0 : unreadCount}
-                onClick={() => onSelect('messages')}
-            >
-                <MessagesIcon />
-            </NavItem>
-            <NavItem label="Trades" active={activeTab === 'trades'} onClick={() => onSelect('trades')}>
-                <TradesIcon />
-            </NavItem>
-            <NavItem
-                label="Robbery & Bounty Tracker"
-                active={activeTab === 'tracker'}
-                onClick={() => onSelect('tracker')}
-            >
-                <RobberyIcon />
-            </NavItem>
-            <NavItem label="Values" active={activeTab === 'values'} onClick={() => onSelect('values')}>
-                <GemIcon />
-            </NavItem>
-            <NavItem label="Value Calculator" active={activeTab === 'calculator'} onClick={() => onSelect('calculator')}>
-                <CalculatorIcon />
-            </NavItem>
-            <NavItem label="Dupe Finder" active={activeTab === 'dupefinder'} onClick={() => onSelect('dupefinder')}>
-                <DupeFinderIcon />
-            </NavItem>
+            {TAB_TYPES.map((type) => {
+                const { title, Icon } = TAB_INFO[type]
+                return (
+                    <NavItem
+                        key={type}
+                        label={title}
+                        active={activeTab === type}
+                        badge={type === 'messages' && activeTab !== 'messages' ? unreadCount : 0}
+                        onClick={() => onSelect(type)}
+                    >
+                        <Icon />
+                    </NavItem>
+                )
+            })}
         </div>
     )
 }

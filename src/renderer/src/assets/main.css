@@ -561,3 +561,26 @@ img.twemoji {
   --color-message-name: color-mix(in srgb, var(--color-primary-text) 72%, var(--color-primary-bg));
   --color-message-muted: color-mix(in srgb, var(--color-primary-text) 60%, var(--color-primary-bg));
 }
+
+@keyframes tab-in {
+  from {
+    flex-basis: 0;
+    opacity: 0;
+  }
+}
+
+@keyframes tab-out {
+  to {
+    flex-basis: 0;
+    opacity: 0;
+    padding-inline: 0;
+  }
+}
+
+.animate-tab-in {
+  animation: tab-in 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.animate-tab-out {
+  animation: tab-out 150ms ease-in forwards;
+}

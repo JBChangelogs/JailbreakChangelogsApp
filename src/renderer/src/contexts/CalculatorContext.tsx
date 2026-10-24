@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
+import { useTabSet, useTabState } from '@renderer/contexts/TabsContext'
 import { useItems } from '@renderer/hooks/useItems'
 import { useTradeComposer, type TradeSide } from '@renderer/hooks/useTradeComposer'
 import { addItemToSide, sideValue, type TradeItemDraft } from '@renderer/lib/tradeItemDraft'
@@ -6,8 +7,6 @@ import { parseTradeScan, SCAN_TUNING, type ScannedItem, type ScanResponse } from
 import type { Item } from '@shared/item'
 import type { ItemBrowseFilters } from '@renderer/lib/itemBrowse'
 import type { ValueSort } from '@renderer/lib/itemValueUtils'
-
-const STORAGE_KEY = 'calculatorItems'
 
 type Composer = ReturnType<typeof useTradeComposer>
 type ScanSuccess = Extract<ScanResponse, { ok: true }>
@@ -37,25 +36,13 @@ export interface BrowseState extends ItemBrowseFilters {
   clearFilters: () => void
 }
 
-function useToggleSet(): [Set<string>, (value: string) => void, () => void] {
-  const [set, setSet] = useState<Set<string>>(new Set())
-  const toggle = (value: string): void =>
-    setSet((prev) => {
-      const next = new Set(prev)
-      if (next.has(value)) next.delete(value)
-      else next.add(value)
-      return next
-    })
-  return [set, toggle, () => setSet(new Set())]
-}
-
 function useBrowseState(): BrowseState {
-  const [source, setSource] = useState<BrowseSource>('catalog')
-  const [search, setSearch] = useState('')
-  const [sort, setSort] = useState<ValueSort>('cash-desc')
-  const [types, toggleType, clearTypes] = useToggleSet()
-  const [demand, toggleDemand, clearDemand] = useToggleSet()
-  const [trend, toggleTrend, clearTrend] = useToggleSet()
+  const [source, setSource] = useTabState<BrowseSource>('calculator.source', 'catalog')
+  const [search, setSearch] = useTabState('calculator.search', '')
+  const [sort, setSort] = useTabState<ValueSort>('calculator.sort', 'cash-desc')
+  const [types, toggleType, clearTypes] = useTabSet('calculator.types')
+  const [demand, toggleDemand, clearDemand] = useTabSet('calculator.demand')
+  const [trend, toggleTrend, clearTrend] = useTabSet('calculator.trend')
   return {
     source,
     setSource,
@@ -78,14 +65,6 @@ function useBrowseState(): BrowseState {
 }
 
 const CalculatorContext = createContext<CalculatorContextValue | null>(null)
-
-function load(): Partial<Sides> {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}')
-  } catch {
-    return {}
-  }
-}
 
 function toSides(response: ScanSuccess, items: Item[]): Sides & { inTradeMenu: boolean; withinLimit: boolean } {
   const result = parseTradeScan(response.detections, response.height, items)
@@ -124,9 +103,15 @@ function mergeInPlace(current: TradeItemDraft[], scanned: TradeItemDraft[]): Tra
   return [...kept, ...scanned.filter((d) => !keptKeys.has(draftKey(d)))]
 }
 
-// Mounted for the whole home screen, so auto scan works from any tab and the calculator keeps its items.
-export function CalculatorProvider({ children }: { children: React.ReactNode }): React.JSX.Element {
-  const [initial] = useState(load)
+export function CalculatorProvider({
+  autoScan,
+  children
+}: {
+  autoScan: boolean
+  children: React.ReactNode
+}): React.JSX.Element {
+  const [saved, setSaved] = useTabState<Partial<Sides>>('calculator.items', {})
+  const [initial] = useState(saved)
   // The calculator has no per-side cap, unlike trade ads.
   const composer = useTradeComposer(initial, Infinity)
   const [activeSide, setActiveSide] = useState<TradeSide>('offering')
@@ -134,11 +119,7 @@ export function CalculatorProvider({ children }: { children: React.ReactNode }):
   const { items } = useItems()
   const { offering, requesting, setSides } = composer
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ offering, requesting }))
-    } catch {}
-  }, [offering, requesting])
+  useEffect(() => setSaved({ offering, requesting }), [offering, requesting, setSaved])
 
   // Saved items keep the values they were added with; refresh them once the live item list loads.
   useEffect(() => {
@@ -165,6 +146,7 @@ export function CalculatorProvider({ children }: { children: React.ReactNode }):
   const latest = useRef({ items, setSides, offering, requesting })
   latest.current = { items, setSides, offering, requesting }
   useEffect(() => {
+    if (!autoScan) return undefined
     let lastSignature: string | null = null
     let leftMenuAt: number | null = null
     return window.api.scanner.onAutoResult((response) => {
@@ -191,7 +173,7 @@ export function CalculatorProvider({ children }: { children: React.ReactNode }):
         mergeInPlace(currentRequesting, sides.requesting)
       )
     })
-  }, [])
+  }, [autoScan])
 
   return (
     <CalculatorContext.Provider

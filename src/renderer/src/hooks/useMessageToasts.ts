@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useAuth } from '@renderer/contexts/AuthContext'
-import { useRealtime } from '@renderer/contexts/RealtimeContext'
+import { useRealtime, useRealtimeLocation } from '@renderer/contexts/RealtimeContext'
 import { usersApi } from '@renderer/lib/usersApi'
 import { showToast } from '@renderer/lib/toast'
 import { chatKey } from '@renderer/lib/messagesApi'
@@ -24,7 +24,8 @@ function truncate(text: string): string {
 
 // onOpenChat receives a chat key (see chatKey in messagesApi).
 export function useMessageToasts(onOpenChat: (key: string) => void): void {
-  const { subscribe, location } = useRealtime()
+  const { subscribe } = useRealtime()
+  const location = useRealtimeLocation()
   const { token } = useAuth()
   const namesRef = useRef(new Map<string, string>())
 

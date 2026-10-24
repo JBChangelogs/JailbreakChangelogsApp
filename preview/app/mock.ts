@@ -54,7 +54,10 @@ try {
   // Opened on its own or cross-origin: no custom theme.
 }
 // The tour opens the app straight on the chapter's tab.
-localStorage.setItem('jbcl:last-active-tab', params.get('tab') ?? 'messages')
+const tabs = (params.get('tabs') ?? params.get('tab') ?? 'messages').split(',').map((type, i) => ({ id: `${type}-${i}`, type }))
+localStorage.setItem('jbcl:tabs', JSON.stringify({ tabs, activeId: tabs[0].id }))
+localStorage.setItem('jbcl:navigation-mode', params.get('nav') === 'tabs' ? 'tabs' : 'simple')
+localStorage.setItem('jbcl:tabs-notice', 'false')
 
 /* ---------- Example data ---------- */
 

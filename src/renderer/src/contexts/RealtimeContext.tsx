@@ -30,7 +30,6 @@ interface RealtimeContextValue {
   send: (payload: Record<string, unknown>) => void
   subscribe: (listener: RealtimeListener) => () => void
   setLocation: (location: string | null) => void
-  location: string | null
   typingUserIds: Set<string>
   presenceOverrides: Map<string, UserPresence>
   /** Goes up on every (re)connect; anything cached from realtime events should refresh when it changes. */
@@ -44,6 +43,7 @@ export interface RobloxActivityOverride {
 }
 
 const RealtimeContext = createContext<RealtimeContextValue | null>(null)
+const LocationContext = createContext<string | null>(null)
 
 export function RealtimeProvider({ children }: { children: React.ReactNode }): React.JSX.Element {
   const { token } = useAuth()
@@ -271,11 +271,19 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }): R
   )
 
   const value = useMemo(
-    () => ({ send, subscribe, setLocation, location, typingUserIds, presenceOverrides, connectionEpoch, robloxActivity }),
-    [send, subscribe, setLocation, location, typingUserIds, presenceOverrides, connectionEpoch, robloxActivity]
+    () => ({ send, subscribe, setLocation, typingUserIds, presenceOverrides, connectionEpoch, robloxActivity }),
+    [send, subscribe, setLocation, typingUserIds, presenceOverrides, connectionEpoch, robloxActivity]
   )
 
-  return <RealtimeContext.Provider value={value}>{children}</RealtimeContext.Provider>
+  return (
+    <RealtimeContext.Provider value={value}>
+      <LocationContext.Provider value={location}>{children}</LocationContext.Provider>
+    </RealtimeContext.Provider>
+  )
+}
+
+export function useRealtimeLocation(): string | null {
+  return useContext(LocationContext)
 }
 
 export function useRealtime(): RealtimeContextValue {

@@ -1,14 +1,14 @@
 const DESKTOP_NOTIFICATIONS_KEY = 'jbcl:desktop-notifications-enabled'
 const IN_APP_NOTIFICATIONS_KEY = 'jbcl:in-app-notifications-enabled'
-const LAST_ACTIVE_TAB_KEY = 'jbcl:last-active-tab'
 const LAST_TRACKER_VIEW_KEY = 'jbcl:last-tracker-view'
-const LAST_SELECTED_ITEM_ID_KEY = 'jbcl:last-selected-item-id'
 const LAST_SELECTED_CONVERSATION_ID_KEY = 'jbcl:last-selected-conversation-id'
 const SETTINGS_PAGE_OPEN_KEY = 'jbcl:settings-page-open'
 const SETTINGS_PAGE_SECTION_KEY = 'jbcl:settings-page-section'
 const HIDE_JOINED_SERVERS_KEY = 'jbcl:hide-joined-servers'
 const BACKGROUND_ALERTS_NOTICE_KEY = 'jbcl:background-alerts-notice'
 const CLEAR_SHORTCUTS_EXPANDED_KEY = 'jbcl:clear-shortcuts-expanded'
+const NAVIGATION_MODE_KEY = 'jbcl:navigation-mode'
+const TABS_NOTICE_KEY = 'jbcl:tabs-notice'
 
 function getFlag(key: string): boolean {
   try {
@@ -66,17 +66,27 @@ export function setClearShortcutsExpanded(expanded: boolean): void {
   setFlag(CLEAR_SHORTCUTS_EXPANDED_KEY, expanded)
 }
 
-export function getLastActiveTab(): string | null {
+export function getTabsNoticeVisible(): boolean {
+  return getFlag(TABS_NOTICE_KEY)
+}
+
+export function setTabsNoticeVisible(visible: boolean): void {
+  setFlag(TABS_NOTICE_KEY, visible)
+}
+
+export type NavigationMode = 'tabs' | 'simple'
+
+export function getNavigationMode(): NavigationMode {
   try {
-    return localStorage.getItem(LAST_ACTIVE_TAB_KEY)
+    return localStorage.getItem(NAVIGATION_MODE_KEY) === 'simple' ? 'simple' : 'tabs'
   } catch {
-    return null
+    return 'tabs'
   }
 }
 
-export function setLastActiveTab(tab: string): void {
+export function setNavigationMode(mode: NavigationMode): void {
   try {
-    localStorage.setItem(LAST_ACTIVE_TAB_KEY, tab)
+    localStorage.setItem(NAVIGATION_MODE_KEY, mode)
   } catch {
   }
 }
@@ -92,25 +102,6 @@ export function getLastTrackerView(): string | null {
 export function setLastTrackerView(view: string): void {
   try {
     localStorage.setItem(LAST_TRACKER_VIEW_KEY, view)
-  } catch {
-  }
-}
-
-export function getLastSelectedItemId(): number | null {
-  try {
-    const raw = localStorage.getItem(LAST_SELECTED_ITEM_ID_KEY)
-    if (raw === null) return null
-    const parsed = Number(raw)
-    return Number.isFinite(parsed) ? parsed : null
-  } catch {
-    return null
-  }
-}
-
-export function setLastSelectedItemId(id: number | null): void {
-  try {
-    if (id === null) localStorage.removeItem(LAST_SELECTED_ITEM_ID_KEY)
-    else localStorage.setItem(LAST_SELECTED_ITEM_ID_KEY, String(id))
   } catch {
   }
 }

@@ -2,7 +2,10 @@ import { useEffect, useState } from 'react'
 import { AnimatedThemeToggler } from '@renderer/components/ui/animated-theme-toggler'
 import { NotificationsPopover } from '@renderer/components/notifications/NotificationsPopover'
 import appIcon from '@renderer/assets/icon.png'
-import { useRealtime } from '@renderer/contexts/RealtimeContext'
+import { useRealtimeLocation } from '@renderer/contexts/RealtimeContext'
+import { useNavigationMode } from '@renderer/contexts/TabsContext'
+import { useSettingsPage } from '@renderer/contexts/SettingsPageContext'
+import { TabBar } from '@renderer/components/TabBar'
 
 type DragCSS = React.CSSProperties & { WebkitAppRegion?: 'drag' | 'no-drag' }
 
@@ -50,7 +53,10 @@ function capitalize(str) {
 /** canOpenSettings: Display settings need a signed-in account with app access. */
 export function TitleBar({ canOpenSettings }: { canOpenSettings: boolean }): React.JSX.Element {
   const [isMaximized, setIsMaximized] = useState(false)
-  const { location } = useRealtime()
+  const location = useRealtimeLocation()
+  const { mode } = useNavigationMode()
+  const { isOpen: settingsOpen } = useSettingsPage()
+  const showTabs = canOpenSettings && mode === 'tabs' && !settingsOpen
   const isMac = window.api.platform === 'darwin'
 
   useEffect(() => {
@@ -60,20 +66,20 @@ export function TitleBar({ canOpenSettings }: { canOpenSettings: boolean }): Rea
 
   return (
     <div
-      className="flex h-9 shrink-0 select-none items-center justify-between border-b border-border-primary bg-secondary-bg"
+      className="flex h-9 shrink-0 select-none items-center border-b border-border-primary bg-secondary-bg"
       style={DRAG}
       data-tauri-drag-region="deep"
     >
-      <div className={`flex items-center gap-2 px-3 text-xs font-semibold text-secondary-text ${isMac ? 'pl-20' : ''}`}>
+      <div className={`flex shrink-0 items-center gap-2 px-3 text-xs font-semibold text-secondary-text ${isMac ? 'pl-20' : ''} ${showTabs ? 'h-[34px] w-64 self-end' : ''}`}>
         <img src={appIcon} alt="" className="header-logo h-6 w-6 shrink-0" draggable={false} />
         <span className="text-primary-text">Jailbreak Changelogs</span>
       </div>
-      {location && (
-        <div className="text-xs text-secondary-text">
-          {capitalize(location)}
-        </div>
+      {showTabs ? (
+        <TabBar />
+      ) : (
+        <div className="min-w-0 flex-1 text-center text-xs text-secondary-text">{location && capitalize(location)}</div>
       )}
-      <div className="flex h-full items-center" style={NO_DRAG} data-tauri-drag-region="false">
+      <div className="flex h-full shrink-0 items-center" style={NO_DRAG} data-tauri-drag-region="false">
         <NotificationsPopover />
         <AnimatedThemeToggler
           size="sm"

@@ -4,7 +4,7 @@ import { useRealtime } from '@renderer/contexts/RealtimeContext'
 import { useValuesFilters, TAG_FILTERS, type TagFilter } from '@renderer/hooks/useValuesFilters'
 import { itemsApi } from '@renderer/lib/itemDetailApi'
 import type { ValueSort } from '@renderer/lib/itemValueUtils'
-import { getLastSelectedItemId, setLastSelectedItemId } from '@renderer/lib/localPreferences'
+import { useTabState, useTabTitle } from '@renderer/contexts/TabsContext'
 import type { Item } from '@shared/item'
 import { track } from '@renderer/lib/analytics'
 
@@ -127,11 +127,7 @@ export function ValuesProvider({ children }: { children: React.ReactNode }): Rea
       .finally(() => setLoadingMore(false))
   }, [hasMore, loadingMore, page, sort, filterKey, searchQuery])
 
-  const [selectedItemId, setSelectedItemIdState] = useState<number | null>(() => getLastSelectedItemId())
-  const selectItem = (id: number | null): void => {
-    setSelectedItemIdState(id)
-    setLastSelectedItemId(id)
-  }
+  const [selectedItemId, selectItem] = useTabState<number | null>('values.selectedItem', null)
 
   const loadedSelected = selectedItemId != null ? (items.find((i) => i.id === selectedItemId) ?? null) : null
   const [fetchedSelected, setFetchedSelected] = useState<Item | null>(null)
@@ -149,6 +145,7 @@ export function ValuesProvider({ children }: { children: React.ReactNode }): Rea
     }
   }, [selectedItemId, loadedSelected])
   const selectedItem = loadedSelected ?? (fetchedSelected?.id === selectedItemId ? fetchedSelected : null)
+  useTabTitle(selectedItem?.name)
 
   const value: ValuesContextValue = {
     items,

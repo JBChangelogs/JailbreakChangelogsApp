@@ -3,6 +3,8 @@ import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { useTheme } from '@renderer/contexts/ThemeContext'
 import { useAuth } from '@renderer/contexts/AuthContext'
 import { usePreferences, type TabStyle } from '@renderer/contexts/PreferencesContext'
+import { useNavigationMode } from '@renderer/contexts/TabsContext'
+import type { NavigationMode } from '@renderer/lib/localPreferences'
 import { SETTINGS_LIST, SettingRow, SettingsCard, SettingsPageLayout } from '@renderer/components/settings/SettingsCard'
 import { PaletteIcon } from '@renderer/components/settings/SettingsSidebar'
 import { Tabs } from '@renderer/components/ui/tabs'
@@ -85,7 +87,7 @@ function ThemeCard({
   badge?: string
 }): React.JSX.Element {
   return (
-    <label className="group flex h-full cursor-pointer flex-col overflow-hidden rounded-xl border border-border-card transition-[border-color,box-shadow] hover:border-border-focus/60 has-checked:border-button-info has-checked:ring-2 has-checked:ring-button-info/30 has-focus-visible:ring-2 has-focus-visible:ring-border-focus">
+    <label className="group relative flex h-full cursor-pointer flex-col overflow-hidden rounded-xl border border-border-card transition-[border-color,box-shadow] hover:border-border-focus/60 has-checked:border-button-info has-checked:ring-2 has-checked:ring-button-info/30 in-[.keyboard-nav]:has-focus-visible:ring-2 in-[.keyboard-nav]:has-focus-visible:ring-border-focus">
       <input type="radio" name="theme" value={theme.slug} checked={checked} onChange={onSelect} className="sr-only" />
       <span className="relative block">
         <ThemePreview theme={theme} />
@@ -273,26 +275,78 @@ function TabStylePreview(): React.JSX.Element {
   )
 }
 
-function TabStyleSetting({ value, onChange }: { value: TabStyle; onChange: (value: TabStyle) => void }): React.JSX.Element {
+function NavigationPreview({ mode }: { mode: NavigationMode }): React.JSX.Element {
+  return (
+    <div aria-hidden className="overflow-hidden rounded-lg border border-border-card bg-primary-bg">
+      <div className="flex h-8 items-center gap-1.5 border-b border-border-card bg-secondary-bg px-2.5">
+        <div className="size-3.5 shrink-0 rounded-full bg-secondary-text/30" />
+        {mode === 'tabs' && (
+          <>
+            <div className="ml-2 h-5 w-16 rounded bg-quaternary-bg" />
+            <div className="h-5 w-14 rounded bg-secondary-text/10" />
+            <div className="h-5 w-14 rounded bg-secondary-text/10" />
+            <div className="h-3 w-3 rounded-sm bg-secondary-text/25" />
+          </>
+        )}
+      </div>
+      <div className="flex h-24">
+        <div className="w-1/3 space-y-2 border-r border-border-card bg-secondary-bg p-2">
+          {mode === 'simple' && (
+            <div className="flex justify-between border-b border-border-card pb-2">
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className={`size-4 rounded ${i === 0 ? 'bg-button-info' : 'bg-secondary-text/20'}`} />
+              ))}
+            </div>
+          )}
+          <div className="h-2 w-3/4 rounded-full bg-secondary-text/20" />
+          <div className="h-2 w-1/2 rounded-full bg-secondary-text/15" />
+        </div>
+        <div className="flex-1 space-y-2 p-3">
+          <div className="h-2 w-1/3 rounded-full bg-secondary-text/25" />
+          <div className="h-2 w-2/3 rounded-full bg-secondary-text/15" />
+          <div className="h-10 rounded-md bg-secondary-text/10" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ChoiceSetting<T extends string>({
+  id,
+  title,
+  description,
+  options,
+  value,
+  onChange,
+  preview
+}: {
+  id: string
+  title: string
+  description: string
+  options: readonly { value: T; label: string; description: string }[]
+  value: T
+  onChange: (value: T) => void
+  preview: React.ReactNode
+}): React.JSX.Element {
   return (
     <div>
-      <h3 id="tab-style-label" className="text-base font-medium text-primary-text">
-        Tab style
+      <h3 id={`${id}-label`} className="text-base font-medium text-primary-text">
+        {title}
       </h3>
-      <p className="mt-1 text-sm text-secondary-text">Choose how tabs appear across the app. Syncs with your account.</p>
+      <p className="mt-1 text-sm text-secondary-text">{description}</p>
       <div className="mt-3 grid items-start gap-5 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
-        <div role="radiogroup" aria-labelledby="tab-style-label" className="flex flex-col gap-3">
-          {(['underline', 'filled'] as const).map((option) => (
+        <div role="radiogroup" aria-labelledby={`${id}-label`} className="flex flex-col gap-3">
+          {options.map((option) => (
             <label
-              key={option}
-              className="group flex cursor-pointer items-start gap-3 rounded-xl border border-border-card bg-tertiary-bg p-4 transition-colors hover:border-border-focus/60 has-checked:border-button-info has-checked:bg-button-info/5 has-focus-visible:ring-2 has-focus-visible:ring-link"
+              key={option.value}
+              className="group relative flex cursor-pointer items-start gap-3 rounded-xl border border-border-card bg-tertiary-bg p-4 transition-colors hover:border-border-focus/60 has-checked:border-button-info has-checked:bg-button-info/5 in-[.keyboard-nav]:has-focus-visible:ring-2 in-[.keyboard-nav]:has-focus-visible:ring-link"
             >
               <input
                 type="radio"
-                name="tab-style"
-                value={option}
-                checked={value === option}
-                onChange={() => onChange(option)}
+                name={id}
+                value={option.value}
+                checked={value === option.value}
+                onChange={() => onChange(option.value)}
                 className="sr-only"
               />
               <span
@@ -300,23 +354,27 @@ function TabStyleSetting({ value, onChange }: { value: TabStyle; onChange: (valu
                 className="mt-1 size-4 shrink-0 rounded-full border-2 border-border-card transition-colors group-has-checked:border-button-info group-has-checked:bg-button-info group-has-checked:shadow-[inset_0_0_0_2px_var(--color-tertiary-bg)]"
               />
               <span>
-                <span className="block font-medium text-primary-text">
-                  {option === 'underline' ? 'Underline' : 'Filled'}
-                </span>
-                <span className="block text-sm text-secondary-text">
-                  {option === 'underline'
-                    ? 'A minimal line under the selected tab.'
-                    : 'A filled background behind the selected tab.'}
-                </span>
+                <span className="block font-medium text-primary-text">{option.label}</span>
+                <span className="block text-sm text-secondary-text">{option.description}</span>
               </span>
             </label>
           ))}
         </div>
-        <TabStylePreview />
+        {preview}
       </div>
     </div>
   )
 }
+
+const TAB_STYLE_OPTIONS: readonly { value: TabStyle; label: string; description: string }[] = [
+  { value: 'underline', label: 'Underline', description: 'A minimal line under the selected tab.' },
+  { value: 'filled', label: 'Filled', description: 'A filled background behind the selected tab.' }
+]
+
+const NAVIGATION_OPTIONS: readonly { value: NavigationMode; label: string; description: string }[] = [
+  { value: 'tabs', label: 'Tabs', description: 'Open pages as tabs in the title bar, as many as you need.' },
+  { value: 'simple', label: 'Simple', description: 'Switch pages from the icons above the sidebar.' }
+]
 
 /** Theme picker with previews, plus the other display settings the website has. */
 export function DisplaySettingsSection(): React.JSX.Element {
@@ -336,6 +394,7 @@ export function DisplaySettingsSection(): React.JSX.Element {
     setShortcutHidden
   } = useTheme()
   const { twemojiEnabled, setTwemojiEnabled, tabStyle, setTabStyle } = usePreferences()
+  const { mode: navigationMode, setMode: setNavigationMode } = useNavigationMode()
 
   const [mine, setMine] = useState<CustomTheme[]>([])
   const [shared, setShared] = useState<Map<string, CustomTheme>>(new Map())
@@ -459,7 +518,24 @@ export function DisplaySettingsSection(): React.JSX.Element {
             description="Render emoji with Twitter's emoji set instead of your system's."
             action={<Switch checked={twemojiEnabled} onCheckedChange={setTwemojiEnabled} />}
           />
-          <TabStyleSetting value={tabStyle} onChange={setTabStyle} />
+          <ChoiceSetting
+            id="tab-style"
+            title="Tab style"
+            description="Choose how tabs appear across the app. Syncs with your account."
+            options={TAB_STYLE_OPTIONS}
+            value={tabStyle}
+            onChange={setTabStyle}
+            preview={<TabStylePreview />}
+          />
+          <ChoiceSetting
+            id="navigation"
+            title="Navigation"
+            description="Choose how you move between pages. Saved on this computer."
+            options={NAVIGATION_OPTIONS}
+            value={navigationMode}
+            onChange={setNavigationMode}
+            preview={<NavigationPreview mode={navigationMode} />}
+          />
         </div>
       </SettingsCard>
 

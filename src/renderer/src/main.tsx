@@ -8,6 +8,7 @@ import { AuthProvider } from './contexts/AuthContext'
 import { RealtimeProvider } from './contexts/RealtimeContext'
 import { PreferencesProvider } from './contexts/PreferencesContext'
 import { SettingsPageProvider } from './contexts/SettingsPageContext'
+import { TabsProvider } from './contexts/TabsContext'
 import './assets/main.css'
 
 document
@@ -32,7 +33,9 @@ void desktopReady.then(() =>
           <RealtimeProvider>
             <PreferencesProvider>
               <SettingsPageProvider>
-                <App />
+                <TabsProvider>
+                  <App />
+                </TabsProvider>
               </SettingsPageProvider>
             </PreferencesProvider>
           </RealtimeProvider>

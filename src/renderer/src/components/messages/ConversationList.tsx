@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useAuth } from '@renderer/contexts/AuthContext'
 import { groupTypingKey, useRealtime } from '@renderer/contexts/RealtimeContext'
 import {
@@ -73,12 +73,10 @@ interface ConversationListProps {
   selectedId: string | null
   onSelect: (key: string) => void
   onHide: (recipientId: string) => Promise<void>
-  onUnhide: (recipientId: string) => Promise<void>
   onGroupCreated: (group: GroupChat) => void
   onGroupRemoved: (groupId: string) => void
 }
 
-const UNDO_TIMEOUT_MS = 5000
 
 export function ConversationList({
   conversations,
@@ -89,7 +87,6 @@ export function ConversationList({
   selectedId,
   onSelect,
   onHide,
-  onUnhide,
   onGroupCreated,
   onGroupRemoved
 }: ConversationListProps): React.JSX.Element {
@@ -136,29 +133,6 @@ export function ConversationList({
       activity: normalizeToMs(group.message?.created_at ?? group.created_at)
     }))
   ].sort((a, b) => b.activity - a.activity)
-  const [lastHidden, setLastHidden] = useState<{ id: string; label: string } | null>(null)
-  const undoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(() => {
-    return () => {
-      if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current)
-    }
-  }, [])
-
-  const handleHide = (recipientId: string, label: string): void => {
-    if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current)
-    setLastHidden({ id: recipientId, label })
-    undoTimeoutRef.current = setTimeout(() => setLastHidden(null), UNDO_TIMEOUT_MS)
-    void onHide(recipientId)
-  }
-
-  const handleUndo = (): void => {
-    if (!lastHidden) return
-    if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current)
-    void onUnhide(lastHidden.id)
-    setLastHidden(null)
-  }
-
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
       <UserSearch onSelect={(user) => onSelect(user.id)} />
@@ -199,19 +173,6 @@ export function ConversationList({
         askGroupName
         onConfirm={startConversation}
       />
-
-      {lastHidden && (
-        <div className="mx-2 mb-1.5 flex items-center justify-between gap-2 rounded-md bg-tertiary-bg px-2.5 py-1.5 text-xs text-secondary-text">
-          <span className="min-w-0 truncate">Hid {lastHidden.label}</span>
-          <button
-            type="button"
-            onClick={handleUndo}
-            className="shrink-0 font-semibold text-link hover:text-link-hover"
-          >
-            Undo
-          </button>
-        </div>
-      )}
 
       <div className="flex-1 space-y-0.5 overflow-y-auto px-2 pb-2">
         {loading && entries.length === 0 && (
@@ -361,7 +322,7 @@ export function ConversationList({
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation()
-                        handleHide(recipient_id, label ?? `User #${recipient_id.slice(-6)}`)
+                        void onHide(recipient_id)
                       }}
                       aria-label={`Hide conversation with ${label ?? 'this user'}`}
                       className={`flex h-7 w-7 items-center justify-center rounded-md opacity-0 transition-all group-hover:opacity-100 ${isSelected

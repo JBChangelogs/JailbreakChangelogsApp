@@ -81,7 +81,7 @@ export function HomeScreen(): React.JSX.Element {
     setLastTrackerView(view)
   }
   const { setLocation } = useRealtime()
-  const { conversations, loading, error, hideConversation, unhideConversation, markConversationRead } =
+  const { conversations, loading, error, hideConversation, markConversationRead } =
     useConversations()
   const { unread, refresh: refreshUnread } = useUnreadCount()
   const { user: currentUser } = useCurrentUser()
@@ -205,7 +205,6 @@ export function HomeScreen(): React.JSX.Element {
             selectedId={selectedId}
             onSelect={setSelectedId}
             onHide={handleHide}
-            onUnhide={unhideConversation}
             onGroupCreated={upsertGroup}
             onGroupRemoved={removeGroup}
           />,

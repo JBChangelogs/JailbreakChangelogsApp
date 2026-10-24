@@ -22,6 +22,14 @@ export function formatChangelogMarkdown(entry: AppChangelogEntry): string {
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.7.3',
+    date: '2026-10-24',
+    changed: [
+      'Gifts sent from Settings no longer start a message with the person you gift',
+      'Hiding a conversation no longer shows an undo message'
+    ]
+  },
+  {
     version: '0.7.2',
     date: '2026-10-24',
     added: ['Click the name above a reply to open their profile'],

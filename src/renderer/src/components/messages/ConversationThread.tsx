@@ -1770,7 +1770,6 @@ export function ConversationThread({
               <UserProfilePopover userId={recipientId} profile={recipientProfile}>
                 <button
                   type="button"
-                  title={recipientId}
                   className="min-w-0 flex-1 truncate text-left text-sm font-semibold text-primary-text hover:underline"
                 >
                   {recipientLabel}

@@ -8,6 +8,7 @@ import {
   handleImageError
 } from '@renderer/lib/itemValueUtils'
 import type { Item } from '@shared/item'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 
 export type Condition = 'clean' | 'duped' | 'og'
 
@@ -61,9 +62,12 @@ export function BrowseItemCard({
   return (
     <div className="flex flex-col rounded-lg border border-border-card bg-tertiary-bg p-2">
       <div className="mb-2">
-        <p className="mb-1.5 truncate text-xs font-semibold text-primary-text" title={item.name}>
-          {item.name}
-        </p>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <p className="mb-1.5 truncate text-xs font-semibold text-primary-text">{item.name}</p>
+          </TooltipTrigger>
+          <TooltipContent>{item.name}</TooltipContent>
+        </Tooltip>
         <div className="flex flex-wrap gap-1">
           {(fixedCondition ? [fixedCondition] : (['clean', 'duped', 'og'] as const)).map((c) => (
             <button

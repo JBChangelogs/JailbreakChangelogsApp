@@ -164,9 +164,12 @@ export function TradeItemCard({
 
       <div className="mt-2 flex flex-1 flex-col gap-2">
         <div className="flex items-center justify-between gap-1">
-          <p className="min-w-0 truncate text-xs font-semibold text-primary-text" title={draft.name}>
-            {draft.name}
-          </p>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <p className="min-w-0 truncate text-xs font-semibold text-primary-text">{draft.name}</p>
+            </TooltipTrigger>
+            <TooltipContent>{draft.name}</TooltipContent>
+          </Tooltip>
           {known(notes) && (
             <Tooltip>
               <TooltipTrigger asChild>

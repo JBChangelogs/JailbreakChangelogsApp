@@ -14,6 +14,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger
 } from '@renderer/components/ui/dropdown-menu'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 
 function MoreIcon({ className }: { className?: string }): React.JSX.Element {
   return (
@@ -124,15 +125,19 @@ export function TradeSideList({
                   </p>
                 )}
               </div>
-              <button
-                type="button"
-                aria-label={item.amount > 1 ? `Remove one ${item.name}` : `Remove ${item.name}`}
-                title={item.amount > 1 ? 'Remove one' : 'Remove'}
-                onClick={() => onRemove(key, 1)}
-                className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-tertiary-text transition-colors hover:bg-quaternary-bg hover:text-status-error"
-              >
-                <CloseIcon className="h-3.5 w-3.5" />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label={item.amount > 1 ? `Remove one ${item.name}` : `Remove ${item.name}`}
+                    onClick={() => onRemove(key, 1)}
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-tertiary-text transition-colors hover:bg-quaternary-bg hover:text-status-error"
+                  >
+                    <CloseIcon className="h-3.5 w-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{item.amount > 1 ? 'Remove one' : 'Remove'}</TooltipContent>
+              </Tooltip>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button

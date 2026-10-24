@@ -276,7 +276,6 @@ export function ConversationList({
                   onSelect(recipient_id)
                 }
               }}
-              title={recipient_id}
               className={`group flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2 py-1.5 text-left transition-colors ${isSelected
                 ? 'bg-button-secondary/45 text-primary-text'
                 : 'hover:bg-quaternary-bg'

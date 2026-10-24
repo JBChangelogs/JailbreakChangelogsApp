@@ -275,14 +275,18 @@ export function DupeItemCard({
           <RobloxAvatar userId={ownerId} label={ownerName} className="h-8 w-8 border border-border-card" />
           <div className="min-w-0 flex-1">
             <p className="text-xs text-secondary-text uppercase">Original Owner</p>
-            <button
-              type="button"
-              onClick={() => void window.api.openExternal(`https://www.roblox.com/users/${ownerId}/profile`)}
-              title={ownerName}
-              className="block max-w-full truncate text-left text-sm font-semibold text-link hover:text-link-hover hover:underline"
-            >
-              {ownerName}
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => void window.api.openExternal(`https://www.roblox.com/users/${ownerId}/profile`)}
+                  className="block max-w-full truncate text-left text-sm font-semibold text-link hover:text-link-hover hover:underline"
+                >
+                  {ownerName}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{ownerName}</TooltipContent>
+            </Tooltip>
           </div>
         </div>
         <p className="text-xs text-secondary-text">Logged {formatDate(item.logged_at)}</p>

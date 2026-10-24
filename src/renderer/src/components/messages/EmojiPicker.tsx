@@ -20,10 +20,17 @@ export function EmojiIcon({ className }: { className?: string }): React.JSX.Elem
 export function EmojiPicker({ onSelect }: { onSelect: (emoji: string) => void }): React.JSX.Element {
   const emojis = useEmojis()
   const [open, setOpen] = useState(false)
+  const [hovered, setHovered] = useState<string | null>(null)
   const entries = Object.entries(emojis)
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next)
+        if (!next) setHovered(null)
+      }}
+    >
       <Tooltip>
         <TooltipTrigger asChild>
           <PopoverTrigger asChild>
@@ -47,7 +54,8 @@ export function EmojiPicker({ onSelect }: { onSelect: (emoji: string) => void })
               <button
                 key={name}
                 type="button"
-                title={`:${name}:`}
+                aria-label={`:${name}:`}
+                onPointerEnter={() => setHovered(name)}
                 onClick={() => {
                   recordEmojiUse(emoji)
                   onSelect(emoji)
@@ -59,6 +67,11 @@ export function EmojiPicker({ onSelect }: { onSelect: (emoji: string) => void })
               </button>
             ))}
           </div>
+        )}
+        {entries.length > 0 && (
+          <p className="mt-2 h-4 truncate border-t border-border-primary px-1 pt-2 text-xs text-secondary-text box-content">
+            {hovered ? `:${hovered}:` : ''}
+          </p>
         )}
       </PopoverContent>
     </Popover>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { endUpdatePreview, onUpdatePreview } from '@renderer/lib/updatePreview'
+import { APP_CHANGELOG, notesSince } from '@shared/appChangelog'
 import type { UpdaterStatus } from '@shared/desktopApi'
 
 export interface UpdateState {
@@ -28,7 +29,7 @@ export function useUpdateStatus(): UpdateState {
       if (next.state === 'available' || next.state === 'downloading' || next.state === 'downloaded') {
         setDetails((prev) => ({
           version: next.version ?? prev.version,
-          notes: next.notes ?? prev.notes,
+          notes: next.notes ? notesSince(next.notes, APP_CHANGELOG[0]?.version) : prev.notes,
           size: (next.state === 'downloading' ? next.total : next.size) ?? prev.size
         }))
       }

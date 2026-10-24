@@ -20,6 +20,41 @@ export function formatChangelogMarkdown(entry: AppChangelogEntry): string {
     .join('\n\n')
 }
 
+export const UPDATE_NOTES_LIMIT = 10
+
+export function formatUpdateNotes(entries: AppChangelogEntry[]): string {
+  return entries
+    .slice(0, UPDATE_NOTES_LIMIT)
+    .map((entry) => `## ${entry.version}\n\n${formatChangelogMarkdown(entry)}`)
+    .join('\n\n')
+}
+
+function compareVersions(a: string, b: string): number {
+  const pa = a.split('.').map(Number)
+  const pb = b.split('.').map(Number)
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const diff = (pa[i] ?? 0) - (pb[i] ?? 0)
+    if (diff) return diff
+  }
+  return 0
+}
+
+export function notesSince(notes: string, currentVersion: string | undefined): string {
+  const blocks = notes.split(/^## /m).slice(1)
+  if (!blocks.length || !currentVersion) return notes
+  const merged: Record<string, string[]> = {}
+  for (const block of blocks) {
+    const [version = '', ...lines] = block.split('\n')
+    if (compareVersions(version.trim(), currentVersion) <= 0) continue
+    let section = ''
+    for (const line of lines) {
+      if (line.startsWith('### ')) section = line.slice(4).trim().toLowerCase()
+      else if (line.startsWith('- ') && section) (merged[section] ??= []).push(line.slice(2))
+    }
+  }
+  return formatChangelogMarkdown({ version: '', date: '', ...merged })
+}
+
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
     version: '0.7.3',

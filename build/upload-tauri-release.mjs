@@ -95,10 +95,10 @@ for (const a of present) {
   }
 }
 
-const notesPath = join(root, 'release-notes.md')
+const notesPath = [join(root, 'update-notes.md'), join(root, 'release-notes.md')].find((p) => existsSync(p))
 const manifest = {
   version,
-  notes: existsSync(notesPath) ? readFileSync(notesPath, 'utf8') : '',
+  notes: notesPath ? readFileSync(notesPath, 'utf8') : '',
   pub_date: new Date().toISOString(),
   platforms
 }

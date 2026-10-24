@@ -109,7 +109,9 @@ jobs:
           merge-multiple: true
 
       - name: Release notes
-        run: node --experimental-strip-types build/release-notes.mjs > release-notes.md
+        run: |
+          node --experimental-strip-types build/release-notes.mjs > release-notes.md
+          node --experimental-strip-types build/release-notes.mjs updater > update-notes.md
 
       - name: Upload to R2
         run: node build/upload-tauri-release.mjs

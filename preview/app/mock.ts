@@ -5,6 +5,7 @@ import themes from './themes.json'
 import type { UserProfile } from '@shared/user'
 import type { MessageItem } from '@shared/messages'
 import type { Item } from '@shared/item'
+import type { OcrDetection, ScanResponse } from '@shared/tradeScan'
 import type { TradeAd, TradeItemWire } from '@shared/trading'
 import type { RobberyData, ServerRegionData } from '@shared/robbery'
 import { parseCashValue } from '@renderer/lib/itemValueUtils'
@@ -295,6 +296,45 @@ class FakeSocket extends EventTarget {
 const sockets = new Set<FakeSocket>()
 window.WebSocket = FakeSocket as unknown as typeof WebSocket
 
+/* ---------- Trade scanning ---------- */
+
+// What the OCR reads from preview/trade-scan.webp (1920x1035): each card's type label with its name under it,
+// the two player names, and the Exit/Ready buttons that mark the trade menu.
+const SCAN_WIDTH = 1920
+const SCAN_HEIGHT = 1035
+const word = (x0: number, y0: number, x1: number, y1: number, text: string): OcrDetection => ({ x0, y0, x1, y1, text, conf: 0.95 })
+const cardRow = (y: number, cards: [string, string][]): OcrDetection[] =>
+  cards.flatMap(([type, name], i) => {
+    const x = 494 + Math.round(i * 119.3)
+    return [word(x, y, x + 54, y + 20, type), word(x, y + 22, x + 12 + name.length * 9, y + 44, name)]
+  })
+const TOP_CARDS: [string, string][] = [
+  ['VEHICLE', 'APERTURE'],
+  ['VEHICLE', 'APERTURE'],
+  ['VEHICLE', 'APERTURE'],
+  ['VEHICLE', 'KATANA'],
+  ['VEHICLE', 'CARBONARA'],
+  ['TEXTURE', 'ORANGE PIXEL']
+]
+const scanOf = (topCards: [string, string][]): ScanResponse => ({
+  ok: true,
+  width: SCAN_WIDTH,
+  height: SCAN_HEIGHT,
+  detections: [
+    word(526, 298, 654, 322, 'SINSOMNIAC'),
+    ...cardRow(344, topCards),
+    word(526, 586, 616, 610, 'NCKVEGA'),
+    ...cardRow(632, [['VEHICLE', 'BEIGNET']]),
+    word(486, 834, 1048, 876, 'UNBALANCED: YOUR SIDE IS TOO HIGH.'),
+    word(1200, 840, 1250, 868, 'EXIT'),
+    word(1334, 840, 1400, 868, 'READY')
+  ]
+})
+// The tour plays the snip itself, then hands over the result.
+let finishSnip: ((result: ScanResponse) => void) | null = null
+const autoArea = { displayId: 1, x: 0, y: 0, width: SCAN_WIDTH, height: SCAN_HEIGHT }
+let autoEnabled = false
+
 /* ---------- Electron bridge ---------- */
 
 const subscribers = new Map<string, Set<(value: unknown) => void>>()
@@ -303,8 +343,13 @@ const bridge: Record<string, unknown> = {
   'auth.getToken': async () => 'preview',
   'window.isMaximized': async () => false,
   'scanner.status': async () => ({ available: true, provider: 'preview' }),
-  'scanner.getAuto': async () => ({ enabled: false, area: null }),
-  'scanner.snip': async () => null,
+  'scanner.getAuto': async () => ({ enabled: autoEnabled, area: autoArea }),
+  'scanner.setAutoEnabled': async (enabled: boolean) => {
+    autoEnabled = enabled
+    return { enabled, area: autoArea }
+  },
+  'scanner.pickAutoArea': async () => ({ enabled: autoEnabled, area: autoArea }),
+  'scanner.snip': () => new Promise<ScanResponse>((resolve) => (finishSnip = resolve)),
   'analytics.isEnabled': async () => false
 }
 // Anything not listed resolves to nothing, and on*(callback) subscribes, so new preload calls don't break the preview.
@@ -359,6 +404,14 @@ export const preview = {
     )
   },
   robloxActivity: (placeId: string | null, jobId: string | null = null) =>
-    subscribers.get('onRobloxActivityChanged')?.forEach((cb) => cb({ placeId, jobId, game: placeId ? 'Jailbreak' : null }))
+    subscribers.get('onRobloxActivityChanged')?.forEach((cb) => cb({ placeId, jobId, game: placeId ? 'Jailbreak' : null })),
+  // Ends a "Scan trade" the tour started, with the screenshot's trade.
+  finishSnip() {
+    finishSnip?.(scanOf(TOP_CARDS))
+    finishSnip = null
+  },
+  // One auto scan frame: the trade as it fills in (count = top cards shown so far).
+  autoScan: (count: number) =>
+    subscribers.get('scanner.onAutoResult')?.forEach((cb) => cb(scanOf(TOP_CARDS.slice(0, count))))
 }
 Object.assign(window, { preview })

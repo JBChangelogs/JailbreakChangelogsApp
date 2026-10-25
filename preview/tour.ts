@@ -2,6 +2,7 @@
 // Targets are found by label, placeholder or text, so the tour follows the app as long as those stay put.
 import type { preview as Controls } from './app/mock'
 import themes from './app/themes.json'
+import tradeShot from './trade-scan.webp'
 
 // The example group chat in app/mock.ts. Not imported from there: that module installs the mocks.
 const GROUP_NAME = 'Trade crew'
@@ -94,9 +95,34 @@ async function type(el: HTMLInputElement | HTMLTextAreaElement, text: string, g:
 }
 const pressEnter = (el: HTMLElement): boolean =>
   el.dispatchEvent(new (app() as unknown as typeof globalThis).KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+// Native smooth scrolling covers any distance in about the same time, which races through long lists,
+// so scroll at a steady reading speed instead, and only so far.
+const SCROLL_SPEED = 350
+const MAX_SCROLL = 1200
 async function scrollTo(el: HTMLElement | undefined, top: number | 'end', g: number): Promise<void> {
-  el?.scrollTo({ top: top === 'end' ? el.scrollHeight : top, behavior: reduced ? 'auto' : 'smooth' })
-  await sleep(1100, g)
+  if (!el) return
+  const from = el.scrollTop
+  const target = top === 'end' ? Math.min(el.scrollHeight - el.clientHeight, from + MAX_SCROLL) : top
+  if (reduced) {
+    el.scrollTop = target
+    await sleep(400, g)
+    return
+  }
+  const distance = target - from
+  const duration = Math.max(600, (Math.abs(distance) / SCROLL_SPEED) * 1000)
+  const start = performance.now()
+  await new Promise<void>((resolve) => {
+    const step = (now: number): void => {
+      if (g !== gen) return resolve()
+      const t = Math.min(1, (now - start) / duration)
+      const eased = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2
+      el.scrollTop = from + distance * eased
+      if (t < 1) requestAnimationFrame(step)
+      else resolve()
+    }
+    requestAnimationFrame(step)
+  })
+  await sleep(300, g)
 }
 async function scrollThrough(g: number): Promise<void> {
   const sc = mainScroller()
@@ -153,6 +179,35 @@ async function goFreshTab(id: string, label: string, g: number, fresh: Promise<H
   show(next)
 }
 
+/* ---------- Trade scan ---------- */
+
+// "Scan trade" lets you drag a box over the game; the tour shows the screenshot and draws it over the trade window.
+// preview/trade-scan.webp is 1920x1035, drawn full width (scale 2/3) and centred in the 1280x800 window.
+const SNIP_BOX = { left: 319, top: 245, width: 643, height: 397 }
+
+async function playSnip(g: number): Promise<void> {
+  const shade = document.createElement('div')
+  shade.className = 'snip'
+  shade.innerHTML = `<img src="${tradeShot}" alt=""><div class="snip-box"></div>`
+  win.append(shade)
+  const box = shade.querySelector<HTMLElement>('.snip-box')!
+  box.style.left = SNIP_BOX.left + 'px'; box.style.top = SNIP_BOX.top + 'px'
+  try {
+    requestAnimationFrame(() => shade.classList.add('on'))
+    await sleep(600, g)
+    placeCursor(SNIP_BOX.left, SNIP_BOX.top)
+    await sleep(700, g)
+    box.style.width = SNIP_BOX.width + 'px'; box.style.height = SNIP_BOX.height + 'px'
+    placeCursor(SNIP_BOX.left + SNIP_BOX.width, SNIP_BOX.top + SNIP_BOX.height)
+    await sleep(1200, g)
+    ripple()
+    await sleep(250, g)
+  } finally {
+    shade.classList.remove('on')
+    setTimeout(() => shade.remove(), 300)
+  }
+}
+
 /* ---------- Scenes ---------- */
 
 const JAILBREAK = '606849621'
@@ -204,7 +259,7 @@ const SCENES: { chapter: string; id: string; tab: string; dur: number; play: (g:
     }
   },
   {
-    chapter: 'Trades', id: 'trades', tab: 'Trades', dur: 10000,
+    chapter: 'Trades', id: 'trades', tab: 'Trades', dur: 14000,
     async play(g) {
       const box = await find('input[placeholder="Search by item name..."]', g) as HTMLInputElement
       await sleep(1200, g)
@@ -215,7 +270,7 @@ const SCENES: { chapter: string; id: string; tab: string; dur: number; play: (g:
     }
   },
   {
-    chapter: 'Robberies', id: 'tracker', tab: 'Robbery & Bounty Tracker', dur: 11000,
+    chapter: 'Robberies', id: 'tracker', tab: 'Robbery & Bounty Tracker', dur: 15000,
     async play(g) {
       const join = await find(() => button('Join'), g)
       await sleep(1400, g)
@@ -227,7 +282,7 @@ const SCENES: { chapter: string; id: string; tab: string; dur: number; play: (g:
     }
   },
   {
-    chapter: 'Values', id: 'values', tab: 'Values', dur: 11500,
+    chapter: 'Values', id: 'values', tab: 'Values', dur: 15500,
     async play(g) {
       const tile = await find(() => [...doc().querySelectorAll('button[aria-pressed]')].find((b) => b.textContent?.trim() === 'Vehicles'), g)
       await sleep(1600, g)
@@ -239,26 +294,30 @@ const SCENES: { chapter: string; id: string; tab: string; dur: number; play: (g:
   {
     chapter: 'Calculator', id: 'calculator', tab: 'Value Calculator', dur: 19000,
     async play(g) {
-      const search = await find('input[placeholder="Search items..."]', g) as HTMLInputElement
-      await sleep(800, g)
-      for (const [name, side] of [['Torpedo', 'Offer'], ['Beam Hybrid', 'Offer'], ['Javelin', 'Request']]) {
-        await moveTo(search, g, -40, 0); await click(search, g)
-        await type(search, name, g, 70)
-        const card = (await find(() => [...doc().querySelectorAll('p')].find((p) => p.textContent === name && shown(p))?.closest('.flex-col'), g)) as HTMLElement
-        const add = button(side, card) as HTMLElement
-        await moveTo(add, g); await click(add, g)
-        await sleep(500, g)
-      }
-      // Clear the search and browse, so the totals stick to the top while the list scrolls under them.
-      const clear = await find('button[aria-label="Clear search"]', g)
-      await moveTo(clear, g); await click(clear, g)
+      const auto = await find(
+        () => [...doc().querySelectorAll<HTMLElement>('label')].find((l) => shown(l) && l.textContent?.includes('Auto scan'))?.querySelector<HTMLElement>('[role="switch"]'),
+        g
+      )
       await sleep(900, g)
-      await scrollThrough(g)
-      await sleep(800, g)
+      await moveTo(auto, g)
+      showTip(auto, 'Follows the open trade'); await sleep(450, g)
+      await click(auto, g)
+      await sleep(900, g); hideTip()
+      for (const count of [2, 4, 6]) {
+        app().preview.autoScan(count)
+        await sleep(1300, g)
+      }
+      await click(auto, g)
+      await sleep(900, g)
+      const scan = await find(() => [...doc().querySelectorAll<HTMLElement>('button')].find((b) => shown(b) && b.textContent?.trim() === 'Scan trade'), g)
+      await moveTo(scan, g); await click(scan, g)
+      await playSnip(g)
+      app().preview.finishSnip()
+      await sleep(2400, g)
     }
   },
   {
-    chapter: 'Dupe Finder', id: 'dupefinder', tab: 'Dupe Finder', dur: 13500,
+    chapter: 'Dupe Finder', id: 'dupefinder', tab: 'Dupe Finder', dur: 17500,
     async play(g) {
       const box = await find('input[placeholder="Search Duplicates"]', g) as HTMLInputElement
       await sleep(1000, g)

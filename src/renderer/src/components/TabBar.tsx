@@ -51,12 +51,12 @@ export function TabBar(): React.JSX.Element {
     return ordered.length === tabs.length ? ordered : tabs
   }, [tabs, dragOrder])
   const settings = useSettingsPage()
-  const [knownIds] = useState(() => new Set(tabs.map((tab) => tab.id)))
+  const [knownIds, setKnownIds] = useState<ReadonlySet<string>>(() => new Set(tabs.map((tab) => tab.id)))
   const [entering, setEntering] = useState<ReadonlySet<string>>(new Set())
-  const added = tabs.filter((tab) => !knownIds.has(tab.id))
+  const added = tabs.filter((tab) => !knownIds.has(tab.id)).map((tab) => tab.id)
   if (added.length) {
-    added.forEach((tab) => knownIds.add(tab.id))
-    setEntering((prev) => new Set([...prev, ...added.map((tab) => tab.id)]))
+    setKnownIds(new Set([...knownIds, ...added]))
+    setEntering(new Set([...entering, ...added]))
   }
   const [closing, setClosing] = useState<ReadonlySet<string>>(new Set())
   const [pickerOpen, setPickerOpen] = useState(false)

@@ -296,6 +296,7 @@ export function TabBar(): React.JSX.Element {
                   else tabRefs.current.delete(tab.id)
                 }}
                 role="tab"
+                data-tab-type={tab.type}
                 aria-selected={active}
                 tabIndex={active ? 0 : -1}
                 data-tauri-drag-region="false"
@@ -315,8 +316,8 @@ export function TabBar(): React.JSX.Element {
                   'group relative -mb-px flex h-[32px] min-w-0 flex-[0_1_15rem] border border-b-0 border-transparent text-xs font-medium whitespace-nowrap transition-colors duration-200',
                   active ? 'z-[2] text-primary-text' : 'text-secondary-text hover:text-primary-text',
                   closing.has(tab.id)
-                    ? 'animate-tab-out pointer-events-none'
-                    : entering.has(tab.id) && 'animate-tab-in'
+                    ? 'animate-tab-out pointer-events-none overflow-hidden'
+                    : entering.has(tab.id) && 'animate-tab-in overflow-hidden'
                 )}
                 onAnimationEnd={(e) => {
                   if (e.target !== e.currentTarget || e.animationName !== 'tab-in') return
@@ -333,7 +334,7 @@ export function TabBar(): React.JSX.Element {
                     className="pointer-events-none absolute inset-x-[3px] -top-px bottom-[4px] rounded-lg transition-colors group-hover:bg-quaternary-bg/50"
                   />
                 )}
-                <span className="relative mb-[5px] flex min-w-0 flex-1 items-center gap-2 overflow-hidden pr-[7px] pl-3">
+                <span className="relative mb-[5px] flex min-w-0 flex-1 items-center gap-2 pr-[7px] pl-3">
                   <span className="relative flex shrink-0 [&_svg]:h-4 [&_svg]:w-4">
                     <Icon />
                     {!!badge && !active && (

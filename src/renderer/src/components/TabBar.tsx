@@ -60,6 +60,15 @@ export function TabBar(): React.JSX.Element {
   }
   const [closing, setClosing] = useState<ReadonlySet<string>>(new Set())
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [menuHidden, setMenuHidden] = useState(false)
+  const openMenu = (open: boolean): void => {
+    setPickerOpen(open)
+    if (open) setMenuHidden(false)
+  }
+  const dismissMenu = (): void => {
+    setMenuHidden(true)
+    setPickerOpen(false)
+  }
   const closable = tabs.length - closing.size > 1
   const tabRefs = useRef(new Map<string, HTMLDivElement>())
   const indicatorRef = useRef<HTMLDivElement>(null)
@@ -190,6 +199,7 @@ export function TabBar(): React.JSX.Element {
         setPlusShift(Math.max(0, end - plus.getBoundingClientRect().right))
       }
       setDraggingTabs(true)
+      dismissMenu()
     }
     if (current.frame) return
     current.frame = requestAnimationFrame(() => {
@@ -267,8 +277,8 @@ export function TabBar(): React.JSX.Element {
 
   const pick = (type: TabType): void => {
     if (settings.isOpen) settings.close()
+    dismissMenu()
     open(type, { newTab: true })
-    setPickerOpen(false)
   }
 
   return (
@@ -372,7 +382,7 @@ export function TabBar(): React.JSX.Element {
           (orderedTabs[orderedTabs.length - 1]?.id === activeTab.id || draggingTabs) && 'opacity-0'
         )}
       />
-      <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+      <Popover open={pickerOpen} onOpenChange={openMenu}>
         <Tooltip>
           <TooltipTrigger asChild>
             <PopoverTrigger asChild>
@@ -393,7 +403,11 @@ export function TabBar(): React.JSX.Element {
           </TooltipTrigger>
           <TooltipContent side="bottom">New tab</TooltipContent>
         </Tooltip>
-        <PopoverContent align="start" className="w-60 p-1.5" onCloseAutoFocus={(e) => e.preventDefault()}>
+        <PopoverContent
+          align="start"
+          className={cn('w-60 p-1.5', menuHidden && 'invisible')}
+          onCloseAutoFocus={(e) => e.preventDefault()}
+        >
           {TAB_TYPES.map((type) => {
             const { Icon, title } = TAB_INFO[type]
             const alreadyOpen = SINGLE_INSTANCE_TABS.has(type) && tabs.some((tab) => tab.type === type)

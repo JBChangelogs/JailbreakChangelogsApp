@@ -57,6 +57,14 @@ export function notesSince(notes: string, currentVersion: string | undefined): s
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.8.2',
+    date: '2026-10-24',
+    added: [
+      'Get notified when one of your trades completes, with a shortcut to see it in Trade History',
+      'Trade History adds your completed trades as they happen, and updates its totals and chart'
+    ]
+  },
+  {
     version: '0.8.1',
     date: '2026-10-24',
     changed: [

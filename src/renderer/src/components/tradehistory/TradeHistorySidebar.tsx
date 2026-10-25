@@ -5,7 +5,7 @@ import { DupeSearchBar } from '@renderer/components/dupefinder/DupeSearchBar'
 import { userDisplay, userHandle, VerifiedIcon } from '@renderer/lib/dupeDisplay'
 
 export function TradeHistorySidebar(): React.JSX.Element {
-  const { lookup, search, showOwnTrades, trades, hasMore, profiles } = useTradeHistory()
+  const { lookup, search, showOwnTrades, trades, hasMore, profiles, summary } = useTradeHistory()
   const robloxId = lookup.status === 'ready' ? lookup.robloxId : null
   const user = robloxId ? profiles[robloxId] : undefined
   const pending = trades.filter((trade) => trade.status === 'pending').length
@@ -51,19 +51,21 @@ export function TradeHistorySidebar(): React.JSX.Element {
               Roblox profile
             </button>
 
-            {trades.length > 0 && (
-              <div className="mt-3 grid grid-cols-2 gap-2 border-t border-border-card pt-3">
-                <div className="min-w-0">
-                  <p className="text-[10px] text-secondary-text">Trades loaded</p>
-                  <p className="truncate text-base font-bold text-primary-text">
-                    {trades.length.toLocaleString()}
-                    {hasMore ? '+' : ''}
-                  </p>
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[10px] text-secondary-text">Pending</p>
-                  <p className="truncate text-base font-bold text-primary-text">{pending.toLocaleString()}</p>
-                </div>
+            {(summary || trades.length > 0) && (
+              <div className="mt-3 grid grid-cols-2 gap-x-2 gap-y-3 border-t border-border-card pt-3">
+                {[
+                  { label: 'Trades', value: summary ? summary.total.toLocaleString() : `${trades.length}${hasMore ? '+' : ''}` },
+                  { label: 'Completed', value: summary?.completed.toLocaleString() },
+                  { label: 'Pending', value: summary ? summary.pending.toLocaleString() : pending.toLocaleString() },
+                  { label: 'Partners', value: summary?.counterparties.toLocaleString() }
+                ]
+                  .filter((stat) => stat.value !== undefined)
+                  .map((stat) => (
+                    <div key={stat.label} className="min-w-0">
+                      <p className="text-[10px] text-secondary-text">{stat.label}</p>
+                      <p className="truncate text-base font-bold text-primary-text">{stat.value}</p>
+                    </div>
+                  ))}
               </div>
             )}
           </div>

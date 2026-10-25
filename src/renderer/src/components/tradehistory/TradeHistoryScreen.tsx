@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useTradeHistory, type DetailState } from '@renderer/contexts/TradeHistoryContext'
 import { RobloxAvatar } from '@renderer/components/dupefinder/RobloxAvatar'
-import { dayKey, formatDay, TradeActivityChart } from '@renderer/components/tradehistory/TradeActivityChart'
+import { formatDay, TradeActivityChart } from '@renderer/components/tradehistory/TradeActivityChart'
 import { EmptyState } from '@renderer/components/ui/empty-state'
 import { Button } from '@renderer/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
@@ -271,21 +271,15 @@ export function TradeHistoryScreen(): React.JSX.Element {
     retryDetail,
     itemValue,
     selectedDay,
-    selectDay
+    selectDay,
+    dayTrades
   } = useTradeHistory()
   const scrollRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
   const robloxId = lookup.status === 'ready' ? lookup.robloxId : null
 
-  const onDay = (trade: UserTradeSummary): boolean =>
-    dayKey(normalizeToMs(trade.last_time)) === selectedDay || dayKey(normalizeToMs(trade.first_time)) === selectedDay
-  const visibleTrades = useMemo(() => (selectedDay ? trades.filter(onDay) : trades), [trades, selectedDay])
-  const oldest = trades[trades.length - 1]
-  const dayCovered = !selectedDay || !hasMore || (!!oldest && dayKey(normalizeToMs(oldest.last_time)) < selectedDay)
-
-  useEffect(() => {
-    if (!dayCovered && !loadingMore && !listError) loadMore()
-  }, [dayCovered, loadingMore, listError, loadMore])
+  const dayStatus = selectedDay ? (dayTrades?.status ?? 'loading') : null
+  const visibleTrades = selectedDay ? (dayTrades?.status === 'ready' ? dayTrades.trades : []) : trades
 
   useEffect(() => {
     const sentinel = sentinelRef.current
@@ -337,7 +331,7 @@ export function TradeHistoryScreen(): React.JSX.Element {
           <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-border-card bg-secondary-bg px-3 py-2 text-sm">
             <span className="text-secondary-text">
               Trades on <span className="font-semibold text-primary-text">{formatDay(selectedDay)}</span>
-              {dayCovered && ` · ${visibleTrades.length} found`}
+              {dayStatus === 'ready' && ` · ${visibleTrades.length} found`}
             </span>
             <Button type="button" size="sm" variant="secondary" onClick={() => selectDay(null)}>
               Clear
@@ -347,22 +341,29 @@ export function TradeHistoryScreen(): React.JSX.Element {
 
         {robloxId &&
           (visibleTrades.length === 0 ? (
-            listError ? (
+            dayStatus === 'error' ? (
+              <div className="flex flex-col items-center gap-3">
+                <EmptyState
+                  status={{ icon: 'signalSlash', tone: 'error', title: "Couldn't load this day", description: 'Try again in a moment.' }}
+                />
+                <Button type="button" size="sm" onClick={() => selectDay(selectedDay)}>
+                  Try again
+                </Button>
+              </div>
+            ) : !selectedDay && listError ? (
               <div className="flex flex-col items-center gap-3">
                 <EmptyState status={{ icon: 'signalSlash', tone: 'error', title: "Couldn't load trades", description: listError }} />
                 <Button type="button" size="sm" onClick={retry}>
                   Try again
                 </Button>
               </div>
-            ) : loadingMore || !dayCovered ? (
+            ) : dayStatus === 'loading' || (!selectedDay && loadingMore) ? (
               <EmptyState
                 status={{
                   icon: 'spinner',
                   tone: 'neutral',
                   title: selectedDay ? 'Finding trades' : 'Loading trade history',
-                  description: selectedDay
-                    ? `Loading older trades to reach ${formatDay(selectedDay)}.`
-                    : 'Fetching recorded trades.'
+                  description: selectedDay ? `Loading trades from ${formatDay(selectedDay)}.` : 'Fetching recorded trades.'
                 }}
               />
             ) : (
@@ -392,7 +393,7 @@ export function TradeHistoryScreen(): React.JSX.Element {
                   valueOf={itemValue}
                 />
               ))}
-              {listError ? (
+              {!selectedDay && listError ? (
                 <div className="flex items-center justify-center gap-3 py-4 text-sm text-secondary-text">
                   {listError}
                   <Button type="button" size="sm" variant="secondary" onClick={retry}>
@@ -406,11 +407,6 @@ export function TradeHistoryScreen(): React.JSX.Element {
                     <div className="h-5 w-5 animate-spin rounded-full border-2 border-border-primary border-t-status-info" />
                   </div>
                 )
-              )}
-              {selectedDay && !dayCovered && (
-                <div className="flex justify-center py-6">
-                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-border-primary border-t-status-info" />
-                </div>
               )}
             </div>
           ))}

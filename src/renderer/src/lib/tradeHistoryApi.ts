@@ -38,6 +38,15 @@ export interface TradeDetail {
   status: 'completed' | 'pending'
 }
 
+export interface TradeSummary {
+  total: number
+  completed: number
+  pending: number
+  first_trade_time: number | null
+  last_trade_time: number | null
+  counterparties: number
+}
+
 export interface TradeActivity {
   days: Record<string, number>
   total: number
@@ -74,6 +83,22 @@ export const tradeHistoryApi = {
     const data = (await res.json()) as TradeActivity
     if (!data || typeof data.days !== 'object' || typeof data.total !== 'number') throw new Error('Invalid trade activity response.')
     return data
+  },
+
+  fetchDay: async (robloxId: string, date: string): Promise<TradeList<UserTradeSummary>> => {
+    const res = await fetch(
+      `${INVENTORY_API_URL}/trades/user/${encodeURIComponent(robloxId)}/day?date=${encodeURIComponent(date)}&nocache=false`
+    )
+    if (!res.ok) throw new Error(await errorMessage(res, `Couldn't load trades for this day (${res.status}).`))
+    const data = (await res.json()) as TradeList<UserTradeSummary>
+    if (!Array.isArray(data?.completed) || !Array.isArray(data?.pending)) throw new Error('Invalid trades response.')
+    return data
+  },
+
+  fetchSummary: async (robloxId: string): Promise<TradeSummary> => {
+    const res = await fetch(`${INVENTORY_API_URL}/trades/user/${encodeURIComponent(robloxId)}/summary?nocache=false`)
+    if (!res.ok) throw new Error(await errorMessage(res, `Couldn't load trade totals (${res.status}).`))
+    return (await res.json()) as TradeSummary
   },
 
   fetchTrade: async (tradeId: string, signal?: AbortSignal): Promise<TradeDetail> => {

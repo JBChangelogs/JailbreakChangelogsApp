@@ -10,6 +10,7 @@ import {
   type TradeActivity,
   type TradeDetail,
   type TradeItemDetail,
+  type TradeSummary,
   type UserTradeSummary
 } from '@renderer/lib/tradeHistoryApi'
 import type { RobloxUserSummary } from '@shared/dupe'
@@ -22,6 +23,8 @@ export type LookupState =
   | { status: 'ready'; robloxId: string }
 
 export type ActivityState = { status: 'loading' } | { status: 'error' } | { status: 'ready'; activity: TradeActivity }
+
+export type DayState = { day: string; status: 'loading' | 'error' | 'ready'; trades: UserTradeSummary[] }
 
 export type DetailState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; detail: TradeDetail }
 
@@ -45,6 +48,8 @@ interface TradeHistoryContextValue {
   activity: ActivityState | null
   selectedDay: string | null
   selectDay: (day: string | null) => void
+  dayTrades: DayState | null
+  summary: TradeSummary | null
 }
 
 const TradeHistoryContext = createContext<TradeHistoryContextValue | null>(null)
@@ -72,6 +77,8 @@ export function TradeHistoryProvider({ children }: { children: React.ReactNode }
   const [details, setDetails] = useState<Record<string, DetailState>>({})
   const [activity, setActivity] = useState<ActivityState | null>(null)
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
+  const [dayTrades, setDayTrades] = useState<DayState | null>(null)
+  const [summary, setSummary] = useState<TradeSummary | null>(null)
   const generation = useRef(0)
 
   const fetchProfiles = useCallback((ids: string[]) => {
@@ -106,8 +113,16 @@ export function TradeHistoryProvider({ children }: { children: React.ReactNode }
       setListError(null)
       setExpandedId(null)
       setSelectedDay(null)
+      setDayTrades(null)
+      setSummary(null)
       setLoadingMore(true)
       setActivity({ status: 'loading' })
+      tradeHistoryApi
+        .fetchSummary(robloxId)
+        .then((result) => {
+          if (id === generation.current) setSummary(result)
+        })
+        .catch(() => {})
       fetchProfiles([robloxId])
       tradeHistoryApi
         .fetchActivity(robloxId)
@@ -245,6 +260,31 @@ export function TradeHistoryProvider({ children }: { children: React.ReactNode }
     [catalogItem]
   )
 
+  const selectDay = useCallback(
+    (day: string | null) => {
+      setSelectedDay(day)
+      if (!day || !robloxId) {
+        setDayTrades(null)
+        return
+      }
+      const id = generation.current
+      setDayTrades({ day, status: 'loading', trades: [] })
+      tradeHistoryApi
+        .fetchDay(robloxId, day)
+        .then((page) => {
+          if (id !== generation.current) return
+          const list = [...page.completed, ...page.pending].sort((a, b) => b.last_time - a.last_time)
+          setDayTrades((current) => (current?.day === day ? { day, status: 'ready', trades: list } : current))
+          fetchProfiles(list.map((trade) => trade.counterparty_user_id))
+        })
+        .catch(() => {
+          if (id === generation.current)
+            setDayTrades((current) => (current?.day === day ? { day, status: 'error', trades: [] } : current))
+        })
+    },
+    [robloxId, fetchProfiles]
+  )
+
   const lookedUp = robloxId ? profiles[robloxId] : undefined
   const lookedUpName = lookedUp?.displayName || lookedUp?.name
   useTabTitle(lookedUpName ? `Trade History | ${lookedUpName}` : undefined)
@@ -268,7 +308,9 @@ export function TradeHistoryProvider({ children }: { children: React.ReactNode }
     itemValue,
     activity,
     selectedDay,
-    selectDay: setSelectedDay
+    selectDay,
+    dayTrades,
+    summary
   }
 
   return <TradeHistoryContext.Provider value={value}>{children}</TradeHistoryContext.Provider>

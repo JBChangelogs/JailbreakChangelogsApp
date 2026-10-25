@@ -1,6 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useItems } from '@renderer/hooks/useItems'
 import { useCurrentUser } from '@renderer/hooks/useCurrentUser'
+import { isTradeCompletedEvent } from '@renderer/hooks/useTradeCompletedToasts'
+import { useRealtime } from '@renderer/contexts/RealtimeContext'
 import { useTabState, useTabTitle } from '@renderer/contexts/TabsContext'
 import { dupesApi, DupeUserNotFoundError } from '@renderer/lib/dupesApi'
 import { parseCashValue } from '@renderer/lib/itemValueUtils'
@@ -283,6 +285,50 @@ export function TradeHistoryProvider({ children }: { children: React.ReactNode }
         })
     },
     [robloxId, fetchProfiles]
+  )
+
+  const { subscribe } = useRealtime()
+  const live = useRef({ robloxId, selectedDay, selectDay })
+  live.current = { robloxId, selectedDay, selectDay }
+  useEffect(
+    () =>
+      subscribe((message) => {
+        if (message.action !== 'trade_completed' || !isTradeCompletedEvent(message.data)) return
+        const event = message.data
+        const { robloxId: current, selectedDay: day, selectDay: reselect } = live.current
+        if (event.user_id !== current) return
+        const id = generation.current
+        tradeHistoryApi
+          .fetchTrade(event.trade_id)
+          .then((detail) => {
+            if (id !== generation.current) return
+            const ownSide = detail.user_a === event.user_id
+            const row: UserTradeSummary = {
+              trade_id: detail.trade_id,
+              counterparty_user_id: ownSide ? detail.user_b : detail.user_a,
+              items_given: ownSide ? detail.items_a_to_b : detail.items_b_to_a,
+              items_received: ownSide ? detail.items_b_to_a : detail.items_a_to_b,
+              first_time: detail.first_time,
+              last_time: detail.last_time,
+              confidence: detail.confidence,
+              status: detail.status
+            }
+            setTrades((prev) => [row, ...prev.filter((t) => t.trade_id !== row.trade_id)].sort((a, b) => b.last_time - a.last_time))
+            setDetails((prev) => ({ ...prev, [row.trade_id]: { status: 'ready', detail } }))
+            fetchProfiles([row.counterparty_user_id])
+          })
+          .catch(() => {})
+        tradeHistoryApi
+          .fetchSummary(current)
+          .then((result) => id === generation.current && setSummary(result))
+          .catch(() => {})
+        tradeHistoryApi
+          .fetchActivity(current)
+          .then((result) => id === generation.current && setActivity({ status: 'ready', activity: result }))
+          .catch(() => {})
+        if (day && day === new Date(event.trade_time * 1000).toISOString().slice(0, 10)) reselect(day)
+      }),
+    [subscribe, fetchProfiles]
   )
 
   const lookedUp = robloxId ? profiles[robloxId] : undefined

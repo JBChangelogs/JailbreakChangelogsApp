@@ -9,6 +9,7 @@ import { parseChatKey } from '@renderer/lib/messagesApi'
 import { useUnreadCount } from '@renderer/hooks/useUnreadCount'
 import { useCurrentUser } from '@renderer/hooks/useCurrentUser'
 import { useMessageToasts } from '@renderer/hooks/useMessageToasts'
+import { useTradeCompletedToasts } from '@renderer/hooks/useTradeCompletedToasts'
 import { AccountPanel } from '@renderer/components/AccountPanel'
 import { RobloxStatusBar } from '@renderer/components/RobloxStatusBar'
 import { NavBar } from '@renderer/components/NavBar'
@@ -132,6 +133,8 @@ export function HomeScreen(): React.JSX.Element {
     open('messages')
     setSelectedId(recipientId)
   })
+
+  useTradeCompletedToasts(() => open('tradehistory'))
 
   const reportedLocation = activeType === 'tracker' ? trackerView : activeType
   useEffect(() => {

@@ -354,6 +354,30 @@
     }
   }
 
+  .caption {
+    position: absolute;
+    left: 50%;
+    bottom: 22px;
+    z-index: 45;
+    max-width: 460px;
+    padding: 9px 16px;
+    border-radius: 10px;
+    background: rgba(18, 19, 23, .92);
+    color: #fff;
+    font: 500 14px/1.35 system-ui, sans-serif;
+    text-align: center;
+    box-shadow: 0 8px 24px rgb(0 0 0 / .35);
+    opacity: 0;
+    transform: translate(-50%, 6px);
+    transition: opacity .25s, transform .25s;
+    pointer-events: none;
+  }
+
+  .caption.on {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+
   .tip {
     position: absolute;
     z-index: 48;

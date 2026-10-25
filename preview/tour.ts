@@ -86,6 +86,15 @@ function showTip(el: Element, text: string): void {
   tip.classList.add('on')
 }
 const hideTip = (): void => tip.classList.remove('on')
+// Explains a step in a subtitle bar at the bottom of the window, away from the app's own controls.
+const captionBar = document.createElement('div')
+captionBar.className = 'caption'
+win.append(captionBar)
+function caption(text: string): void {
+  captionBar.textContent = text
+  captionBar.classList.add('on')
+}
+const hideCaption = (): void => captionBar.classList.remove('on')
 // React tracks input values itself, so set them through the native setter and announce the change.
 async function type(el: HTMLInputElement | HTMLTextAreaElement, text: string, g: number, speed = 55): Promise<void> {
   el.focus({ preventScroll: true })
@@ -353,19 +362,19 @@ const SCENES: { chapter: string; id: string; tab: string; dur: number; play: (g:
       const scan = await find(() => [...doc().querySelectorAll<HTMLElement>('button')].find((b) => shown(b) && b.textContent?.trim() === 'Scan trade'), g)
       await sleep(1200, g)
       await moveTo(scan, g)
-      showTip(scan, 'Scan the trade in Jailbreak'); await sleep(1100, g)
-      await click(scan, g); hideTip()
+      caption('Scan the trade you have open in Jailbreak'); await sleep(1300, g)
+      await click(scan, g); hideCaption()
       await playSnip(g)
       app().preview.finishSnip()
       await sleep(700, g)
-      showTip(scan, 'Both sides fill in from the scan'); await sleep(3400, g); hideTip()
+      caption('Both sides fill in from the scan'); await sleep(3400, g); hideCaption()
       const auto = await find(
         () => [...doc().querySelectorAll<HTMLElement>('label')].find((l) => shown(l) && l.textContent?.includes('Auto scan'))?.querySelector<HTMLElement>('[role="switch"]'),
         g
       )
       await moveTo(auto, g)
-      showTip(auto, 'Or let Auto scan follow the trade'); await sleep(1500, g)
-      await click(auto, g); hideTip()
+      caption('Or turn on Auto scan to follow the trade'); await sleep(1600, g)
+      await click(auto, g); hideCaption()
       // A clicked control keeps focus, which holds its tooltip open.
       ;(doc().activeElement as HTMLElement | null)?.blur()
       await sleep(400, g)
@@ -374,12 +383,12 @@ const SCENES: { chapter: string; id: string; tab: string; dur: number; play: (g:
       const hideGame = showGame()
       try {
         await sleep(900, g)
-        showTip(auto, 'Keeps the calculator in sync while you trade')
+        caption('Auto scan keeps the calculator in sync while you trade')
         for (let i = 0; i < 4; i++) {
           app().preview.autoScan(6)
           await sleep(1200, g)
         }
-        hideTip()
+        hideCaption()
       } finally {
         hideGame()
       }
@@ -545,6 +554,7 @@ function show(next: HTMLIFrameElement): void {
 async function run(from: number, fresh: boolean): Promise<void> {
   const g = ++gen
   hideTip()
+  hideCaption()
   if (!fresh) {
     // A scan or area pick the interrupted chapter left waiting would keep the app's button busy.
     app().preview?.finishSnip()

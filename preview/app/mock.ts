@@ -54,9 +54,11 @@ try {
   // Opened on its own or cross-origin: no custom theme.
 }
 // The tour opens the app straight on the chapter's tab.
-const tabs = (params.get('tabs') ?? params.get('tab') ?? 'messages').split(',').map((type, i) => ({ id: `${type}-${i}`, type }))
-localStorage.setItem('jbcl:tabs', JSON.stringify({ tabs, activeId: tabs[0].id }))
-localStorage.setItem('jbcl:navigation-mode', params.get('nav') === 'tabs' ? 'tabs' : 'simple')
+// Starts on Messages like a fresh install; the tour opens the other tabs from the + menu as it goes.
+const activeTab = params.get('tab') ?? 'messages'
+const tabs = (params.get('tabs') ?? [...new Set(['messages', activeTab])].join(',')).split(',').map((type) => ({ id: `${type}-tab`, type }))
+localStorage.setItem('jbcl:tabs', JSON.stringify({ tabs, activeId: tabs.find((t) => t.type === activeTab)?.id ?? tabs[0].id }))
+localStorage.setItem('jbcl:navigation-mode', params.get('nav') === 'simple' ? 'simple' : 'tabs')
 localStorage.setItem('jbcl:tabs-notice', 'false')
 
 /* ---------- Example data ---------- */

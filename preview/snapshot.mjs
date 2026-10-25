@@ -7,6 +7,9 @@ const INV = 'https://inventories.jailbreakchangelogs.com'
 // Discord usernames shown in the messages and trades scenes; the first is the signed-in account.
 const PEOPLE = ['jailbreakchangelogs', 'senchatf', 'truesmyke', 'kas_dev', 'pikachuwolverine', 'fliktem', 'turtletrevor123', 'aimnice123', 'panqz3']
 const DUPE_USER = { username: 'PeachPayload748', id: '176754054' }
+const TRADE_USER = '120276120'
+// One page per list, under the page size, so the app sees no further pages to load.
+const TRADE_PAGE = 24
 
 async function get(url, init) {
   const res = await fetch(url, init)
@@ -30,6 +33,19 @@ const byId = Array.isArray(profiles) ? profiles : Object.values(profiles)
 
 const dupes = await get(`${INV}/users/dupes?id=${DUPE_USER.id}`)
 const ownerIds = [...new Set(dupes.map((d) => Number(d.latest_owner)).filter(Boolean))]
+
+const tradesUrl = `${INV}/trades/user/${TRADE_USER}`
+const tradePage = await get(`${tradesUrl}?limit=25&nocache=false`)
+const trades = { completed: tradePage.completed.slice(0, TRADE_PAGE), pending: tradePage.pending.slice(0, TRADE_PAGE) }
+const activity = await get(`${tradesUrl}/activity?days=365`)
+const busiestDay = Object.entries(activity.days).sort((a, b) => b[1] - a[1])[0]?.[0]
+const dayUrl = `${tradesUrl}/day?date=${busiestDay}&nocache=false`
+const day = busiestDay ? await get(dayUrl) : { completed: [], pending: [] }
+const shownTrades = [...new Map([...trades.completed, ...trades.pending, ...day.completed, ...day.pending].map((t) => [t.trade_id, t])).values()]
+const tradeDetails = await Promise.all(
+  shownTrades.map(async (t) => [`${INV}/trades/${t.trade_id}`, await get(`${INV}/trades/${t.trade_id}?nocache=false`)])
+)
+const partnerIds = [...new Set(shownTrades.map((t) => Number(t.counterparty_user_id)))]
 
 const snapshot = {
   people: ids.map((id) => byId.find((u) => u.id === id)),
@@ -56,8 +72,13 @@ const snapshot = {
     [`${INV}/proxy/users/v2`]: await get(`${INV}/proxy/users/v2`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userIds: [Number(DUPE_USER.id), ...ownerIds].slice(0, 100) })
-    })
+      body: JSON.stringify({ userIds: [...new Set([Number(DUPE_USER.id), Number(TRADE_USER), ...partnerIds, ...ownerIds])].slice(0, 100) })
+    }),
+    [tradesUrl]: trades,
+    [`${tradesUrl}/activity`]: activity,
+    [`${tradesUrl}/summary`]: await get(`${tradesUrl}/summary?nocache=false`),
+    ...(busiestDay ? { [dayUrl]: day } : {}),
+    ...Object.fromEntries(tradeDetails)
   }
 }
 
@@ -65,4 +86,4 @@ writeFileSync(new URL('app/snapshot.json', import.meta.url), JSON.stringify(snap
 // Every enabled theme, for the app (which asks /v2/themes) and the showcase's tabs and backdrop.
 const themes = await get(`${API}/v2/themes`)
 writeFileSync(new URL('app/themes.json', import.meta.url), JSON.stringify(themes))
-console.log(`snapshot: ${themes.length} themes, ${snapshot.people.length} people, ${snapshot.routes[`${API}/v2/items/partial`].length} items, ${dupes.length} dupes`)
+console.log(`snapshot: ${themes.length} themes, ${snapshot.people.length} people, ${snapshot.routes[`${API}/v2/items/partial`].length} items, ${dupes.length} dupes, ${tradeDetails.length} trades`)

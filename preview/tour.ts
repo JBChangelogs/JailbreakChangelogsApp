@@ -39,8 +39,11 @@ const sleep = (ms: number, g: number): Promise<void> =>
 const doc = (): Document => frame.contentDocument as Document
 const app = (): Window & { preview: typeof Controls } => frame.contentWindow as Window & { preview: typeof Controls }
 
+// Every opened tab stays mounted, hidden behind aria-hidden, so lookups skip the tabs that aren't showing.
+const shown = (el: Element): boolean => !el.closest('[aria-hidden="true"]')
+
 async function find(what: string | (() => Element | null | undefined), g: number, timeout = 8000): Promise<HTMLElement> {
-  const lookup = typeof what === 'string' ? () => doc().querySelector(what) : what
+  const lookup = typeof what === 'string' ? () => [...doc().querySelectorAll(what)].find(shown) : what
   for (const end = Date.now() + timeout; Date.now() < end; await sleep(100, g)) {
     const el = lookup()
     if (el) return el as HTMLElement
@@ -102,19 +105,44 @@ async function scrollThrough(g: number): Promise<void> {
   await scrollTo(sc, 'end', g); await sleep(1200, g)
   await scrollTo(sc, 0, g)
 }
-async function goTab(label: string, g: number): Promise<void> {
-  const btn = await find(`button[aria-label="${label}"]`, g)
-  if (btn.className.includes('bg-button-info')) return
-  await moveTo(btn, g)
-  showTip(btn, label); await sleep(450, g)
-  await click(btn, g); hideTip()
+const tabSelector = (id: string): string => `[role="tab"][data-tab-type="${id}"]`
+
+// Tabs switch on pointerdown, so a plain click() wouldn't select one.
+async function pressTab(el: HTMLElement, g: number): Promise<void> {
+  ripple()
+  await sleep(140, g)
+  el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 1 }))
+  el.ownerDocument.defaultView?.dispatchEvent(new PointerEvent('pointerup', { button: 0, pointerId: 1 }))
+}
+
+async function goTab(id: string, label: string, g: number): Promise<void> {
+  const open = doc().querySelector<HTMLElement>(tabSelector(id))
+  if (open) {
+    if (open.getAttribute('aria-selected') === 'true') return
+    await moveTo(open, g)
+    showTip(open, label); await sleep(450, g)
+    await pressTab(open, g); hideTip()
+    return
+  }
+  const plus = await find('button[aria-label="New tab"]', g)
+  await moveTo(plus, g)
+  showTip(plus, 'New tab'); await sleep(450, g)
+  await click(plus, g); hideTip()
+  const item = await find(
+    () => [...doc().querySelectorAll<HTMLElement>('[data-radix-popper-content-wrapper] button')].find((b) => b.textContent?.trim().startsWith(label)),
+    g
+  )
+  await sleep(300, g)
+  await moveTo(item, g)
+  await click(item, g)
+  await find(tabSelector(id), g)
 }
 
 // With a fresh app loading in the background, the cursor goes to the tab in the visible app and clicks
 // only once the fresh one is ready, swapping it in on the click, so the old state never shows afterwards.
-async function goFreshTab(label: string, g: number, fresh: Promise<HTMLIFrameElement>): Promise<void> {
+async function goFreshTab(id: string, label: string, g: number, fresh: Promise<HTMLIFrameElement>): Promise<void> {
   fresh.catch(() => {})
-  const btn = doc().querySelector<HTMLElement>(`button[aria-label="${label}"]`)
+  const btn = doc().querySelector<HTMLElement>(tabSelector(id))
   if (btn) {
     await moveTo(btn, g)
     showTip(btn, label); await sleep(450, g)
@@ -129,6 +157,8 @@ async function goFreshTab(label: string, g: number, fresh: Promise<HTMLIFrameEle
 
 const JAILBREAK = '606849621'
 const JOB = 'b6f2c1e0-3f5a-4c1e-9a77-2d8e5c4f1a90'
+
+const TRADE_USER = '120276120'
 
 const SCENES: { chapter: string; id: string; tab: string; dur: number; play: (g: number) => Promise<void> }[] = [
   {
@@ -214,7 +244,7 @@ const SCENES: { chapter: string; id: string; tab: string; dur: number; play: (g:
       for (const [name, side] of [['Torpedo', 'Offer'], ['Beam Hybrid', 'Offer'], ['Javelin', 'Request']]) {
         await moveTo(search, g, -40, 0); await click(search, g)
         await type(search, name, g, 70)
-        const card = (await find(() => doc().querySelector(`p[title="${name}"]`)?.closest('.flex-col'), g)) as HTMLElement
+        const card = (await find(() => [...doc().querySelectorAll('p')].find((p) => p.textContent === name && shown(p))?.closest('.flex-col'), g)) as HTMLElement
         const add = button(side, card) as HTMLElement
         await moveTo(add, g); await click(add, g)
         await sleep(500, g)
@@ -239,6 +269,28 @@ const SCENES: { chapter: string; id: string; tab: string; dur: number; play: (g:
       await moveTo(hit, g); await click(hit, g)
       await sleep(2200, g)
       await scrollThrough(g)
+    }
+  },
+  {
+    chapter: 'Trade History', id: 'tradehistory', tab: 'Trade History', dur: 16000,
+    async play(g) {
+      const box = await find('input[placeholder="Username or ID"]', g) as HTMLInputElement
+      await sleep(900, g)
+      await moveTo(box, g, -40, 0); await click(box, g)
+      await type(box, TRADE_USER, g, 70)
+      box.form?.requestSubmit()
+      const busiest = await find(() => {
+        const cells = [...doc().querySelectorAll<HTMLElement>('section button[aria-label*=" on "]')]
+        const count = (b: HTMLElement): number => parseInt(b.getAttribute('aria-label') ?? '', 10) || 0
+        return cells.length && cells.some((c) => count(c) > 0) ? cells.reduce((a, b) => (count(b) > count(a) ? b : a)) : null
+      }, g)
+      await sleep(1600, g)
+      await moveTo(busiest, g); await sleep(900, g)
+      await click(busiest, g)
+      const first = await find(() => doc().querySelector<HTMLElement>('article button'), g)
+      await sleep(1400, g)
+      await moveTo(first, g); await click(first, g)
+      await sleep(2600, g)
     }
   }
 ]
@@ -298,6 +350,15 @@ const FEATURES: Record<string, { title: string; description: string; points: str
       'See when each copy was logged and how many owners it has had.',
       'Search within their dupes, filter by type, and sort to show duplicates first.'
     ]
+  },
+  'Trade History': {
+    title: 'See who someone has really traded with',
+    description: "Look up any Roblox account's recorded trades, with a chart of how many they made each day.",
+    points: [
+      'Click a day on the chart to see just the trades from that day.',
+      'Open a trade to see what each side gave, with clean, duped and OG items and their values.',
+      'Totals for trades, pending trades and trade partners sit in the sidebar.'
+    ]
   }
 }
 const esc = (t: string): string => t.replace(/&/g, '&amp;').replace(/</g, '&lt;')
@@ -332,7 +393,7 @@ async function loadApp(tab: string, g: number): Promise<HTMLIFrameElement> {
   next.src = `app.html?theme=${siteTheme}&tab=${tab}`
   frame.after(next)
   try {
-    for (let end = Date.now() + 8000; Date.now() < end && !next.contentDocument?.querySelector('button.bg-button-info'); ) await sleep(100, g)
+    for (let end = Date.now() + 8000; Date.now() < end && !next.contentDocument?.querySelector('[role="tab"][aria-selected="true"]'); ) await sleep(100, g)
     await sleep(500, g)
   } catch (e) {
     next.remove()
@@ -356,8 +417,8 @@ async function run(from: number): Promise<void> {
   try {
     for (let i = from; ; i = (i + 1) % SCENES.length) {
       markChapter(i, reduced ? 2000 : SCENES[i].dur)
-      if (i === from || i === 0) await goFreshTab(SCENES[i].tab, g, loadApp(SCENES[i].id, g))
-      else await goTab(SCENES[i].tab, g)
+      if (i === from || i === 0) await goFreshTab(SCENES[i].id, SCENES[i].tab, g, loadApp(SCENES[i].id, g))
+      else await goTab(SCENES[i].id, SCENES[i].tab, g)
       await SCENES[i].play(g)
     }
   } catch (e) {

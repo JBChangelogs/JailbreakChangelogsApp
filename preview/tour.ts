@@ -206,6 +206,7 @@ async function goFreshTab(id: string, label: string, g: number, fresh: Promise<H
 // preview/trade-scan.webp is 1920x1035, scaled by 800/1035 to fill the window and cropped ~102px each side;
 // SNIP_BOX is its trade window in window coordinates.
 const SNIP_BOX = { left: 267, top: 220, width: 745, height: 460 }
+const DRAG_GLIDE = 1400
 // Loaded up front so it shows the moment the scan starts.
 const shotImage = new Image()
 shotImage.src = tradeShot
@@ -229,18 +230,21 @@ async function playSnip(g: number): Promise<void> {
   cursor.style.visibility = 'hidden'
   crosshair!.style.display = 'block'
   try {
-    await sleep(500, g)
+    // Time to read the picker's hint before the drag.
+    await sleep(1300, g)
     placeCursor(SNIP_BOX.left, SNIP_BOX.top)
-    await sleep(800, g)
+    await sleep(1000, g)
+    // Like the picker, the shade stays until the mouse moves, then the box is drawn as it drags. The drag glides
+    // slower than other moves, and the box eases with the crosshair so its corner stays under it.
+    document.documentElement.style.setProperty('--glide', DRAG_GLIDE + 'ms')
     shade.style.display = 'none'
     box.style.display = 'block'
-    // The box's size eases like the cursor's glide, so its corner stays under the crosshair.
-    requestAnimationFrame(() => {
-      box.style.width = SNIP_BOX.width + 'px'; box.style.height = SNIP_BOX.height + 'px'
-      placeCursor(SNIP_BOX.left + SNIP_BOX.width, SNIP_BOX.top + SNIP_BOX.height)
-    })
-    await sleep(1000, g)
+    box.getBoundingClientRect()
+    box.style.width = SNIP_BOX.width + 'px'; box.style.height = SNIP_BOX.height + 'px'
+    placeCursor(SNIP_BOX.left + SNIP_BOX.width, SNIP_BOX.top + SNIP_BOX.height)
+    await sleep(DRAG_GLIDE + 600, g)
   } finally {
+    document.documentElement.style.removeProperty('--glide')
     screen.remove()
     crosshair!.style.display = 'none'
     cursor.style.visibility = ''
@@ -344,38 +348,42 @@ const SCENES: { chapter: string; id: string; tab: string; dur: number; play: (g:
     }
   },
   {
-    chapter: 'Calculator', id: 'calculator', tab: 'Value Calculator', dur: 22000,
+    chapter: 'Calculator', id: 'calculator', tab: 'Value Calculator', dur: 34000,
     async play(g) {
       const scan = await find(() => [...doc().querySelectorAll<HTMLElement>('button')].find((b) => shown(b) && b.textContent?.trim() === 'Scan trade'), g)
-      await sleep(800, g)
-      await moveTo(scan, g); await click(scan, g)
+      await sleep(1200, g)
+      await moveTo(scan, g)
+      showTip(scan, 'Scan the trade in Jailbreak'); await sleep(1100, g)
+      await click(scan, g); hideTip()
       await playSnip(g)
       app().preview.finishSnip()
-      await sleep(2200, g)
+      await sleep(700, g)
+      showTip(scan, 'Both sides fill in from the scan'); await sleep(3400, g); hideTip()
       const auto = await find(
         () => [...doc().querySelectorAll<HTMLElement>('label')].find((l) => shown(l) && l.textContent?.includes('Auto scan'))?.querySelector<HTMLElement>('[role="switch"]'),
         g
       )
       await moveTo(auto, g)
-      showTip(auto, 'Auto scan'); await sleep(200, g)
+      showTip(auto, 'Or let Auto scan follow the trade'); await sleep(1500, g)
       await click(auto, g); hideTip()
       // A clicked control keeps focus, which holds its tooltip open.
       ;(doc().activeElement as HTMLElement | null)?.blur()
+      await sleep(400, g)
       await playSnip(g)
       app().preview.finishPick()
       const hideGame = showGame()
       try {
-        await sleep(600, g)
-        showTip(auto, 'Follows the open trade')
-        for (let i = 0; i < 3; i++) {
+        await sleep(900, g)
+        showTip(auto, 'Keeps the calculator in sync while you trade')
+        for (let i = 0; i < 4; i++) {
           app().preview.autoScan(6)
-          await sleep(1100, g)
+          await sleep(1200, g)
         }
         hideTip()
       } finally {
         hideGame()
       }
-      await sleep(600, g)
+      await sleep(1200, g)
     }
   },
   {

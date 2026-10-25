@@ -218,48 +218,86 @@
     }
   }
 
+  /* The game behind the hidden app, under a copy of the scanner's picker (src/renderer/picker.html). */
   .snip {
     position: absolute;
     inset: 0;
     z-index: 40;
-    display: flex;
-    align-items: center;
-    background: #000;
-    opacity: 0;
-    transition: opacity .25s;
+    overflow: hidden;
     pointer-events: none;
-  }
-
-  .snip.on {
-    opacity: 1;
+    font-family: system-ui, sans-serif;
   }
 
   .snip img {
-    width: 100%;
-    height: auto;
+    position: absolute;
+    top: 0;
+    left: 50%;
+    height: 100%;
+    transform: translateX(-50%);
   }
 
-  .snip-box {
+  .pick-shade {
     position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, .35);
+  }
+
+  .pick-box {
+    position: absolute;
+    display: none;
     width: 0;
     height: 0;
-    border: 2px solid hsl(210 99% 60%);
-    background: hsl(210 99% 60% / .12);
-    box-shadow: 0 0 0 9999px rgb(0 0 0 / .45);
-    transition: width 1.1s ease-in-out, height 1.1s ease-in-out;
+    border: 2px solid #4c9fff;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, .35);
+    transition: width .7s cubic-bezier(.45, .05, .25, 1), height .7s cubic-bezier(.45, .05, .25, 1);
   }
 
-  .snip-caption {
+  .pick-hint {
     position: absolute;
-    top: 18px;
+    top: 24px;
     left: 50%;
     transform: translateX(-50%);
-    z-index: 1;
-    padding: 6px 12px;
+    padding: 8px 14px;
     border-radius: 8px;
-    background: rgb(0 0 0 / .7);
+    background: rgba(18, 19, 23, .92);
     color: #fff;
-    font: 600 13px/1.2 system-ui, sans-serif;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+
+  /* The picker's crosshair cursor. */
+  .crosshair {
+    position: absolute;
+    left: -10px;
+    top: -10px;
+    width: 21px;
+    height: 21px;
+    z-index: 50;
+    display: none;
+    pointer-events: none;
+    transition: transform .7s cubic-bezier(.45, .05, .25, 1);
+  }
+
+  .crosshair::before,
+  .crosshair::after {
+    content: '';
+    position: absolute;
+    background: #000;
+    outline: 1px solid #fff;
+  }
+
+  .crosshair::before {
+    left: 10px;
+    top: 0;
+    width: 1px;
+    height: 21px;
+  }
+
+  .crosshair::after {
+    top: 10px;
+    left: 0;
+    width: 21px;
+    height: 1px;
   }
 
   .snip-pip {
@@ -295,7 +333,7 @@
     top: 57px;
     width: 193px;
     height: 119px;
-    border: 2px solid hsl(210 99% 60%);
+    border: 2px solid #4c9fff;
     animation: snip-pulse 1.2s ease-in-out infinite;
   }
 
@@ -312,7 +350,7 @@
 
   @keyframes snip-pulse {
     50% {
-      border-color: hsl(210 99% 60% / .35);
+      border-color: rgb(76 159 255 / .35);
     }
   }
 

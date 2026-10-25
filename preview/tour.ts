@@ -25,9 +25,11 @@ const ARROW = [
 cursor.innerHTML = ARROW.flatMap((row, y) => [...row].map((c, x) =>
   c === ' ' ? '' : `<rect x="${x}" y="${y}" width="1" height="1" fill="${c === 'X' ? '#000' : '#fff'}"/>`)).join('')
 let cx = 900, cy = 600
+let crosshair: HTMLElement | undefined
 function placeCursor(x: number, y: number): void {
   cx = Math.round(x); cy = Math.round(y)
   cursor.style.transform = `translate(${cx}px, ${cy}px)`
+  if (crosshair) crosshair.style.transform = `translate(${cx}px, ${cy}px)`
 }
 placeCursor(cx, cy)
 
@@ -199,36 +201,49 @@ async function goFreshTab(id: string, label: string, g: number, fresh: Promise<H
 
 /* ---------- Trade scan ---------- */
 
-// "Scan trade" lets you drag a box over the game; the tour shows the screenshot and draws it over the trade window.
-// preview/trade-scan.webp is 1920x1035, drawn full width (scale 2/3) and centred in the 1280x800 window.
-const SNIP_BOX = { left: 319, top: 245, width: 643, height: 397 }
+// Scanning hides the app and puts the scanner's picker (src/renderer/picker.html) over the game, so the tour does
+// the same: the screenshot fills the window like the screen behind the app, under a copy of that picker.
+// preview/trade-scan.webp is 1920x1035, scaled by 800/1035 to fill the window and cropped ~102px each side;
+// SNIP_BOX is its trade window in window coordinates.
+const SNIP_BOX = { left: 267, top: 220, width: 745, height: 460 }
 // Loaded up front so it shows the moment the scan starts.
 const shotImage = new Image()
 shotImage.src = tradeShot
 const shotReady = shotImage.decode().catch(() => {})
 
-async function playSnip(g: number, caption: string): Promise<void> {
+crosshair = document.createElement('div')
+crosshair.className = 'crosshair'
+cursor.after(crosshair)
+
+async function playSnip(g: number): Promise<void> {
   await shotReady
-  const shade = document.createElement('div')
-  shade.className = 'snip'
-  shade.innerHTML = `<img src="${tradeShot}" alt=""><div class="snip-caption"></div><div class="snip-box"></div>`
-  shade.querySelector<HTMLElement>('.snip-caption')!.textContent = caption
-  win.append(shade)
-  const box = shade.querySelector<HTMLElement>('.snip-box')!
+  const screen = document.createElement('div')
+  screen.className = 'snip'
+  screen.innerHTML =
+    `<img src="${tradeShot}" alt=""><div class="pick-shade"></div><div class="pick-box"></div>` +
+    '<div class="pick-hint">Drag a box around the trade window &middot; Esc to cancel</div>'
+  win.append(screen)
+  const shade = screen.querySelector<HTMLElement>('.pick-shade')!
+  const box = screen.querySelector<HTMLElement>('.pick-box')!
   box.style.left = SNIP_BOX.left + 'px'; box.style.top = SNIP_BOX.top + 'px'
+  cursor.style.visibility = 'hidden'
+  crosshair!.style.display = 'block'
   try {
-    requestAnimationFrame(() => shade.classList.add('on'))
-    await sleep(600, g)
+    await sleep(500, g)
     placeCursor(SNIP_BOX.left, SNIP_BOX.top)
-    await sleep(700, g)
-    box.style.width = SNIP_BOX.width + 'px'; box.style.height = SNIP_BOX.height + 'px'
-    placeCursor(SNIP_BOX.left + SNIP_BOX.width, SNIP_BOX.top + SNIP_BOX.height)
-    await sleep(1200, g)
-    ripple()
-    await sleep(250, g)
+    await sleep(800, g)
+    shade.style.display = 'none'
+    box.style.display = 'block'
+    // The box's size eases like the cursor's glide, so its corner stays under the crosshair.
+    requestAnimationFrame(() => {
+      box.style.width = SNIP_BOX.width + 'px'; box.style.height = SNIP_BOX.height + 'px'
+      placeCursor(SNIP_BOX.left + SNIP_BOX.width, SNIP_BOX.top + SNIP_BOX.height)
+    })
+    await sleep(1000, g)
   } finally {
-    shade.classList.remove('on')
-    setTimeout(() => shade.remove(), 300)
+    screen.remove()
+    crosshair!.style.display = 'none'
+    cursor.style.visibility = ''
   }
 }
 
@@ -334,7 +349,7 @@ const SCENES: { chapter: string; id: string; tab: string; dur: number; play: (g:
       const scan = await find(() => [...doc().querySelectorAll<HTMLElement>('button')].find((b) => shown(b) && b.textContent?.trim() === 'Scan trade'), g)
       await sleep(800, g)
       await moveTo(scan, g); await click(scan, g)
-      await playSnip(g, 'Drag a box over the trade')
+      await playSnip(g)
       app().preview.finishSnip()
       await sleep(2200, g)
       const auto = await find(
@@ -344,7 +359,9 @@ const SCENES: { chapter: string; id: string; tab: string; dur: number; play: (g:
       await moveTo(auto, g)
       showTip(auto, 'Auto scan'); await sleep(200, g)
       await click(auto, g); hideTip()
-      await playSnip(g, 'Set the area to watch')
+      // A clicked control keeps focus, which holds its tooltip open.
+      ;(doc().activeElement as HTMLElement | null)?.blur()
+      await playSnip(g)
       app().preview.finishPick()
       const hideGame = showGame()
       try {

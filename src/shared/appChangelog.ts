@@ -57,6 +57,19 @@ export function notesSince(notes: string, currentVersion: string | undefined): s
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.8.1',
+    date: '2026-10-24',
+    changed: [
+      'Clicking a day on the Trade History chart loads that day’s trades right away',
+      'The Trade History sidebar shows all-time totals for trades, pending trades and trade partners'
+    ],
+    fixed: [
+      'New tabs animate in when they open',
+      'The unread badge on the Messages tab is no longer cut off',
+      'The new tab menu no longer slides along when you open a tab or drag one'
+    ]
+  },
+  {
     version: '0.8.0',
     date: '2026-10-24',
     added: [

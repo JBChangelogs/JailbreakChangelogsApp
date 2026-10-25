@@ -224,6 +224,12 @@ const handlers: [string, RegExp, Handler][] = [
   ['GET', /^\/v2\/trades\/(\d+)\/offers$/, () => [acceptedOffer]],
   ['GET', /^\/v2\/trades\/(\d+)\/offers\/(\d+)$/, () => acceptedOffer],
   ['GET', /^\/v2\/users\/me\/join-history$/, () => ({ items: [], total: 0, page: 1, total_pages: 0, size: 50 })],
+  // Username lookups answer from the saved ones, so each search finds its own account.
+  ['POST', /^\/proxy\/users$/, (_, body) => {
+    const wanted = ((body as { usernames?: string[] })?.usernames ?? []).map((name) => name.toLowerCase())
+    const saved = (routes[`${INV}/proxy/users`] as { data: { name: string }[] }).data
+    return { data: saved.filter((user) => wanted.includes(user.name.toLowerCase())) }
+  }],
   ['GET', /^\/servers\/regions$/, (u) => Object.fromEntries((u.searchParams.get('ids') ?? '').split(',').map((id) => [id, regions[id] ?? null]))]
 ]
 
@@ -330,9 +336,11 @@ const scanOf = (topCards: [string, string][]): ScanResponse => ({
     word(1334, 840, 1400, 868, 'READY')
   ]
 })
-// The tour plays the snip itself, then hands over the result.
+// The tour plays the snip and the area pick itself, then hands over the result.
 let finishSnip: ((result: ScanResponse) => void) | null = null
-const autoArea = { displayId: 1, x: 0, y: 0, width: SCAN_WIDTH, height: SCAN_HEIGHT }
+let finishPick: (() => void) | null = null
+const SCAN_AREA = { displayId: 1, x: 0, y: 0, width: SCAN_WIDTH, height: SCAN_HEIGHT }
+let autoArea: typeof SCAN_AREA | null = null
 let autoEnabled = false
 
 /* ---------- Electron bridge ---------- */
@@ -348,7 +356,13 @@ const bridge: Record<string, unknown> = {
     autoEnabled = enabled
     return { enabled, area: autoArea }
   },
-  'scanner.pickAutoArea': async () => ({ enabled: autoEnabled, area: autoArea }),
+  'scanner.pickAutoArea': () =>
+    new Promise((resolve) => {
+      finishPick = () => {
+        autoArea = SCAN_AREA
+        resolve({ enabled: autoEnabled, area: autoArea })
+      }
+    }),
   'scanner.snip': () => new Promise<ScanResponse>((resolve) => (finishSnip = resolve)),
   'analytics.isEnabled': async () => false
 }
@@ -409,6 +423,11 @@ export const preview = {
   finishSnip() {
     finishSnip?.(scanOf(TOP_CARDS))
     finishSnip = null
+  },
+  // Ends the area pick that turning on Auto scan asks for.
+  finishPick() {
+    finishPick?.()
+    finishPick = null
   },
   // One auto scan frame: the trade as it fills in (count = top cards shown so far).
   autoScan: (count: number) =>

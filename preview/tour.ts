@@ -62,7 +62,8 @@ const mainScroller = (): HTMLElement | undefined =>
 async function moveTo(el: Element, g: number, dx = 0, dy = 0): Promise<void> {
   const r = el.getBoundingClientRect()
   placeCursor(r.left + r.width / 2 + dx, r.top + r.height / 2 + dy)
-  await sleep(750, g)
+  // Matches the cursor's .7s glide, so the click lands as it arrives.
+  await sleep(700, g)
 }
 function ripple(): void {
   const el = document.createElement('div')
@@ -73,7 +74,7 @@ function ripple(): void {
 }
 async function click(el: HTMLElement, g: number): Promise<void> {
   ripple()
-  await sleep(140, g)
+  await sleep(60, g)
   el.click()
 }
 function showTip(el: Element, text: string): void {
@@ -136,7 +137,7 @@ const tabSelector = (id: string): string => `[role="tab"][data-tab-type="${id}"]
 // Tabs switch on pointerdown, so a plain click() wouldn't select one.
 async function pressTab(el: HTMLElement, g: number): Promise<void> {
   ripple()
-  await sleep(140, g)
+  await sleep(60, g)
   el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 1 }))
   el.ownerDocument.defaultView?.dispatchEvent(new PointerEvent('pointerup', { button: 0, pointerId: 1 }))
 }
@@ -146,19 +147,23 @@ async function goTab(id: string, label: string, g: number): Promise<void> {
   if (open) {
     if (open.getAttribute('aria-selected') === 'true') return
     await moveTo(open, g)
-    showTip(open, label); await sleep(450, g)
+    showTip(open, label)
     await pressTab(open, g); hideTip()
     return
   }
   const plus = await find('button[aria-label="New tab"]', g)
   await moveTo(plus, g)
-  showTip(plus, 'New tab'); await sleep(450, g)
+  showTip(plus, 'New tab')
   await click(plus, g); hideTip()
-  const item = await find(
-    () => [...doc().querySelectorAll<HTMLElement>('[data-radix-popper-content-wrapper] button')].find((b) => b.textContent?.trim().startsWith(label)),
-    g
-  )
-  await sleep(300, g)
+  // Radix places the menu off-screen for its first frame while it measures, so wait until it's really there.
+  const item = await find(() => {
+    const found = [...doc().querySelectorAll<HTMLElement>('[data-radix-popper-content-wrapper] button')].find((b) =>
+      b.textContent?.trim().startsWith(label)
+    )
+    const r = found?.getBoundingClientRect()
+    return r && r.top > 0 && r.left > 0 && r.bottom < 800 && r.right < 1280 ? found : null
+  }, g)
+  await sleep(180, g)
   await moveTo(item, g)
   await click(item, g)
   await find(tabSelector(id), g)
@@ -166,12 +171,25 @@ async function goTab(id: string, label: string, g: number): Promise<void> {
 
 // With a fresh app loading in the background, the cursor goes to the tab in the visible app and clicks
 // only once the fresh one is ready, swapping it in on the click, so the old state never shows afterwards.
+// Closes every tab but Messages with its x, the way someone tidies up before starting over.
+async function closeTabs(g: number): Promise<void> {
+  const open = (): HTMLElement[] =>
+    [...doc().querySelectorAll<HTMLElement>('[role="tab"][data-tab-type]')].filter((t) => t.dataset.tabType !== 'messages')
+  for (let left = open(); left.length; left = open()) {
+    const x = left[left.length - 1].querySelector<HTMLElement>('button[aria-label^="Close"]')
+    if (!x) return
+    await moveTo(x, g, 0, 0)
+    await click(x, g)
+    await sleep(350, g)
+  }
+}
+
 async function goFreshTab(id: string, label: string, g: number, fresh: Promise<HTMLIFrameElement>): Promise<void> {
   fresh.catch(() => {})
   const btn = doc().querySelector<HTMLElement>(tabSelector(id))
   if (btn) {
     await moveTo(btn, g)
-    showTip(btn, label); await sleep(450, g)
+    showTip(btn, label)
   }
   const next = await fresh
   if (btn) { ripple(); await sleep(140, g) }
@@ -184,11 +202,17 @@ async function goFreshTab(id: string, label: string, g: number, fresh: Promise<H
 // "Scan trade" lets you drag a box over the game; the tour shows the screenshot and draws it over the trade window.
 // preview/trade-scan.webp is 1920x1035, drawn full width (scale 2/3) and centred in the 1280x800 window.
 const SNIP_BOX = { left: 319, top: 245, width: 643, height: 397 }
+// Loaded up front so it shows the moment the scan starts.
+const shotImage = new Image()
+shotImage.src = tradeShot
+const shotReady = shotImage.decode().catch(() => {})
 
-async function playSnip(g: number): Promise<void> {
+async function playSnip(g: number, caption: string): Promise<void> {
+  await shotReady
   const shade = document.createElement('div')
   shade.className = 'snip'
-  shade.innerHTML = `<img src="${tradeShot}" alt=""><div class="snip-box"></div>`
+  shade.innerHTML = `<img src="${tradeShot}" alt=""><div class="snip-caption"></div><div class="snip-box"></div>`
+  shade.querySelector<HTMLElement>('.snip-caption')!.textContent = caption
   win.append(shade)
   const box = shade.querySelector<HTMLElement>('.snip-box')!
   box.style.left = SNIP_BOX.left + 'px'; box.style.top = SNIP_BOX.top + 'px'
@@ -208,12 +232,25 @@ async function playSnip(g: number): Promise<void> {
   }
 }
 
+// While auto scan runs, a corner view of the game with the scanned area outlined.
+function showGame(): () => void {
+  const pip = document.createElement('div')
+  pip.className = 'snip-pip'
+  pip.innerHTML = `<img src="${tradeShot}" alt=""><div class="snip-pip-area"></div><span>Watching the trade</span>`
+  win.append(pip)
+  requestAnimationFrame(() => pip.classList.add('on'))
+  return () => {
+    pip.classList.remove('on')
+    setTimeout(() => pip.remove(), 300)
+  }
+}
+
 /* ---------- Scenes ---------- */
 
 const JAILBREAK = '606849621'
 const JOB = 'b6f2c1e0-3f5a-4c1e-9a77-2d8e5c4f1a90'
 
-const TRADE_USER = '120276120'
+const TRADE_USER = 'reysar123'
 
 const SCENES: { chapter: string; id: string; tab: string; dur: number; play: (g: number) => Promise<void> }[] = [
   {
@@ -292,28 +329,36 @@ const SCENES: { chapter: string; id: string; tab: string; dur: number; play: (g:
     }
   },
   {
-    chapter: 'Calculator', id: 'calculator', tab: 'Value Calculator', dur: 19000,
+    chapter: 'Calculator', id: 'calculator', tab: 'Value Calculator', dur: 22000,
     async play(g) {
+      const scan = await find(() => [...doc().querySelectorAll<HTMLElement>('button')].find((b) => shown(b) && b.textContent?.trim() === 'Scan trade'), g)
+      await sleep(800, g)
+      await moveTo(scan, g); await click(scan, g)
+      await playSnip(g, 'Drag a box over the trade')
+      app().preview.finishSnip()
+      await sleep(2200, g)
       const auto = await find(
         () => [...doc().querySelectorAll<HTMLElement>('label')].find((l) => shown(l) && l.textContent?.includes('Auto scan'))?.querySelector<HTMLElement>('[role="switch"]'),
         g
       )
-      await sleep(900, g)
       await moveTo(auto, g)
-      showTip(auto, 'Follows the open trade'); await sleep(450, g)
-      await click(auto, g)
-      await sleep(900, g); hideTip()
-      for (const count of [2, 4, 6]) {
-        app().preview.autoScan(count)
-        await sleep(1300, g)
+      showTip(auto, 'Auto scan'); await sleep(200, g)
+      await click(auto, g); hideTip()
+      await playSnip(g, 'Set the area to watch')
+      app().preview.finishPick()
+      const hideGame = showGame()
+      try {
+        await sleep(600, g)
+        showTip(auto, 'Follows the open trade')
+        for (let i = 0; i < 3; i++) {
+          app().preview.autoScan(6)
+          await sleep(1100, g)
+        }
+        hideTip()
+      } finally {
+        hideGame()
       }
-      await click(auto, g)
-      await sleep(900, g)
-      const scan = await find(() => [...doc().querySelectorAll<HTMLElement>('button')].find((b) => shown(b) && b.textContent?.trim() === 'Scan trade'), g)
-      await moveTo(scan, g); await click(scan, g)
-      await playSnip(g)
-      app().preview.finishSnip()
-      await sleep(2400, g)
+      await sleep(600, g)
     }
   },
   {
@@ -470,25 +515,36 @@ function show(next: HTMLIFrameElement): void {
   frame = next
 }
 
-async function run(from: number): Promise<void> {
+// fresh: start from a newly loaded app (first start, and after an error). Picking a chapter instead carries on in
+// the open app, opening that chapter's tab from the + menu like any other step.
+async function run(from: number, fresh: boolean): Promise<void> {
   const g = ++gen
   hideTip()
+  if (!fresh) {
+    // A scan or area pick the interrupted chapter left waiting would keep the app's button busy.
+    app().preview?.finishSnip()
+    app().preview?.finishPick()
+  }
   try {
-    for (let i = from; ; i = (i + 1) % SCENES.length) {
+    for (let i = from, first = true; ; i = (i + 1) % SCENES.length, first = false) {
       markChapter(i, reduced ? 2000 : SCENES[i].dur)
-      if (i === from || i === 0) await goFreshTab(SCENES[i].id, SCENES[i].tab, g, loadApp(SCENES[i].id, g))
-      else await goTab(SCENES[i].id, SCENES[i].tab, g)
+      if (first ? fresh : i === 0) {
+        if (!first) await closeTabs(g)
+        await goFreshTab(SCENES[i].id, SCENES[i].tab, g, loadApp(SCENES[i].id, g))
+      } else {
+        await goTab(SCENES[i].id, SCENES[i].tab, g)
+      }
       await SCENES[i].play(g)
     }
   } catch (e) {
     if (!(e instanceof Stop)) {
       console.error(e)
       // A missing target shouldn't freeze the preview; move on to the next chapter.
-      if (g === gen) setTimeout(() => g === gen && run((from + 1) % SCENES.length), 1000)
+      if (g === gen) setTimeout(() => g === gen && run((from + 1) % SCENES.length, true), 1000)
     }
   }
 }
-tabs.forEach((b, i) => b.addEventListener('click', () => run(i)))
+tabs.forEach((b, i) => b.addEventListener('click', () => run(i, false)))
 
 /* ---------- Site theme (tabs + backdrop, and the app itself) ----------
    Any theme the site's /v2/themes had when the preview was built (preview:snapshot saves them):
@@ -609,4 +665,4 @@ if (window.parent !== window) {
     .observe(document.body)
 }
 
-run(Math.min(SCENES.length - 1, Math.max(0, parseInt(location.hash.slice(1), 10) || 0)))
+run(Math.min(SCENES.length - 1, Math.max(0, parseInt(location.hash.slice(1), 10) || 0)), true)

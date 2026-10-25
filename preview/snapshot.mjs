@@ -7,7 +7,7 @@ const INV = 'https://inventories.jailbreakchangelogs.com'
 // Discord usernames shown in the messages and trades scenes; the first is the signed-in account.
 const PEOPLE = ['jailbreakchangelogs', 'senchatf', 'truesmyke', 'kas_dev', 'pikachuwolverine', 'fliktem', 'turtletrevor123', 'aimnice123', 'panqz3']
 const DUPE_USER = { username: 'PeachPayload748', id: '176754054' }
-const TRADE_USER = '120276120'
+const TRADE_USER = { username: 'reysar123', id: '120276120' }
 // One page per list, under the page size, so the app sees no further pages to load.
 const TRADE_PAGE = 24
 
@@ -34,7 +34,7 @@ const byId = Array.isArray(profiles) ? profiles : Object.values(profiles)
 const dupes = await get(`${INV}/users/dupes?id=${DUPE_USER.id}`)
 const ownerIds = [...new Set(dupes.map((d) => Number(d.latest_owner)).filter(Boolean))]
 
-const tradesUrl = `${INV}/trades/user/${TRADE_USER}`
+const tradesUrl = `${INV}/trades/user/${TRADE_USER.id}`
 const tradePage = await get(`${tradesUrl}?limit=25&nocache=false`)
 const trades = { completed: tradePage.completed.slice(0, TRADE_PAGE), pending: tradePage.pending.slice(0, TRADE_PAGE) }
 const activity = await get(`${tradesUrl}/activity?days=365`)
@@ -67,12 +67,12 @@ const snapshot = {
     [`${INV}/proxy/users`]: await get(`${INV}/proxy/users`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ usernames: [DUPE_USER.username], excludeBannedUsers: false })
+      body: JSON.stringify({ usernames: [DUPE_USER.username, TRADE_USER.username], excludeBannedUsers: false })
     }),
     [`${INV}/proxy/users/v2`]: await get(`${INV}/proxy/users/v2`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userIds: [...new Set([Number(DUPE_USER.id), Number(TRADE_USER), ...partnerIds, ...ownerIds])].slice(0, 100) })
+      body: JSON.stringify({ userIds: [...new Set([Number(DUPE_USER.id), Number(TRADE_USER.id), ...partnerIds, ...ownerIds])].slice(0, 100) })
     }),
     [tradesUrl]: trades,
     [`${tradesUrl}/activity`]: activity,

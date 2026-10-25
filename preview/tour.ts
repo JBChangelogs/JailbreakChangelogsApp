@@ -42,7 +42,6 @@ const sleep = (ms: number, g: number): Promise<void> =>
 const doc = (): Document => frame.contentDocument as Document
 const app = (): Window & { preview: typeof Controls } => frame.contentWindow as Window & { preview: typeof Controls }
 
-// Every opened tab stays mounted, hidden behind aria-hidden, so lookups skip the tabs that aren't showing.
 const shown = (el: Element): boolean => !el.closest('[aria-hidden="true"]')
 
 async function find(what: string | (() => Element | null | undefined), g: number, timeout = 8000): Promise<HTMLElement> {
@@ -64,7 +63,6 @@ const mainScroller = (): HTMLElement | undefined =>
 async function moveTo(el: Element, g: number, dx = 0, dy = 0): Promise<void> {
   const r = el.getBoundingClientRect()
   placeCursor(r.left + r.width / 2 + dx, r.top + r.height / 2 + dy)
-  // Matches the cursor's .7s glide, so the click lands as it arrives.
   await sleep(700, g)
 }
 function ripple(): void {
@@ -86,7 +84,6 @@ function showTip(el: Element, text: string): void {
   tip.classList.add('on')
 }
 const hideTip = (): void => tip.classList.remove('on')
-// Explains a step in a subtitle bar at the bottom of the window, away from the app's own controls.
 const captionBar = document.createElement('div')
 captionBar.className = 'caption'
 win.append(captionBar)
@@ -107,8 +104,6 @@ async function type(el: HTMLInputElement | HTMLTextAreaElement, text: string, g:
 }
 const pressEnter = (el: HTMLElement): boolean =>
   el.dispatchEvent(new (app() as unknown as typeof globalThis).KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
-// Native smooth scrolling covers any distance in about the same time, which races through long lists,
-// so scroll at a steady reading speed instead, and only so far.
 const SCROLL_SPEED = 350
 const MAX_SCROLL = 1200
 async function scrollTo(el: HTMLElement | undefined, top: number | 'end', g: number): Promise<void> {
@@ -145,7 +140,6 @@ async function scrollThrough(g: number): Promise<void> {
 }
 const tabSelector = (id: string): string => `[role="tab"][data-tab-type="${id}"]`
 
-// Tabs switch on pointerdown, so a plain click() wouldn't select one.
 async function pressTab(el: HTMLElement, g: number): Promise<void> {
   ripple()
   await sleep(60, g)
@@ -166,7 +160,6 @@ async function goTab(id: string, label: string, g: number): Promise<void> {
   await moveTo(plus, g)
   showTip(plus, 'New tab')
   await click(plus, g); hideTip()
-  // Radix places the menu off-screen for its first frame while it measures, so wait until it's really there.
   const item = await find(() => {
     const found = [...doc().querySelectorAll<HTMLElement>('[data-radix-popper-content-wrapper] button')].find((b) =>
       b.textContent?.trim().startsWith(label)
@@ -182,7 +175,6 @@ async function goTab(id: string, label: string, g: number): Promise<void> {
 
 // With a fresh app loading in the background, the cursor goes to the tab in the visible app and clicks
 // only once the fresh one is ready, swapping it in on the click, so the old state never shows afterwards.
-// Closes every tab but Messages with its x, the way someone tidies up before starting over.
 async function closeTabs(g: number): Promise<void> {
   const open = (): HTMLElement[] =>
     [...doc().querySelectorAll<HTMLElement>('[role="tab"][data-tab-type]')].filter((t) => t.dataset.tabType !== 'messages')
@@ -208,15 +200,8 @@ async function goFreshTab(id: string, label: string, g: number, fresh: Promise<H
   show(next)
 }
 
-/* ---------- Trade scan ---------- */
-
-// Scanning hides the app and puts the scanner's picker (src/renderer/picker.html) over the game, so the tour does
-// the same: the screenshot fills the window like the screen behind the app, under a copy of that picker.
-// preview/trade-scan.webp is 1920x1035, scaled by 800/1035 to fill the window and cropped ~102px each side;
-// SNIP_BOX is its trade window in window coordinates.
 const SNIP_BOX = { left: 267, top: 220, width: 745, height: 460 }
 const DRAG_GLIDE = 1400
-// Loaded up front so it shows the moment the scan starts.
 const shotImage = new Image()
 shotImage.src = tradeShot
 const shotReady = shotImage.decode().catch(() => {})
@@ -239,12 +224,9 @@ async function playSnip(g: number): Promise<void> {
   cursor.style.visibility = 'hidden'
   crosshair!.style.display = 'block'
   try {
-    // Time to read the picker's hint before the drag.
     await sleep(1300, g)
     placeCursor(SNIP_BOX.left, SNIP_BOX.top)
     await sleep(1000, g)
-    // Like the picker, the shade stays until the mouse moves, then the box is drawn as it drags. The drag glides
-    // slower than other moves, and the box eases with the crosshair so its corner stays under it.
     document.documentElement.style.setProperty('--glide', DRAG_GLIDE + 'ms')
     shade.style.display = 'none'
     box.style.display = 'block'
@@ -260,7 +242,6 @@ async function playSnip(g: number): Promise<void> {
   }
 }
 
-// While auto scan runs, a corner view of the game with the scanned area outlined.
 function showGame(): () => void {
   const pip = document.createElement('div')
   pip.className = 'snip-pip'
@@ -375,7 +356,6 @@ const SCENES: { chapter: string; id: string; tab: string; dur: number; play: (g:
       await moveTo(auto, g)
       caption('Or turn on Auto scan to follow the trade'); await sleep(1600, g)
       await click(auto, g); hideCaption()
-      // A clicked control keeps focus, which holds its tooltip open.
       ;(doc().activeElement as HTMLElement | null)?.blur()
       await sleep(400, g)
       await playSnip(g)
@@ -549,14 +529,11 @@ function show(next: HTMLIFrameElement): void {
   frame = next
 }
 
-// fresh: start from a newly loaded app (first start, and after an error). Picking a chapter instead carries on in
-// the open app, opening that chapter's tab from the + menu like any other step.
 async function run(from: number, fresh: boolean): Promise<void> {
   const g = ++gen
   hideTip()
   hideCaption()
   if (!fresh) {
-    // A scan or area pick the interrupted chapter left waiting would keep the app's button busy.
     app().preview?.finishSnip()
     app().preview?.finishPick()
   }

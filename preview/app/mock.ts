@@ -55,7 +55,6 @@ try {
   // Opened on its own or cross-origin: no custom theme.
 }
 // The tour opens the app straight on the chapter's tab.
-// Starts on Messages like a fresh install; the tour opens the other tabs from the + menu as it goes.
 const activeTab = params.get('tab') ?? 'messages'
 const tabs = (params.get('tabs') ?? [...new Set(['messages', activeTab])].join(',')).split(',').map((type) => ({ id: `${type}-tab`, type }))
 localStorage.setItem('jbcl:tabs', JSON.stringify({ tabs, activeId: tabs.find((t) => t.type === activeTab)?.id ?? tabs[0].id }))
@@ -224,7 +223,6 @@ const handlers: [string, RegExp, Handler][] = [
   ['GET', /^\/v2\/trades\/(\d+)\/offers$/, () => [acceptedOffer]],
   ['GET', /^\/v2\/trades\/(\d+)\/offers\/(\d+)$/, () => acceptedOffer],
   ['GET', /^\/v2\/users\/me\/join-history$/, () => ({ items: [], total: 0, page: 1, total_pages: 0, size: 50 })],
-  // Username lookups answer from the saved ones, so each search finds its own account.
   ['POST', /^\/proxy\/users$/, (_, body) => {
     const wanted = ((body as { usernames?: string[] })?.usernames ?? []).map((name) => name.toLowerCase())
     const saved = (routes[`${INV}/proxy/users`] as { data: { name: string }[] }).data
@@ -302,10 +300,6 @@ class FakeSocket extends EventTarget {
 const sockets = new Set<FakeSocket>()
 window.WebSocket = FakeSocket as unknown as typeof WebSocket
 
-/* ---------- Trade scanning ---------- */
-
-// What the OCR reads from preview/trade-scan.webp (1920x1035): each card's type label with its name under it,
-// the two player names, and the Exit/Ready buttons that mark the trade menu.
 const SCAN_WIDTH = 1920
 const SCAN_HEIGHT = 1035
 const word = (x0: number, y0: number, x1: number, y1: number, text: string): OcrDetection => ({ x0, y0, x1, y1, text, conf: 0.95 })
@@ -336,7 +330,6 @@ const scanOf = (topCards: [string, string][]): ScanResponse => ({
     word(1334, 840, 1400, 868, 'READY')
   ]
 })
-// The tour plays the snip and the area pick itself, then hands over the result.
 let finishSnip: ((result: ScanResponse) => void) | null = null
 let finishPick: (() => void) | null = null
 const SCAN_AREA = { displayId: 1, x: 0, y: 0, width: SCAN_WIDTH, height: SCAN_HEIGHT }
@@ -419,17 +412,14 @@ export const preview = {
   },
   robloxActivity: (placeId: string | null, jobId: string | null = null) =>
     subscribers.get('onRobloxActivityChanged')?.forEach((cb) => cb({ placeId, jobId, game: placeId ? 'Jailbreak' : null })),
-  // Ends a "Scan trade" the tour started, with the screenshot's trade.
   finishSnip() {
     finishSnip?.(scanOf(TOP_CARDS))
     finishSnip = null
   },
-  // Ends the area pick that turning on Auto scan asks for.
   finishPick() {
     finishPick?.()
     finishPick = null
   },
-  // One auto scan frame: the trade as it fills in (count = top cards shown so far).
   autoScan: (count: number) =>
     subscribers.get('scanner.onAutoResult')?.forEach((cb) => cb(scanOf(TOP_CARDS.slice(0, count))))
 }

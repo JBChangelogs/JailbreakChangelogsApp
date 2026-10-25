@@ -8,7 +8,6 @@ const INV = 'https://inventories.jailbreakchangelogs.com'
 const PEOPLE = ['jailbreakchangelogs', 'senchatf', 'truesmyke', 'kas_dev', 'pikachuwolverine', 'fliktem', 'turtletrevor123', 'aimnice123', 'panqz3']
 const DUPE_USER = { username: 'PeachPayload748', id: '176754054' }
 const TRADE_USER = { username: 'reysar123', id: '120276120' }
-// One page per list, under the page size, so the app sees no further pages to load.
 const TRADE_PAGE = 24
 
 async function get(url, init) {

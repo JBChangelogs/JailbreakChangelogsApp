@@ -57,6 +57,22 @@ export function notesSince(notes: string, currentVersion: string | undefined): s
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.8.3',
+    date: '2026-10-27',
+    changed: [
+      'Auto scan now follows your Roblox window by itself and keeps working behind other windows, so there is no area to set and it works on a single monitor',
+      'Auto scan finds the trade window at any Roblox window size or display scaling, and only reads the trade itself',
+      'Auto scan updates faster while Roblox is the focused window'
+    ],
+    fixed: [
+      "Auto scan no longer flashes items that aren't in the trade, such as names from chat or other players' signs",
+      "Scanning a trade where only the other player has added items no longer puts their items on your side or splits them across both sides",
+      "The trade scanner no longer says it couldn't start the first time you use it",
+      'On Linux, the app no longer turns into a gray screen when opening Trades, and tabs feel smoother'
+    ],
+    added: ['Crash reports and scan stats are sent with anonymous analytics so we can find and fix problems faster']
+  },
+  {
     version: '0.8.2',
     date: '2026-10-24',
     added: [

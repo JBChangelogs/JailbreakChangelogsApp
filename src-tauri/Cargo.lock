@@ -2462,6 +2462,7 @@ dependencies = [
  "tauri-plugin-updater",
  "tokio",
  "uuid 1.28.0",
+ "webkit2gtk",
  "windows-sys 0.61.2",
  "windows-version",
  "xcap 0.4.1",

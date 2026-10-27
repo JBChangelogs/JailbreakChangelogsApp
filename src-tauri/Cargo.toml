@@ -57,6 +57,7 @@ security-framework = "3"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 xcap = "0.4.1"
+webkit2gtk = "2.0"
 
 [profile.release]
 lto = "thin"

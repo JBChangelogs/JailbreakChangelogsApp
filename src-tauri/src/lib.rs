@@ -299,7 +299,23 @@ fn create_main_window(app: &AppHandle) -> tauri::Result<WebviewWindow> {
         .scroll_bar_style(tauri::webview::ScrollBarStyle::FluentOverlay)
         .data_directory(webview2_data_dir(app)?);
 
-    builder.build()
+    let window = builder.build()?;
+    #[cfg(target_os = "linux")]
+    window.with_webview(|webview| {
+        use webkit2gtk::WebViewExt;
+        webview.inner().connect_web_process_terminated(|_, reason| {
+            analytics::track(
+                "webview_crash",
+                Some(serde_json::json!({
+                    "reason": format!("{reason:?}"),
+                    "session_type": std::env::var("XDG_SESSION_TYPE").unwrap_or_default(),
+                    "desktop": std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_default(),
+                })),
+            );
+            tauri::async_runtime::spawn(analytics::flush());
+        });
+    })?;
+    Ok(window)
 }
 
 #[tauri::command]
@@ -456,6 +472,11 @@ fn app_uninstall(app: AppHandle, purge: bool) -> Result<(), String> {
 }
 
 pub fn run() {
+    #[cfg(target_os = "linux")]
+    if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() {
+        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+    }
+
     let _ = rustls::crypto::ring::default_provider().install_default();
 
     let app = tauri::Builder::default()

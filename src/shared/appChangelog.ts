@@ -62,7 +62,9 @@ export const APP_CHANGELOG: AppChangelogEntry[] = [
     changed: [
       'Auto scan now follows your Roblox window by itself and keeps working behind other windows, so there is no area to set and it works on a single monitor',
       'Auto scan finds the trade window at any Roblox window size or display scaling, and only reads the trade itself',
-      'Auto scan updates faster while Roblox is the focused window'
+      'Auto scan updates faster while Roblox is the focused window',
+      'When you open the app, you can choose to restore the tabs you had open last time instead of them coming back automatically',
+      'Tabs are evenly spaced'
     ],
     fixed: [
       "Auto scan no longer flashes items that aren't in the trade, such as names from chat or other players' signs",
@@ -70,7 +72,10 @@ export const APP_CHANGELOG: AppChangelogEntry[] = [
       "The trade scanner no longer says it couldn't start the first time you use it",
       'On Linux, the app no longer turns into a gray screen when opening Trades, and tabs feel smoother'
     ],
-    added: ['Crash reports and scan stats are sent with anonymous analytics so we can find and fix problems faster']
+    added: [
+      'Right-click a tab to close other tabs, tabs to the left or tabs to the right',
+      'Crash reports and scan stats are sent with anonymous analytics so we can find and fix problems faster'
+    ]
   },
   {
     version: '0.8.2',

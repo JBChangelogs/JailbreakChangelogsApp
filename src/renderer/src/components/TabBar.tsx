@@ -1,7 +1,8 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@renderer/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@renderer/components/ui/dialog'
-import { Popover, PopoverContent, PopoverTrigger } from '@renderer/components/ui/popover'
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@renderer/components/ui/context-menu'
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from '@renderer/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { TAB_INFO } from '@renderer/components/NavBar'
 import { useSettingsPage } from '@renderer/contexts/SettingsPageContext'
@@ -17,7 +18,7 @@ import { cn } from '@renderer/lib/utils'
 
 const CLOSE_ANIMATION_MS = 150
 
-const TAB_SHAPE_INSET = 4
+const TAB_SHAPE_INSET = 1.5
 
 const DRAG_THRESHOLD = 5
 
@@ -42,7 +43,8 @@ interface DragLayout {
 }
 
 export function TabBar(): React.JSX.Element {
-  const { tabs, activeTab, activate, open, close, move, meta } = useTabs()
+  const { tabs, activeTab, activate, open, close, closeTabs, move, meta, restorable, restore, dismissRestore } =
+    useTabs()
   const [dragOrder, setDragOrder] = useState<string[] | null>(null)
   const orderedTabs = useMemo(() => {
     if (!dragOrder) return tabs
@@ -275,6 +277,16 @@ export function TabBar(): React.JSX.Element {
     }, CLOSE_ANIMATION_MS)
   }
 
+  const closeMany = (ids: string[], keepId: string): void => {
+    const pending = ids.filter((id) => !closing.has(id))
+    if (pending.length === 0) return
+    setClosing((prev) => new Set([...prev, ...pending]))
+    setTimeout(() => {
+      closeTabs(pending, keepId)
+      setClosing((prev) => new Set([...prev].filter((id) => !pending.includes(id))))
+    }, CLOSE_ANIMATION_MS)
+  }
+
   const pick = (type: TabType): void => {
     if (settings.isOpen) settings.close()
     dismissMenu()
@@ -292,87 +304,111 @@ export function TabBar(): React.JSX.Element {
           'transition-[transform,width] duration-200 ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none'
         )}
       />
-      {orderedTabs.map((tab) => {
+      {orderedTabs.map((tab, index) => {
         const { Icon, label: typeLabel } = TAB_INFO[tab.type]
         const active = tab.id === activeTab.id
         const { title, badge } = meta[tab.id] ?? {}
         const label = title || typeLabel
         return (
-          <Tooltip key={tab.id} delayDuration={500}>
-            <TooltipTrigger asChild>
-              <div
-                ref={(el) => {
-                  if (el) tabRefs.current.set(tab.id, el)
-                  else tabRefs.current.delete(tab.id)
-                }}
-                role="tab"
-                data-tab-type={tab.type}
-                aria-selected={active}
-                tabIndex={active ? 0 : -1}
-                data-tauri-drag-region="false"
-                onPointerDown={(e) => {
-                  if (e.button === 1) e.preventDefault()
-                  if (e.button !== 0) return
-                  select(tab.id)
-                  startDrag(e, tab.id)
-                }}
-                onAuxClick={(e) => e.button === 1 && startClose(tab.id)}
-                onKeyDown={(e) => {
-                  if (e.key !== 'Enter' && e.key !== ' ') return
-                  e.preventDefault()
-                  select(tab.id)
-                }}
-                className={cn(
-                  'group relative -mb-px flex h-[32px] min-w-0 flex-[0_1_15rem] border border-b-0 border-transparent text-xs font-medium whitespace-nowrap transition-colors duration-200',
-                  active ? 'z-[2] text-primary-text' : 'text-secondary-text hover:text-primary-text',
-                  closing.has(tab.id)
-                    ? 'animate-tab-out pointer-events-none overflow-hidden'
-                    : entering.has(tab.id) && 'animate-tab-in overflow-hidden'
-                )}
-                onAnimationEnd={(e) => {
-                  if (e.target !== e.currentTarget || e.animationName !== 'tab-in') return
-                  setEntering((prev) => {
-                    const next = new Set(prev)
-                    next.delete(tab.id)
-                    return next
-                  })
-                }}
-              >
-                {!active && (
-                  <span
-                    aria-hidden
-                    className="pointer-events-none absolute inset-x-[3px] -top-px bottom-[4px] rounded-lg transition-colors group-hover:bg-quaternary-bg/50"
-                  />
-                )}
-                <span className="relative mb-[5px] flex min-w-0 flex-1 items-center gap-2 pr-[7px] pl-3">
-                  <span className="relative flex shrink-0 [&_svg]:h-4 [&_svg]:w-4">
-                    <Icon />
-                    {!!badge && !active && (
-                      <span className="absolute -top-1.5 -right-2 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-card-tag-bg px-0.5 text-[8px] font-semibold text-card-tag-text">
-                        {badge > 99 ? '99+' : badge}
-                      </span>
+          <ContextMenu key={tab.id}>
+            <Tooltip delayDuration={500}>
+              <TooltipTrigger asChild>
+                <ContextMenuTrigger asChild>
+                  <div
+                    ref={(el) => {
+                      if (el) tabRefs.current.set(tab.id, el)
+                      else tabRefs.current.delete(tab.id)
+                    }}
+                    role="tab"
+                    data-tab-type={tab.type}
+                    aria-selected={active}
+                    tabIndex={active ? 0 : -1}
+                    data-tauri-drag-region="false"
+                    onPointerDown={(e) => {
+                      if (e.button === 1) e.preventDefault()
+                      if (e.button !== 0) return
+                      select(tab.id)
+                      startDrag(e, tab.id)
+                    }}
+                    onAuxClick={(e) => e.button === 1 && startClose(tab.id)}
+                    onKeyDown={(e) => {
+                      if (e.key !== 'Enter' && e.key !== ' ') return
+                      e.preventDefault()
+                      select(tab.id)
+                    }}
+                    className={cn(
+                      'group relative -mb-px flex h-[32px] min-w-0 flex-[0_1_15rem] border border-b-0 border-transparent text-xs font-medium whitespace-nowrap transition-colors duration-200',
+                      active ? 'z-[2] text-primary-text' : 'text-secondary-text hover:text-primary-text',
+                      closing.has(tab.id)
+                        ? 'animate-tab-out pointer-events-none overflow-hidden'
+                        : entering.has(tab.id) && 'animate-tab-in overflow-hidden'
                     )}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate">{label}</span>
-                  {closable && (
-                    <button
-                      type="button"
-                      aria-label={`Close ${label}`}
-                      onPointerDown={(e) => e.stopPropagation()}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        startClose(tab.id)
-                      }}
-                      className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-tertiary-text hover:bg-quaternary-bg hover:text-primary-text"
-                    >
-                      <PlusIcon className="h-4 w-4 rotate-45" />
-                    </button>
-                  )}
-                </span>
-              </div>
-            </TooltipTrigger>
-            {!draggingTabs && <TooltipContent side="bottom">{label}</TooltipContent>}
-          </Tooltip>
+                    onAnimationEnd={(e) => {
+                      if (e.target !== e.currentTarget || e.animationName !== 'tab-in') return
+                      setEntering((prev) => {
+                        const next = new Set(prev)
+                        next.delete(tab.id)
+                        return next
+                      })
+                    }}
+                  >
+                    {!active && (
+                      <span
+                        aria-hidden
+                        className="pointer-events-none absolute inset-x-[1.5px] -top-px bottom-[4px] rounded-lg transition-colors group-hover:bg-quaternary-bg/50"
+                      />
+                    )}
+                    <span className="relative mb-[5px] flex min-w-0 flex-1 items-center gap-2 pr-[7px] pl-3">
+                      <span className="relative flex shrink-0 [&_svg]:h-4 [&_svg]:w-4">
+                        <Icon />
+                        {!!badge && !active && (
+                          <span className="absolute -top-1.5 -right-2 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-card-tag-bg px-0.5 text-[8px] font-semibold text-card-tag-text">
+                            {badge > 99 ? '99+' : badge}
+                          </span>
+                        )}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate">{label}</span>
+                      {closable && (
+                        <button
+                          type="button"
+                          aria-label={`Close ${label}`}
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            startClose(tab.id)
+                          }}
+                          className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-tertiary-text hover:bg-quaternary-bg hover:text-primary-text"
+                        >
+                          <PlusIcon className="h-4 w-4 rotate-45" />
+                        </button>
+                      )}
+                    </span>
+                  </div>
+                </ContextMenuTrigger>
+              </TooltipTrigger>
+              {!draggingTabs && <TooltipContent side="bottom">{label}</TooltipContent>}
+            </Tooltip>
+            <ContextMenuContent className="w-48">
+              <ContextMenuItem
+                disabled={orderedTabs.length < 2}
+                onSelect={() => closeMany(orderedTabs.filter((other) => other.id !== tab.id).map((other) => other.id), tab.id)}
+              >
+                Close other tabs
+              </ContextMenuItem>
+              <ContextMenuItem
+                disabled={index === 0}
+                onSelect={() => closeMany(orderedTabs.slice(0, index).map((other) => other.id), tab.id)}
+              >
+                Close tabs to the left
+              </ContextMenuItem>
+              <ContextMenuItem
+                disabled={index === orderedTabs.length - 1}
+                onSelect={() => closeMany(orderedTabs.slice(index + 1).map((other) => other.id), tab.id)}
+              >
+                Close tabs to the right
+              </ContextMenuItem>
+            </ContextMenuContent>
+          </ContextMenu>
         )
       })}
       <span
@@ -426,6 +462,29 @@ export function TabBar(): React.JSX.Element {
               </button>
             )
           })}
+        </PopoverContent>
+      </Popover>
+      <Popover open={!!restorable} onOpenChange={(next) => !next && dismissRestore()}>
+        <PopoverAnchor className="pointer-events-none absolute bottom-0 left-2 h-px w-px" />
+        <PopoverContent
+          align="start"
+          className="w-72 p-4"
+          onInteractOutside={(e) => e.preventDefault()}
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
+          <p className="text-sm font-semibold text-primary-text">Restore your tabs?</p>
+          <p className="mt-1 text-xs text-secondary-text">
+            You also had {restorable?.length === 1 ? 'this tab' : 'these tabs'} open last time:{' '}
+            {restorable?.map((tab) => TAB_INFO[tab.type].label).join(', ')}.
+          </p>
+          <div className="mt-3 flex justify-end gap-2">
+            <Button type="button" size="sm" variant="secondary" onClick={dismissRestore}>
+              Cancel
+            </Button>
+            <Button type="button" size="sm" onClick={restore}>
+              Restore
+            </Button>
+          </div>
         </PopoverContent>
       </Popover>
     </div>

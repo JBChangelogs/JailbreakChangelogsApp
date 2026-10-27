@@ -1,4 +1,5 @@
 use std::path::Path;
+use std::time::{Duration, Instant};
 
 #[cfg(target_os = "macos")]
 use ort::ep;
@@ -244,15 +245,19 @@ impl Ocr {
         Ok(results)
     }
 
-    pub fn scan(&mut self, img: &Image) -> ort::Result<Vec<Detection>> {
+    pub fn scan(&mut self, img: &Image) -> ort::Result<(Vec<Detection>, Duration, Duration)> {
+        let started = Instant::now();
         let boxes = self.detect(img)?;
+        let det = started.elapsed();
         let recognized = self.recognize_all(img, &boxes)?;
-        Ok(boxes
+        let rec = started.elapsed() - det;
+        let detections = boxes
             .iter()
             .zip(recognized)
             .filter(|(_, (text, _))| !text.is_empty())
             .map(|(b, (text, conf))| Detection { x0: b.x, y0: b.y, x1: b.x + b.w, y1: b.y + b.h, text, conf })
-            .collect())
+            .collect();
+        Ok((detections, det, rec))
     }
 }
 

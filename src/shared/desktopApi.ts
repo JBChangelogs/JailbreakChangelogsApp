@@ -62,7 +62,6 @@ export interface DesktopApi {
     snip: () => Promise<ScanResponse | null>
     getAuto: () => Promise<AutoScanSettings>
     setAutoEnabled: (enabled: boolean) => Promise<AutoScanSettings>
-    pickAutoArea: () => Promise<AutoScanSettings>
     onAutoResult: (callback: (result: ScanResponse) => void) => () => void
   }
   analytics: {

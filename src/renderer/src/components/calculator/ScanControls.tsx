@@ -4,6 +4,7 @@ import { Button } from '@renderer/components/ui/button'
 import { Switch } from '@renderer/components/ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { showToast } from '@renderer/lib/toast'
+import { track } from '@renderer/lib/analytics'
 import type { AutoScanSettings, ScannerStatus } from '@shared/tradeScan'
 
 function SnipIcon({ className }: { className?: string }): React.JSX.Element {
@@ -77,6 +78,7 @@ export function ScanControls(): React.JSX.Element {
       const res = await window.api.scanner.snip()
       if (!res) return
       if (!res.ok) {
+        track('trade_scan_failed', { mode: 'snip', code: res.code })
         showToast("Couldn't scan that area", { description: res.message })
       } else if (!applyScan(res)) {
         showToast('No trade items were found in that area.')
@@ -86,20 +88,7 @@ export function ScanControls(): React.JSX.Element {
     }
   }
 
-  const pickArea = async (): Promise<AutoScanSettings> => {
-    setBusy(true)
-    try {
-      const next = await window.api.scanner.pickAutoArea()
-      setAuto(next)
-      return next
-    } finally {
-      setBusy(false)
-    }
-  }
-
   const toggleAuto = async (enabled: boolean): Promise<void> => {
-    // Auto scan needs an area; ask for one the first time it's turned on.
-    if (enabled && !auto?.area && !(await pickArea()).area) return
     setAuto(await window.api.scanner.setAutoEnabled(enabled))
   }
 
@@ -128,20 +117,10 @@ export function ScanControls(): React.JSX.Element {
           </label>
         </TooltipTrigger>
         <TooltipContent className="max-w-60">
-          While you're in a Jailbreak trading server, keeps the calculator in sync with the open trade, and clears
-          it when you leave the trade menu.
+          While you're in a Jailbreak trading server, finds the trade in your Roblox window and keeps the calculator
+          in sync with it, even behind other windows. Clears it when you leave the trade menu.
         </TooltipContent>
       </Tooltip>
-      {auto?.area && (
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={() => void pickArea()}
-          className="text-xs text-link hover:underline disabled:opacity-50"
-        >
-          Set area
-        </button>
-      )}
       {availability.state === 'unavailable' || availability.state === 'installable' ? (
         <Tooltip>
           <TooltipTrigger asChild>

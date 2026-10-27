@@ -399,11 +399,6 @@ fn scanner_set_auto_enabled(enabled: bool) -> scanner::AutoScanSettings {
     scanner::set_auto_enabled(enabled)
 }
 
-#[tauri::command]
-async fn scanner_pick_auto_area(app: AppHandle) -> scanner::AutoScanSettings {
-    scanner::pick_auto_area(app).await
-}
-
 #[derive(Deserialize)]
 struct PickedRect {
     x: f64,
@@ -504,7 +499,6 @@ pub fn run() {
             scanner_snip,
             scanner_get_auto,
             scanner_set_auto_enabled,
-            scanner_pick_auto_area,
             scanner_pick_done,
             analytics_track,
             analytics_get_enabled,

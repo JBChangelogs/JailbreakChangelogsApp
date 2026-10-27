@@ -358,8 +358,6 @@ const SCENES: { chapter: string; id: string; tab: string; dur: number; play: (g:
       await click(auto, g); hideCaption()
       ;(doc().activeElement as HTMLElement | null)?.blur()
       await sleep(400, g)
-      await playSnip(g)
-      app().preview.finishPick()
       const hideGame = showGame()
       try {
         await sleep(900, g)
@@ -535,7 +533,6 @@ async function run(from: number, fresh: boolean): Promise<void> {
   hideCaption()
   if (!fresh) {
     app().preview?.finishSnip()
-    app().preview?.finishPick()
   }
   try {
     for (let i = from, first = true; ; i = (i + 1) % SCENES.length, first = false) {

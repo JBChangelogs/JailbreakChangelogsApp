@@ -13,9 +13,15 @@ use crate::data_dir;
 const MAX_WIDTH: u32 = 4000;
 const MAX_HEIGHT: u32 = 3000;
 const TRADING_PLACE_ID: &str = "9780994092";
+#[cfg(windows)]
+const ROBLOX_WINDOW_TITLE: &str = "Roblox";
+const TRADE_MENU_WORDS: [&str; 2] = ["exit", "ready"];
 const AUTO_SCAN_INTERVAL: Duration = Duration::from_millis(150);
 const AUTO_SCAN_CHANGE_THRESHOLD: f64 = 2.0;
 const OCR_IDLE_UNLOAD: Duration = Duration::from_secs(120);
+const OCR_LOAD_RETRY_DELAY: Duration = Duration::from_millis(500);
+const AUTO_SEARCH_INTERVAL: Duration = Duration::from_secs(1);
+const AUTO_LOCK_LOST_SCANS: u32 = 10;
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -31,8 +37,6 @@ pub struct ScanArea {
 pub struct AutoScanSettings {
     #[serde(default)]
     enabled: bool,
-    #[serde(default)]
-    area: Option<ScanArea>,
 }
 
 static APP: OnceLock<AppHandle> = OnceLock::new();
@@ -63,7 +67,8 @@ mod engine {
     #[cfg(not(target_os = "macos"))]
     const PROVIDER: &str = "cpu";
 
-    static OCR: Mutex<Option<Result<(Ocr, Instant), String>>> = Mutex::new(None);
+    static OCR: Mutex<Option<(Ocr, Instant)>> = Mutex::new(None);
+    static LOAD_FAILURE_REPORTED: AtomicBool = AtomicBool::new(false);
     static INSTALLING: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
     fn pack() -> Option<Pack> {
@@ -90,21 +95,38 @@ mod engine {
         if guard.is_none() {
             let pack = pack().ok_or("The scanner isn't included in this build.")?;
             let dir = installed(&pack).ok_or("The trade scanner hasn't been downloaded yet.")?;
-            let loaded = Ocr::load(&dir.join(&pack.library), &dir.join("det.onnx"), &dir.join("rec.onnx"), &dir.join("dict.txt"));
-            if let Err(e) = &loaded {
-                eprintln!("[scanner] init failed: {e}");
-            } else {
-                spawn_idle_unload();
+            let load = || Ocr::load(&dir.join(&pack.library), &dir.join("det.onnx"), &dir.join("rec.onnx"), &dir.join("dict.txt"));
+            let started = Instant::now();
+            let loaded = load().or_else(|first| {
+                eprintln!("[scanner] init failed, retrying: {first}");
+                std::thread::sleep(OCR_LOAD_RETRY_DELAY);
+                load().map_err(|second| (first, second))
+            });
+            match loaded {
+                Ok(ocr) => {
+                    *guard = Some((ocr, Instant::now()));
+                    spawn_idle_unload();
+                }
+                Err((first, second)) => {
+                    eprintln!("[scanner] init failed: {second}");
+                    if !LOAD_FAILURE_REPORTED.swap(true, Ordering::SeqCst) {
+                        crate::analytics::track(
+                        "scanner_load_failed",
+                        Some(json!({
+                            "error": second.chars().take(300).collect::<String>(),
+                            "first_error": first.chars().take(300).collect::<String>(),
+                            "provider": PROVIDER,
+                            "load_ms": started.elapsed().as_millis() as u64,
+                        })),
+                        );
+                    }
+                    return Err("The scanner couldn't start on this computer.".into());
+                }
             }
-            *guard = Some(loaded.map(|o| (o, Instant::now())));
         }
-        match guard.as_mut().unwrap() {
-            Ok((ocr, used)) => {
-                *used = Instant::now();
-                Ok(f(ocr))
-            }
-            Err(_) => Err("The scanner couldn't start on this computer.".into()),
-        }
+        let (ocr, used) = guard.as_mut().unwrap();
+        *used = Instant::now();
+        Ok(f(ocr))
     }
 
     fn spawn_idle_unload() {
@@ -112,12 +134,12 @@ mod engine {
             std::thread::sleep(Duration::from_secs(30));
             let mut guard = OCR.lock().unwrap();
             match guard.as_ref() {
-                Some(Ok((_, used))) if used.elapsed() >= OCR_IDLE_UNLOAD => {
+                Some((_, used)) if used.elapsed() >= OCR_IDLE_UNLOAD => {
                     *guard = None;
                     return;
                 }
-                Some(Ok(_)) => {}
-                _ => return,
+                Some(_) => {}
+                None => return,
             }
         });
     }
@@ -221,8 +243,19 @@ mod engine {
 
     pub fn run(rgba: &[u8], width: u32, height: u32) -> Value {
         let img = Image { rgba, width: width as usize, height: height as usize };
+        let started = Instant::now();
         match with_ocr(|ocr| ocr.scan(&img)) {
-            Ok(Ok(detections)) => json!({ "ok": true, "width": width, "height": height, "detections": detections }),
+            Ok(Ok((detections, det, rec))) => json!({
+                "ok": true,
+                "width": width,
+                "height": height,
+                "detections": detections,
+                "timings": {
+                    "ocr_ms": started.elapsed().as_millis() as u64,
+                    "det_ms": det.as_millis() as u64,
+                    "rec_ms": rec.as_millis() as u64,
+                },
+            }),
             Ok(Err(e)) => {
                 eprintln!("[scanner] scan failed: {e}");
                 json!({ "ok": false, "code": "scan_failed", "message": "Couldn't read that area. Please try again." })
@@ -309,13 +342,15 @@ fn area_rect(area: &ScanArea, k: f64, max_w: u32, max_h: u32) -> Option<(u32, u3
 struct Frozen {
     image: xcap::image::RgbaImage,
     k: f64,
+    took: Duration,
 }
 
 fn capture_monitor(display_id: f64) -> Option<Frozen> {
+    let started = Instant::now();
     let monitor = find_monitor(display_id)?;
     let image = monitor.capture_image().ok()?;
     let k = pixels_per_point(&monitor, image.width())?;
-    Some(Frozen { image, k })
+    Some(Frozen { image, k, took: started.elapsed() })
 }
 
 fn crop_frozen(frozen: &Frozen, area: &ScanArea) -> Option<xcap::image::RgbaImage> {
@@ -344,7 +379,7 @@ pub fn pick_done(rect: Option<(f64, f64, f64, f64)>) {
     }
 }
 
-async fn pick_area(app: &AppHandle, freeze: bool) -> Option<(ScanArea, Option<Frozen>)> {
+async fn pick_area(app: &AppHandle) -> Option<(ScanArea, Option<Frozen>)> {
     if PICKING.swap(true, Ordering::SeqCst) {
         return None;
     }
@@ -353,11 +388,7 @@ async fn pick_area(app: &AppHandle, freeze: bool) -> Option<(ScanArea, Option<Fr
         let monitor = app.monitor_from_point(cursor.x, cursor.y).ok().flatten().or_else(|| app.primary_monitor().ok().flatten())?;
         let (pos, size, scale) = (*monitor.position(), *monitor.size(), monitor.scale_factor());
         let display_id = xcap_monitor_at((pos.x, pos.y), scale)?.id().ok()? as f64;
-        let frozen = if freeze {
-            tauri::async_runtime::spawn_blocking(move || capture_monitor(display_id)).await.ok().flatten()
-        } else {
-            None
-        };
+        let frozen = tauri::async_runtime::spawn_blocking(move || capture_monitor(display_id)).await.ok().flatten();
         let (tx, rx) = oneshot::channel();
         *PICK_RESULT.lock().unwrap() = Some(tx);
         let builder = WebviewWindowBuilder::new(app, "picker", WebviewUrl::App("picker.html".into()))
@@ -410,12 +441,18 @@ async fn with_app_hidden<T>(app: &AppHandle, f: impl std::future::Future<Output 
 
 pub async fn snip(app: AppHandle) -> Value {
     let captured = with_app_hidden(&app, async {
-        let (area, frozen) = pick_area(&app, true).await?;
+        let (area, frozen) = pick_area(&app).await?;
         Some(match frozen {
-            Some(frozen) => crop_frozen(&frozen, &area),
+            Some(frozen) => crop_frozen(&frozen, &area).map(|image| (image, frozen.took)),
             None => {
                 tokio::time::sleep(Duration::from_millis(150)).await;
-                tauri::async_runtime::spawn_blocking(move || capture_area(&area)).await.ok().flatten()
+                tauri::async_runtime::spawn_blocking(move || {
+                    let started = Instant::now();
+                    capture_area(&area).map(|image| (image, started.elapsed()))
+                })
+                .await
+                .ok()
+                .flatten()
             }
         })
     })
@@ -423,8 +460,15 @@ pub async fn snip(app: AppHandle) -> Value {
     match captured {
         None => Value::Null,
         Some(None) => json!({ "ok": false, "code": "capture_failed", "message": "Couldn't capture the screen." }),
-        Some(Some(image)) => run_ocr(image).await,
+        Some(Some((image, took))) => with_capture_ms(run_ocr(image).await, took),
     }
+}
+
+fn with_capture_ms(mut result: Value, took: Duration) -> Value {
+    if result["ok"] == true {
+        result["timings"]["capture_ms"] = json!(took.as_millis() as u64);
+    }
+    result
 }
 
 pub fn get_auto() -> AutoScanSettings {
@@ -432,7 +476,7 @@ pub fn get_auto() -> AutoScanSettings {
         fs::read(data_dir().join("scanner.json"))
             .ok()
             .and_then(|b| serde_json::from_slice(&b).ok())
-            .unwrap_or(AutoScanSettings { enabled: false, area: None })
+            .unwrap_or(AutoScanSettings { enabled: false })
     })
 }
 
@@ -446,14 +490,7 @@ fn save(next: AutoScanSettings) -> AutoScanSettings {
 }
 
 pub fn set_auto_enabled(enabled: bool) -> AutoScanSettings {
-    save(AutoScanSettings { enabled, ..get_auto() })
-}
-
-pub async fn pick_auto_area(app: AppHandle) -> AutoScanSettings {
-    match with_app_hidden(&app, pick_area(&app, false)).await {
-        Some((area, _)) => save(AutoScanSettings { area: Some(area), ..get_auto() }),
-        None => get_auto(),
-    }
+    save(AutoScanSettings { enabled })
 }
 
 fn fingerprint(image: &xcap::image::RgbaImage) -> Vec<u8> {
@@ -476,29 +513,109 @@ fn same_frame(a: &[u8], b: &[u8]) -> bool {
     }
 }
 
+#[cfg(windows)]
+fn capture_roblox() -> Option<xcap::image::RgbaImage> {
+    let window = xcap::Window::all().ok()?.into_iter().find(|w| w.title().is_ok_and(|t| t == ROBLOX_WINDOW_TITLE))?;
+    if window.is_minimized().unwrap_or(true) {
+        return None;
+    }
+    let image = window.capture_image().ok()?;
+    if !fingerprint(&image).iter().all(|&p| p < 4) {
+        return Some(image);
+    }
+    let monitor = window.current_monitor().ok()?;
+    let x = (window.x().ok()? - monitor.x().ok()?).max(0) as u32;
+    let y = (window.y().ok()? - monitor.y().ok()?).max(0) as u32;
+    let w = window.width().ok()?.min(monitor.width().ok()?.saturating_sub(x));
+    let h = window.height().ok()?.min(monitor.height().ok()?.saturating_sub(y));
+    monitor.capture_region(x, y, w, h).ok()
+}
+
+#[cfg(not(windows))]
+fn capture_roblox() -> Option<xcap::image::RgbaImage> {
+    None
+}
+
+fn trade_menu_extent(result: &Value) -> Option<(f64, f64)> {
+    let (width, height) = (result["width"].as_f64()?, result["height"].as_f64()?);
+    let buttons: Vec<&Value> = result["detections"]
+        .as_array()?
+        .iter()
+        .filter(|d| {
+            let text = d["text"].as_str().unwrap_or_default().to_lowercase();
+            let word = text.split('(').next().unwrap_or_default().trim();
+            d["conf"].as_f64().unwrap_or(0.0) > 0.5 && TRADE_MENU_WORDS.contains(&word)
+        })
+        .collect();
+    if buttons.is_empty() {
+        return None;
+    }
+    let max = |key: &str| buttons.iter().filter_map(|d| d[key].as_f64()).fold(0.0, f64::max);
+    let button_height = buttons.iter().filter_map(|d| Some(d["y1"].as_f64()? - d["y0"].as_f64()?)).fold(0.0, f64::max);
+    let right = (max("x1") + button_height * 1.5).min(width);
+    let bottom = (max("y1") + button_height).min(height);
+    Some((right / width, bottom / height))
+}
+
+fn crop_extent(image: &xcap::image::RgbaImage, (fw, fh): (f64, f64)) -> Option<xcap::image::RgbaImage> {
+    let w = ((image.width() as f64 * fw).round() as u32).min(image.width());
+    let h = ((image.height() as f64 * fh).round() as u32).min(image.height());
+    (w > 0 && h > 0).then(|| xcap::image::imageops::crop_imm(image, 0, 0, w, h).to_image())
+}
+
 fn update_auto_scan() {
-    let AutoScanSettings { enabled, area } = get_auto();
-    let should_run = enabled && area.is_some() && PLACE_ID.lock().unwrap().as_deref() == Some(TRADING_PLACE_ID);
+    let should_run = get_auto().enabled && PLACE_ID.lock().unwrap().as_deref() == Some(TRADING_PLACE_ID);
     if should_run == AUTO_RUNNING.swap(should_run, Ordering::SeqCst) || !should_run {
         return;
     }
     let Some(app) = APP.get().cloned() else { return };
     tauri::async_runtime::spawn(async move {
         let mut last: Option<(Vec<u8>, Value)> = None;
+        let mut lock: Option<(f64, f64)> = None;
+        let mut misses = 0;
+        let mut searched_at: Option<Instant> = None;
         while AUTO_RUNNING.load(Ordering::SeqCst) {
-            if let Some(area) = get_auto().area {
-                let image = tauri::async_runtime::spawn_blocking(move || capture_area(&area)).await.ok().flatten();
-                if let Some(image) = image {
-                    let print = fingerprint(&image);
-                    let result = match &last {
-                        Some((prev, result)) if same_frame(prev, &print) => result.clone(),
-                        _ => run_ocr(image).await,
-                    };
-                    let _ = app.emit_to("main", "scanner:auto-result", &result);
-                    last = Some((print, result));
-                }
-            }
             tokio::time::sleep(AUTO_SCAN_INTERVAL).await;
+            if lock.is_none() && searched_at.is_some_and(|t| t.elapsed() < AUTO_SEARCH_INTERVAL) {
+                continue;
+            }
+            let started = Instant::now();
+            let Some(window) = tauri::async_runtime::spawn_blocking(capture_roblox).await.ok().flatten() else { continue };
+            let Some(image) = (match lock {
+                Some(extent) => crop_extent(&window, extent),
+                None => Some(window),
+            }) else {
+                lock = None;
+                continue;
+            };
+            let took = started.elapsed();
+            let print = fingerprint(&image);
+            let result = match &last {
+                Some((prev, result)) if same_frame(prev, &print) => result.clone(),
+                _ => {
+                    let mut result = with_capture_ms(run_ocr(image).await, took);
+                    if result["ok"] == true {
+                        result["scope"] = json!(if lock.is_some() { "trade" } else { "window" });
+                    }
+                    match (lock, trade_menu_extent(&result)) {
+                        (None, found) => {
+                            searched_at = Some(Instant::now());
+                            lock = found;
+                            misses = 0;
+                        }
+                        (Some(_), Some(_)) => misses = 0,
+                        (Some(_), None) => {
+                            misses += 1;
+                            if misses >= AUTO_LOCK_LOST_SCANS {
+                                lock = None;
+                            }
+                        }
+                    }
+                    result
+                }
+            };
+            let _ = app.emit_to("main", "scanner:auto-result", &result);
+            last = Some((print, result));
         }
     });
 }
@@ -522,9 +639,22 @@ mod tests {
         let s: AutoScanSettings =
             serde_json::from_str(r#"{"enabled":true,"area":{"displayId":2528732444,"x":10,"y":20.5,"width":300,"height":200}}"#).unwrap();
         assert!(s.enabled);
-        assert_eq!(s.area.unwrap().display_id, 2528732444.0);
         let empty: AutoScanSettings = serde_json::from_str("{}").unwrap();
-        assert!(!empty.enabled && empty.area.is_none());
+        assert!(!empty.enabled);
+    }
+
+    #[test]
+    fn locks_onto_the_trade_buttons() {
+        let det = |text: &str, x0: f64, y0: f64, x1: f64, y1: f64| json!({ "text": text, "conf": 0.9, "x0": x0, "y0": y0, "x1": x1, "y1": y1 });
+        let result = json!({
+            "width": 1222,
+            "height": 1000,
+            "detections": [det("COLOR", 50.0, 368.0, 110.0, 388.0), det("EXIT (3)", 740.0, 570.0, 785.0, 597.0), det("READY", 868.0, 570.0, 935.0, 597.0)],
+        });
+        let (w, h) = trade_menu_extent(&result).unwrap();
+        assert!((w * 1222.0 - 975.5).abs() < 0.01 && (h * 1000.0 - 624.0).abs() < 0.01);
+        let no_menu = json!({ "width": 100, "height": 100, "detections": [det("ACCEPT", 0.0, 0.0, 10.0, 10.0)] });
+        assert!(trade_menu_extent(&no_menu).is_none());
     }
 
     #[test]

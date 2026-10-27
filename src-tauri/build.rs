@@ -13,7 +13,6 @@ const COMMANDS: &[&str] = &[
     "scanner_snip",
     "scanner_get_auto",
     "scanner_set_auto_enabled",
-    "scanner_pick_auto_area",
     "scanner_pick_done",
     "analytics_track",
     "analytics_get_enabled",

@@ -331,9 +331,6 @@ const scanOf = (topCards: [string, string][]): ScanResponse => ({
   ]
 })
 let finishSnip: ((result: ScanResponse) => void) | null = null
-let finishPick: (() => void) | null = null
-const SCAN_AREA = { displayId: 1, x: 0, y: 0, width: SCAN_WIDTH, height: SCAN_HEIGHT }
-let autoArea: typeof SCAN_AREA | null = null
 let autoEnabled = false
 
 /* ---------- Electron bridge ---------- */
@@ -344,18 +341,11 @@ const bridge: Record<string, unknown> = {
   'auth.getToken': async () => 'preview',
   'window.isMaximized': async () => false,
   'scanner.status': async () => ({ available: true, provider: 'preview' }),
-  'scanner.getAuto': async () => ({ enabled: autoEnabled, area: autoArea }),
+  'scanner.getAuto': async () => ({ enabled: autoEnabled }),
   'scanner.setAutoEnabled': async (enabled: boolean) => {
     autoEnabled = enabled
-    return { enabled, area: autoArea }
+    return { enabled }
   },
-  'scanner.pickAutoArea': () =>
-    new Promise((resolve) => {
-      finishPick = () => {
-        autoArea = SCAN_AREA
-        resolve({ enabled: autoEnabled, area: autoArea })
-      }
-    }),
   'scanner.snip': () => new Promise<ScanResponse>((resolve) => (finishSnip = resolve)),
   'analytics.isEnabled': async () => false
 }
@@ -415,10 +405,6 @@ export const preview = {
   finishSnip() {
     finishSnip?.(scanOf(TOP_CARDS))
     finishSnip = null
-  },
-  finishPick() {
-    finishPick?.()
-    finishPick = null
   },
   autoScan: (count: number) =>
     subscribers.get('scanner.onAutoResult')?.forEach((cb) => cb(scanOf(TOP_CARDS.slice(0, count))))

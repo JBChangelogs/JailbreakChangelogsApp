@@ -2,8 +2,9 @@ import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { useTabSet, useTabState } from '@renderer/contexts/TabsContext'
 import { useItems } from '@renderer/hooks/useItems'
 import { useTradeComposer, type TradeSide } from '@renderer/hooks/useTradeComposer'
-import { addItemToSide, sideValue, type TradeItemDraft } from '@renderer/lib/tradeItemDraft'
-import { parseTradeScan, SCAN_TUNING, type ScannedItem, type ScanResponse } from '@shared/tradeScan'
+import { addItemToSide, sideValue, totalCount, type TradeItemDraft } from '@renderer/lib/tradeItemDraft'
+import { track } from '@renderer/lib/analytics'
+import { parseTradeScan, SCAN_TUNING, TradeScanError, type ScannedItem, type ScanResponse } from '@shared/tradeScan'
 import type { Item } from '@shared/item'
 import type { ItemBrowseFilters } from '@renderer/lib/itemBrowse'
 import type { ValueSort } from '@renderer/lib/itemValueUtils'
@@ -66,8 +67,17 @@ function useBrowseState(): BrowseState {
 
 const CalculatorContext = createContext<CalculatorContextValue | null>(null)
 
-function toSides(response: ScanSuccess, items: Item[]): Sides & { inTradeMenu: boolean; withinLimit: boolean } {
-  const result = parseTradeScan(response.detections, response.height, items)
+type ScannedSides = Sides & { inTradeMenu: boolean; withinLimit: boolean; parseMs: number }
+
+function toSides(response: ScanSuccess, items: Item[]): ScannedSides | null {
+  const started = performance.now()
+  let result: ReturnType<typeof parseTradeScan>
+  try {
+    result = parseTradeScan(response.detections, response.height, items)
+  } catch (err) {
+    if (err instanceof TradeScanError) return null
+    throw err
+  }
   const { maxItemsPerSide } = SCAN_TUNING
   const byId = new Map(items.map((item) => [item.id, item]))
   const toDrafts = (scanned: ScannedItem[]): TradeItemDraft[] =>
@@ -79,8 +89,22 @@ function toSides(response: ScanSuccess, items: Item[]): Sides & { inTradeMenu: b
     offering: toDrafts(result.offering),
     requesting: toDrafts(result.requesting),
     inTradeMenu: result.inTradeMenu,
-    withinLimit: result.offering.length <= maxItemsPerSide && result.requesting.length <= maxItemsPerSide
+    withinLimit: result.offering.length <= maxItemsPerSide && result.requesting.length <= maxItemsPerSide,
+    parseMs: performance.now() - started
   }
+}
+
+function trackScan(mode: 'snip' | 'auto', response: ScanSuccess, sides: ScannedSides): void {
+  const t = response.timings
+  track('trade_scan', {
+    mode,
+    scope: response.scope ?? 'area',
+    offering: totalCount(sides.offering),
+    requesting: totalCount(sides.requesting),
+    detections: response.detections.length,
+    parse_ms: Math.round(sides.parseMs),
+    ...(t && { capture_ms: t.capture_ms ?? 0, ocr_ms: t.ocr_ms, det_ms: t.det_ms, rec_ms: t.rec_ms })
+  })
 }
 
 // How long the trade menu must be gone before auto scan clears what it filled.
@@ -137,6 +161,8 @@ export function CalculatorProvider({
 
   const applyScan = (response: ScanSuccess): boolean => {
     const sides = toSides(response, items)
+    if (!sides) return false
+    trackScan('snip', response, sides)
     if (sides.offering.length === 0 && sides.requesting.length === 0) return false
     setSides(sides.offering, sides.requesting)
     return true
@@ -152,6 +178,7 @@ export function CalculatorProvider({
     return window.api.scanner.onAutoResult((response) => {
       if (!response.ok) return
       const sides = toSides(response, latest.current.items)
+      if (!sides) return
       if (!sides.inTradeMenu) {
         // A short grace period, so one misread or mid-animation frame doesn't wipe the trade.
         leftMenuAt ??= Date.now()
@@ -167,6 +194,7 @@ export function CalculatorProvider({
       const sig = signature(sides)
       if (sig === lastSignature) return
       lastSignature = sig
+      trackScan('auto', response, sides)
       const { offering: currentOffering, requesting: currentRequesting } = latest.current
       latest.current.setSides(
         mergeInPlace(currentOffering, sides.offering),

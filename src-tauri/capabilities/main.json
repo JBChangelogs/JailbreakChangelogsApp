@@ -27,7 +27,6 @@
     "allow-scanner-snip",
     "allow-scanner-get-auto",
     "allow-scanner-set-auto-enabled",
-    "allow-scanner-pick-auto-area",
     "allow-analytics-track",
     "allow-analytics-get-enabled",
     "allow-analytics-set-enabled",

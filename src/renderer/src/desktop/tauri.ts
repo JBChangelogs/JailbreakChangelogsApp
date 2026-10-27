@@ -67,7 +67,6 @@ const api: DesktopApi = {
     snip: () => invoke('scanner_snip'),
     getAuto: () => invoke('scanner_get_auto'),
     setAutoEnabled: (enabled) => invoke('scanner_set_auto_enabled', { enabled }),
-    pickAutoArea: () => invoke('scanner_pick_auto_area'),
     onAutoResult: (callback) => subscribe('scanner:auto-result', callback)
   },
   analytics: {

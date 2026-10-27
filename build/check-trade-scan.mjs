@@ -42,6 +42,16 @@ assert.deepEqual(
   [170]
 )
 
+const oneRow = (y) => [
+  ...[0, 1, 2, 3].flatMap((i) => [det('Vehicle', 50 + i * 116, y + (i % 2) * 6, 60), det('TORPEDO', 50 + i * 116, y + 25, 90)]),
+  det('EXIT', 740, 570, 45, 27),
+  det('READY', 868, 570, 67, 27)
+]
+const bottomOnly = parseTradeScan(oneRow(368), 1080, catalog)
+assert.deepEqual([bottomOnly.offering.length, bottomOnly.requesting.length], [0, 4])
+const topOnly = parseTradeScan(oneRow(132), 1080, catalog)
+assert.deepEqual([topOnly.offering.length, topOnly.requesting.length], [4, 0])
+
 // Accept/Decline alone isn't the trade menu; Exit or Ready is.
 assert.equal(result.inTradeMenu, false)
 assert.equal(parseTradeScan([det('Vehicle', 100, 100), det('TORPEDO', 100, 125), det('Ready', 100, 600)], 1000, catalog).inTradeMenu, true)

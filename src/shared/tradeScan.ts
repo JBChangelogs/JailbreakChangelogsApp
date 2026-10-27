@@ -32,6 +32,8 @@ export const SCAN_TUNING = {
   typeLabelRatio: 60,
   dedupeDistance: 40,
   kmeansIterations: 20,
+  singleRowSpread: 2,
+  requestingRowMaxDistance: 16,
   uiBlocklist: ['accept', 'decline', 'trade', 'trade chat', 'lf', 'tr', 'wfl', 'or', 'for', 'any', 'pm'],
   maxHorizontalLabelWidths: 3,
   maxAboveLabelHeights: 1.5,
@@ -57,22 +59,26 @@ export type ScannerStatus =
   | { available: true; provider: string }
   | { available: false; reason: string; installSize?: number }
 
-export type ScanResponse =
-  | { ok: true; width: number; height: number; detections: OcrDetection[] }
-  | { ok: false; code: string; message: string }
-
-// Screen area in DIP, relative to the display it was drawn on.
-export interface ScanArea {
-  displayId: number
-  x: number
-  y: number
-  width: number
-  height: number
+export interface ScanTimings {
+  capture_ms?: number
+  ocr_ms: number
+  det_ms: number
+  rec_ms: number
 }
+
+export type ScanResponse =
+  | {
+      ok: true
+      width: number
+      height: number
+      detections: OcrDetection[]
+      timings?: ScanTimings
+      scope?: 'window' | 'trade'
+    }
+  | { ok: false; code: string; message: string }
 
 export interface AutoScanSettings {
   enabled: boolean
-  area: ScanArea | null
 }
 
 export interface ScanCatalogItem {
@@ -134,10 +140,20 @@ function bestMatch(text: string, choices: readonly string[]): { choice: string; 
 }
 
 // Step 8: 1D k-means (k=2) on label centre-y; top cluster is offering.
-function assignSides(labels: OcrDetection[], imageHeight: number): ('offering' | 'requesting')[] {
+function assignSides(labels: OcrDetection[], imageHeight: number, anchors: OcrDetection[]): ('offering' | 'requesting')[] {
   const ys = labels.map(cy)
   const byHalf = (): ('offering' | 'requesting')[] => ys.map((y) => (y < imageHeight / 2 ? 'offering' : 'requesting'))
-  if (labels.length < 2) return byHalf()
+  if (labels.length === 0) return []
+
+  const heights = labels.map((l) => l.y1 - l.y0).sort((a, b) => a - b)
+  const unit = Math.max(1, heights[Math.floor(heights.length / 2)])
+  if (Math.max(...ys) - Math.min(...ys) < SCAN_TUNING.singleRowSpread * unit) {
+    if (anchors.length === 0) return byHalf()
+    const rowY = ys.reduce((a, b) => a + b, 0) / ys.length
+    const buttonsY = Math.max(...anchors.map(cy))
+    const side = buttonsY - rowY < SCAN_TUNING.requestingRowMaxDistance * unit ? 'requesting' : 'offering'
+    return ys.map(() => side)
+  }
 
   let centers = [Math.min(...ys), Math.max(...ys)]
   if (centers[0] === centers[1]) return byHalf()
@@ -234,7 +250,7 @@ export function parseTradeScan(
   )
 
   // Step 8
-  const sides = assignSides(labels, imageHeight)
+  const sides = assignSides(labels, imageHeight, anchors)
 
   // Step 9: pair each label with the closest valid item name.
   const labelSet = new Set(t.typeLabels)

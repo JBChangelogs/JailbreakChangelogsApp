@@ -51,7 +51,7 @@ pub fn data_dir() -> &'static Path {
 }
 
 pub fn is_packaged() -> bool {
-    !cfg!(debug_assertions)
+    !tauri::is_dev()
 }
 
 pub fn api_client() -> &'static reqwest::Client {

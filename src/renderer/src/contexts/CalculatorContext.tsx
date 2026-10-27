@@ -174,6 +174,7 @@ export function CalculatorProvider({
   useEffect(() => {
     if (!autoScan) return undefined
     let lastSignature: string | null = null
+    let pendingSignature: string | null = null
     let leftMenuAt: number | null = null
     return window.api.scanner.onAutoResult((response) => {
       if (!response.ok) return
@@ -193,6 +194,10 @@ export function CalculatorProvider({
       if (!sides.withinLimit) return
       const sig = signature(sides)
       if (sig === lastSignature) return
+      if (sig !== pendingSignature) {
+        pendingSignature = sig
+        return
+      }
       lastSignature = sig
       trackScan('auto', response, sides)
       const { offering: currentOffering, requesting: currentRequesting } = latest.current

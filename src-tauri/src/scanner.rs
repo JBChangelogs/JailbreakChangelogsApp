@@ -1,5 +1,5 @@
 use std::fs;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
@@ -16,6 +16,10 @@ const TRADING_PLACE_ID: &str = "9780994092";
 #[cfg(windows)]
 const ROBLOX_WINDOW_TITLE: &str = "Roblox";
 const TRADE_MENU_WORDS: [&str; 2] = ["exit", "ready"];
+const TRADE_WINDOW_LEFT_SPANS: f64 = 4.0;
+const TRADE_WINDOW_TOP_SPANS: f64 = 2.9;
+
+type Extent = (f64, f64, f64, f64);
 const AUTO_SCAN_INTERVAL: Duration = Duration::from_millis(150);
 const AUTO_SCAN_CHANGE_THRESHOLD: f64 = 2.0;
 const OCR_IDLE_UNLOAD: Duration = Duration::from_secs(120);
@@ -43,6 +47,7 @@ static APP: OnceLock<AppHandle> = OnceLock::new();
 static SETTINGS: Mutex<Option<AutoScanSettings>> = Mutex::new(None);
 static PLACE_ID: Mutex<Option<String>> = Mutex::new(None);
 static AUTO_RUNNING: AtomicBool = AtomicBool::new(false);
+static AUTO_GENERATION: AtomicU64 = AtomicU64::new(0);
 static PICKING: AtomicBool = AtomicBool::new(false);
 static PICK_RESULT: Mutex<Option<oneshot::Sender<Option<(f64, f64, f64, f64)>>>> = Mutex::new(None);
 
@@ -519,10 +524,20 @@ fn capture_roblox() -> Option<xcap::image::RgbaImage> {
     if window.is_minimized().unwrap_or(true) {
         return None;
     }
+    if window.is_focused().unwrap_or(false) {
+        if let Some(image) = capture_window_region(&window) {
+            return Some(image);
+        }
+    }
     let image = window.capture_image().ok()?;
     if !fingerprint(&image).iter().all(|&p| p < 4) {
         return Some(image);
     }
+    capture_window_region(&window)
+}
+
+#[cfg(windows)]
+fn capture_window_region(window: &xcap::Window) -> Option<xcap::image::RgbaImage> {
     let monitor = window.current_monitor().ok()?;
     let x = (window.x().ok()? - monitor.x().ok()?).max(0) as u32;
     let y = (window.y().ok()? - monitor.y().ok()?).max(0) as u32;
@@ -536,7 +551,7 @@ fn capture_roblox() -> Option<xcap::image::RgbaImage> {
     None
 }
 
-fn trade_menu_extent(result: &Value) -> Option<(f64, f64)> {
+fn trade_menu_extent(result: &Value) -> Option<Extent> {
     let (width, height) = (result["width"].as_f64()?, result["height"].as_f64()?);
     let buttons: Vec<&Value> = result["detections"]
         .as_array()?
@@ -551,30 +566,43 @@ fn trade_menu_extent(result: &Value) -> Option<(f64, f64)> {
         return None;
     }
     let max = |key: &str| buttons.iter().filter_map(|d| d[key].as_f64()).fold(0.0, f64::max);
+    let min = |key: &str| buttons.iter().filter_map(|d| d[key].as_f64()).fold(f64::INFINITY, f64::min);
     let button_height = buttons.iter().filter_map(|d| Some(d["y1"].as_f64()? - d["y0"].as_f64()?)).fold(0.0, f64::max);
+    let span = max("x1") - min("x0");
+    let (left, top) = if span > button_height * 3.0 {
+        (min("x0") - span * TRADE_WINDOW_LEFT_SPANS, min("y0") - span * TRADE_WINDOW_TOP_SPANS)
+    } else {
+        (0.0, 0.0)
+    };
     let right = (max("x1") + button_height * 1.5).min(width);
     let bottom = (max("y1") + button_height).min(height);
-    Some((right / width, bottom / height))
+    Some((left.max(0.0) / width, top.max(0.0) / height, right / width, bottom / height))
 }
 
-fn crop_extent(image: &xcap::image::RgbaImage, (fw, fh): (f64, f64)) -> Option<xcap::image::RgbaImage> {
-    let w = ((image.width() as f64 * fw).round() as u32).min(image.width());
-    let h = ((image.height() as f64 * fh).round() as u32).min(image.height());
-    (w > 0 && h > 0).then(|| xcap::image::imageops::crop_imm(image, 0, 0, w, h).to_image())
+fn crop_extent(image: &xcap::image::RgbaImage, (fx0, fy0, fx1, fy1): Extent) -> Option<xcap::image::RgbaImage> {
+    let (iw, ih) = (image.width() as f64, image.height() as f64);
+    let (x, y) = ((iw * fx0).round() as u32, (ih * fy0).round() as u32);
+    let w = ((iw * fx1).round() as u32).min(image.width()).saturating_sub(x);
+    let h = ((ih * fy1).round() as u32).min(image.height()).saturating_sub(y);
+    (w > 0 && h > 0).then(|| xcap::image::imageops::crop_imm(image, x, y, w, h).to_image())
 }
 
 fn update_auto_scan() {
     let should_run = get_auto().enabled && PLACE_ID.lock().unwrap().as_deref() == Some(TRADING_PLACE_ID);
-    if should_run == AUTO_RUNNING.swap(should_run, Ordering::SeqCst) || !should_run {
+    if should_run == AUTO_RUNNING.swap(should_run, Ordering::SeqCst) {
+        return;
+    }
+    let generation = AUTO_GENERATION.fetch_add(1, Ordering::SeqCst) + 1;
+    if !should_run {
         return;
     }
     let Some(app) = APP.get().cloned() else { return };
     tauri::async_runtime::spawn(async move {
         let mut last: Option<(Vec<u8>, Value)> = None;
-        let mut lock: Option<(f64, f64)> = None;
+        let mut lock: Option<Extent> = None;
         let mut misses = 0;
         let mut searched_at: Option<Instant> = None;
-        while AUTO_RUNNING.load(Ordering::SeqCst) {
+        while AUTO_GENERATION.load(Ordering::SeqCst) == generation {
             tokio::time::sleep(AUTO_SCAN_INTERVAL).await;
             if lock.is_none() && searched_at.is_some_and(|t| t.elapsed() < AUTO_SEARCH_INTERVAL) {
                 continue;
@@ -592,23 +620,30 @@ fn update_auto_scan() {
             let print = fingerprint(&image);
             let result = match &last {
                 Some((prev, result)) if same_frame(prev, &print) => result.clone(),
-                _ => {
-                    let mut result = with_capture_ms(run_ocr(image).await, took);
+                _ if lock.is_none() => {
+                    searched_at = Some(Instant::now());
+                    let mut result = with_capture_ms(run_ocr(image.clone()).await, took);
+                    lock = trade_menu_extent(&result);
+                    misses = 0;
+                    if let Some(trade) = lock.and_then(|extent| crop_extent(&image, extent)) {
+                        result = with_capture_ms(run_ocr(trade).await, took);
+                    }
                     if result["ok"] == true {
                         result["scope"] = json!(if lock.is_some() { "trade" } else { "window" });
                     }
-                    match (lock, trade_menu_extent(&result)) {
-                        (None, found) => {
-                            searched_at = Some(Instant::now());
-                            lock = found;
-                            misses = 0;
-                        }
-                        (Some(_), Some(_)) => misses = 0,
-                        (Some(_), None) => {
-                            misses += 1;
-                            if misses >= AUTO_LOCK_LOST_SCANS {
-                                lock = None;
-                            }
+                    result
+                }
+                _ => {
+                    let mut result = with_capture_ms(run_ocr(image).await, took);
+                    if result["ok"] == true {
+                        result["scope"] = json!("trade");
+                    }
+                    if trade_menu_extent(&result).is_some() {
+                        misses = 0;
+                    } else {
+                        misses += 1;
+                        if misses >= AUTO_LOCK_LOST_SCANS {
+                            lock = None;
                         }
                     }
                     result
@@ -647,12 +682,15 @@ mod tests {
     fn locks_onto_the_trade_buttons() {
         let det = |text: &str, x0: f64, y0: f64, x1: f64, y1: f64| json!({ "text": text, "conf": 0.9, "x0": x0, "y0": y0, "x1": x1, "y1": y1 });
         let result = json!({
-            "width": 1222,
-            "height": 1000,
-            "detections": [det("COLOR", 50.0, 368.0, 110.0, 388.0), det("EXIT (3)", 740.0, 570.0, 785.0, 597.0), det("READY", 868.0, 570.0, 935.0, 597.0)],
+            "width": 1480,
+            "height": 942,
+            "detections": [det("VEHICLE", 472.0, 353.0, 538.0, 381.0), det("EXIT (3)", 1207.0, 869.0, 1264.0, 905.0), det("READY", 1344.0, 869.0, 1425.0, 904.0)],
         });
-        let (w, h) = trade_menu_extent(&result).unwrap();
-        assert!((w * 1222.0 - 975.5).abs() < 0.01 && (h * 1000.0 - 624.0).abs() < 0.01);
+        let (x0, y0, x1, y1) = trade_menu_extent(&result).unwrap();
+        let near = |a: f64, b: f64| (a - b).abs() < 0.01;
+        assert!(near(x0 * 1480.0, 335.0) && near(y0 * 942.0, 236.8) && near(x1 * 1480.0, 1479.0) && near(y1 * 942.0, 941.0));
+        let lone = json!({ "width": 1480, "height": 942, "detections": [det("READY", 1344.0, 869.0, 1425.0, 904.0)] });
+        assert_eq!(trade_menu_extent(&lone).unwrap().0, 0.0);
         let no_menu = json!({ "width": 100, "height": 100, "detections": [det("ACCEPT", 0.0, 0.0, 10.0, 10.0)] });
         assert!(trade_menu_extent(&no_menu).is_none());
     }

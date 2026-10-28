@@ -14,6 +14,7 @@ interface RealtimeMessagePayload {
   user_id?: string
   group_id?: string
   content?: string
+  notification?: { title?: string; body?: string }
 }
 
 function truncate(text: string): string {
@@ -44,17 +45,25 @@ export function useMessageToasts(onOpenChat: (key: string) => void): void {
       if (isGroup && typeof data.group_id !== 'string') return
       const key = isGroup ? chatKey({ kind: 'group', id: data.group_id as string }) : senderId
 
-      const notify = (name?: string): void => {
-        showToast(name ? (isGroup ? `${name} in a group chat` : name) : isGroup ? 'New group message' : 'New message', {
-          description: data.content
-            ? truncate(mentionsToText(data.content, (id) => namesRef.current.get(id) ?? 'someone'))
-            : 'Check your messages.',
+      const show = (title: string, body: string | undefined): void => {
+        showToast(title, {
+          description: body ? truncate(body) : 'Check your messages.',
           analyticsType: 'message',
           action: {
             label: 'Open chat',
             onClick: () => onOpenChat(key)
           }
         })
+      }
+      const notify = (name?: string): void =>
+        show(
+          name ? (isGroup ? `${name} in a group chat` : name) : isGroup ? 'New group message' : 'New message',
+          data.content && mentionsToText(data.content, (id) => namesRef.current.get(id) ?? 'someone')
+        )
+
+      if (data.notification?.title) {
+        show(data.notification.title, data.notification.body)
+        return
       }
 
       const cached = namesRef.current.get(senderId)

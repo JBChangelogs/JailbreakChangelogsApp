@@ -1,4 +1,5 @@
 import { Fragment, useState } from 'react'
+import { SidebarHeader } from '@renderer/components/ui/sidebar-header'
 import { SearchInput } from '@renderer/components/ui/search-input'
 import { DropdownTriggerButton } from '@renderer/components/tracker/FilterMenus'
 import {
@@ -23,7 +24,7 @@ import {
   type ItemTypeFilter,
   type ValueSort
 } from '@renderer/lib/itemValueUtils'
-import { ItemCommentsSidebar } from '@renderer/components/values/itemdetail/ItemCommentsSidebar'
+import { ItemDetailSidebar } from '@renderer/components/values/itemdetail/ItemDetailSidebar'
 
 function ChevronDownIcon({ className }: { className?: string }): React.JSX.Element {
   return (
@@ -192,13 +193,15 @@ export function ValuesSidebarFilters(): React.JSX.Element {
   const [showAdvanced, setShowAdvanced] = useState(advancedCount > 0)
 
   if (selectedItem) {
-    return <ItemCommentsSidebar item={selectedItem} />
+    return <ItemDetailSidebar item={selectedItem} />
   }
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
-      <div className="flex flex-col gap-2 p-2">
+      <SidebarHeader>
         <SearchInput value={searchQuery} onChange={setSearchQuery} placeholder="Search items..." />
+      </SidebarHeader>
+      <div className="flex flex-col gap-2 p-2">
         <SortMenu value={sort} onChange={setSort} />
 
         <div className="flex flex-wrap gap-1.5">
@@ -222,7 +225,7 @@ export function ValuesSidebarFilters(): React.JSX.Element {
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto border-t border-border-primary p-2">
+      <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
         <SectionHeader label="Type" count={selectedTypes.size} onClear={clearTypes} />
         <TypeTiles selected={selectedTypes} onToggle={toggleType} />
 

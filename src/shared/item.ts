@@ -14,6 +14,7 @@ export interface ItemMetadata {
   Name?: string
   TimesTraded?: number
   UniqueCirculation?: number
+  TimesScanned?: number
   DemandMultiple?: number
   LastUpdated?: number
 }

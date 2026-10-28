@@ -34,7 +34,11 @@ interface ValuesContextValue {
   selectedItemId: number | null
   selectItem: (id: number | null) => void
   selectedItem: Item | null
+  itemSection: ItemSection
+  setItemSection: (section: ItemSection) => void
 }
+
+export type ItemSection = 'overview' | 'charts' | 'changes' | 'suggestions' | 'dupes' | 'hoarders'
 
 const ValuesContext = createContext<ValuesContextValue | null>(null)
 
@@ -128,6 +132,7 @@ export function ValuesProvider({ children }: { children: React.ReactNode }): Rea
   }, [hasMore, loadingMore, page, sort, filterKey, searchQuery])
 
   const [selectedItemId, selectItem] = useTabState<number | null>('values.selectedItem', null)
+  const [itemSection, setItemSection] = useTabState<ItemSection>('values.itemSection', 'overview')
 
   const loadedSelected = selectedItemId != null ? (items.find((i) => i.id === selectedItemId) ?? null) : null
   const [fetchedSelected, setFetchedSelected] = useState<Item | null>(null)
@@ -158,7 +163,9 @@ export function ValuesProvider({ children }: { children: React.ReactNode }): Rea
     ...filters,
     selectedItemId,
     selectItem,
-    selectedItem
+    selectedItem,
+    itemSection,
+    setItemSection
   }
 
   return <ValuesContext.Provider value={value}>{children}</ValuesContext.Provider>

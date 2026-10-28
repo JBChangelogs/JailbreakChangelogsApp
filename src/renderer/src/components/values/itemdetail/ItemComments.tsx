@@ -14,28 +14,35 @@ const SORT_OPTIONS: readonly { value: CommentSort; label: string }[] = [
   { value: 'activity', label: 'Recent Activity' }
 ]
 
-export function ItemCommentsSidebar({ item }: { item: Item }): React.JSX.Element {
+export function ItemComments({ item }: { item: Item }): React.JSX.Element {
   const { token } = useAuth()
   const { user: currentUser } = useCurrentUser()
   const [sort, setSort] = useState<CommentSort>('newest')
   const [page, setPage] = useState(1)
   const [data, setData] = useState<CommentsPage | null>(null)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [draft, setDraft] = useState('')
   const [posting, setPosting] = useState(false)
 
-  useEffect(() => {
+  const changeSort = (next: CommentSort): void => {
+    setSort(next)
     setPage(1)
-  }, [item.id, sort])
+    setData(null)
+  }
 
   useEffect(() => {
     let cancelled = false
-    setData(null)
+    setLoading(true)
     setError(false)
     commentsApi
       .list(item.id, item.type, page, sort)
-      .then((result) => !cancelled && setData(result))
+      .then((result) => {
+        if (cancelled) return
+        setData((prev) => (page === 1 || !prev ? result : { ...result, items: [...prev.items, ...result.items] }))
+      })
       .catch(() => !cancelled && setError(true))
+      .finally(() => !cancelled && setLoading(false))
     return () => {
       cancelled = true
     }
@@ -95,85 +102,70 @@ export function ItemCommentsSidebar({ item }: { item: Item }): React.JSX.Element
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col">
-      <div className="flex items-center justify-between p-3">
-        <h1 className="text-xs font-bold uppercase tracking-wide text-quaternary-text">
-          Comments {data ? `(${data.total})` : ''}
-        </h1>
+    <section className="space-y-3 border-t border-border-primary pt-5">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-lg font-semibold text-primary-text">
+          Comments
+          {data && <span className="ml-2 text-sm font-normal text-secondary-text">{data.total.toLocaleString()}</span>}
+        </h3>
+        <div className="w-48">
+          <FilterMenu<CommentSort> label="Sort" value={sort} options={SORT_OPTIONS} onChange={changeSort} />
+        </div>
       </div>
 
-      <div className="px-2 pb-2">
-        <FilterMenu<CommentSort> label="Sort" value={sort} options={SORT_OPTIONS} onChange={setSort} />
-      </div>
-
-      <div className="flex flex-col gap-2 px-2 pb-2">
+      <div className="rounded-xl border border-border-card bg-secondary-bg p-2 transition-colors focus-within:border-button-info">
         <textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder="Add a comment..."
+          placeholder={token ? 'Add a comment...' : 'Log in to comment'}
+          disabled={!token}
           rows={2}
-          className="w-full resize-none rounded-xl border border-border-card bg-secondary-bg px-3 py-2 text-sm text-primary-text placeholder-secondary-text transition-colors focus:border-button-info focus:outline-none"
+          className="w-full resize-none bg-transparent px-1.5 py-1 text-sm text-primary-text placeholder-secondary-text focus:outline-none disabled:cursor-not-allowed"
         />
-        <Button type="button" className="w-full text-sm!" onClick={() => void handlePost()} disabled={posting || !draft.trim()}>
-          Post Comment
-        </Button>
+        <div className="flex justify-end">
+          <Button type="button" size="sm" onClick={() => void handlePost()} disabled={posting || !draft.trim()}>
+            Post
+          </Button>
+        </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
-        {error ? (
-          <p className="py-8 text-center text-xs text-status-error">Failed to load comments.</p>
-        ) : !data ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-border-primary border-t-status-info" />
-          </div>
-        ) : data.items.length === 0 ? (
-          <p className="py-8 text-center text-xs text-quaternary-text">No comments yet - be the first.</p>
-        ) : (
-          <div className="space-y-3">
-            {data.items.map((comment) => (
-              <div key={comment.id}>
+      {error && !data ? (
+        <p className="py-6 text-center text-sm text-status-error">Failed to load comments.</p>
+      ) : !data ? (
+        <div className="flex items-center justify-center py-6">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-border-primary border-t-status-info" />
+        </div>
+      ) : data.items.length === 0 ? (
+        <p className="py-6 text-center text-sm text-quaternary-text">No comments yet - be the first.</p>
+      ) : (
+        <div className="space-y-3">
+          {data.items.map((comment) => (
+            <div key={comment.id}>
+              <CommentCard
+                comment={comment}
+                onChanged={(updated) => updateComment(comment.id, updated, false)}
+                onReplyPosted={(reply) => addReply(comment.id, reply)}
+              />
+              {comment.replies?.map((reply) => (
                 <CommentCard
-                  comment={comment}
-                  onChanged={(updated) => updateComment(comment.id, updated, false)}
-                  onReplyPosted={(reply) => addReply(comment.id, reply)}
+                  key={reply.id}
+                  comment={reply}
+                  isReply
+                  onChanged={(updated) => updateComment(reply.id, updated, true, comment.id)}
                 />
-                {comment.replies?.map((reply) => (
-                  <CommentCard
-                    key={reply.id}
-                    comment={reply}
-                    isReply
-                    onChanged={(updated) => updateComment(reply.id, updated, true, comment.id)}
-                  />
-                ))}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {data && data.total_pages > 1 && (
-        <div className="flex shrink-0 items-center justify-between border-t border-border-primary p-2">
-          <button
-            type="button"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page <= 1}
-            className="text-xs font-semibold text-link hover:text-link-hover disabled:pointer-events-none disabled:text-tertiary-text"
-          >
-            Prev
-          </button>
-          <span className="text-[11px] text-quaternary-text">
-            {page}/{data.total_pages}
-          </span>
-          <button
-            type="button"
-            onClick={() => setPage((p) => Math.min(data.total_pages, p + 1))}
-            disabled={page >= data.total_pages}
-            className="text-xs font-semibold text-link hover:text-link-hover disabled:pointer-events-none disabled:text-tertiary-text"
-          >
-            Next
-          </button>
+              ))}
+            </div>
+          ))}
         </div>
       )}
-    </div>
+
+      {data && page < data.total_pages && (
+        <div className="flex justify-center">
+          <Button type="button" size="sm" variant="secondary" disabled={loading} onClick={() => setPage((p) => p + 1)}>
+            {loading ? 'Loading…' : 'Load more'}
+          </Button>
+        </div>
+      )}
+    </section>
   )
 }

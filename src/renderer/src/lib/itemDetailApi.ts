@@ -51,7 +51,11 @@ export const itemsApi = {
     return res.json()
   },
 
-  similar: (id: number) => getJson<Item[]>(`${API_BASE}/v2/items/${id}/similar`)
+  similar: (id: number, sort?: string) =>
+    getJson<{ items: Item[] }>(`${API_BASE}/v2/items/${id}/similar${sort ? `?sort=${encodeURIComponent(sort)}` : ''}`),
+
+  similarSorts: () =>
+    getJson<{ group: string; sorts: { value: string; label: string }[] }[]>(`${API_BASE}/v2/items/similar-sorts`)
 }
 
 export const itemDetailApi = {

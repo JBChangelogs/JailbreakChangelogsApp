@@ -1,4 +1,4 @@
-import type { Item } from './item'
+import type { Item, ItemMetadata } from './item'
 
 export interface ValueHistoryEntry {
   id: string
@@ -7,6 +7,7 @@ export interface ValueHistoryEntry {
   date: string
   cash_value: string
   duped_value: string
+  metadata?: ItemMetadata | null
 }
 
 export interface ItemHoarder {

@@ -1,9 +1,14 @@
-import { useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { Tabs } from '@renderer/components/ui/tabs'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { resolveAvatarUrl } from '@renderer/lib/usersApi'
 import { formatFullValue } from '@renderer/lib/itemValueUtils'
 import { useRelativeTime } from '@renderer/hooks/useRelativeTime'
 import type { SuggestionUser, ValueSuggestion } from '@shared/itemDetail'
+
+const Markdown = lazy(() => import('@renderer/components/ui/markdown').then((m) => ({ default: m.Markdown })))
+
+const VT_ICON = 'https://assets.jailbreakchangelogs.com/assets/website_icons/jbcl_vt.svg'
 
 function ArrowUpIcon({ className }: { className?: string }): React.JSX.Element {
   return (
@@ -42,33 +47,103 @@ function XIcon({ className }: { className?: string }): React.JSX.Element {
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  accepted: 'bg-status-success/20 text-status-success',
-  pending: 'bg-status-warning/20 text-status-warning',
-  rejected: 'bg-status-error/20 text-status-error'
+  pending: 'border-status-warning/30 bg-status-warning/20',
+  approved: 'border-status-success/30 bg-status-success/20',
+  accepted: 'border-status-success/30 bg-status-success/20',
+  rejected: 'border-status-error/30 bg-status-error/20'
 }
+
+const BADGE = 'inline-flex h-6 items-center rounded-md border px-2.5 text-xs font-medium'
+
+const REASON_CLAMP_PX = 72
 
 function suggestionUserLabel(user: SuggestionUser): string {
-  return user.global_name || user.username
+  return user.roblox_display_name || user.roblox_username || user.global_name || user.username || `User #${user.id}`
 }
 
-function SuggestionAvatar({ user, className = 'h-9 w-9' }: { user: SuggestionUser; className?: string }): React.JSX.Element {
-  const src = resolveAvatarUrl(user.id, user.avatar)
+function fieldLabel(field: string): string {
+  return field
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
+function formatReason(reason: string): string {
+  return reason
+    .replace(/(Common Trades?:?)/gi, '**$1**')
+    .split(/\n\n+/)
+    .map((paragraph) => paragraph.replace(/\n/g, '\n\n'))
+    .join('\n\n')
+}
+
+function formatFullDate(timestamp: number): string {
+  return new Date(timestamp * 1000).toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'short' })
+}
+
+function SuggestionAvatar({ user, className = 'h-7 w-7' }: { user: SuggestionUser; className?: string }): React.JSX.Element {
+  const src = user.roblox_avatar || resolveAvatarUrl(user.id, user.avatar)
   const label = suggestionUserLabel(user)
   if (!src) {
     return (
-      <div className={`${className} flex shrink-0 items-center justify-center rounded-full bg-tertiary-bg text-xs font-semibold text-secondary-text`}>
+      <div
+        className={`${className} flex shrink-0 items-center justify-center rounded-full bg-tertiary-bg text-[10px] font-semibold text-secondary-text`}
+      >
         {label.slice(0, 2).toUpperCase()}
       </div>
     )
   }
-  return <img src={src} alt="" draggable={false} className={`${className} shrink-0 rounded-full object-cover`} />
+  return <img src={src} alt="" draggable={false} className={`${className} shrink-0 rounded-full bg-tertiary-bg object-cover`} />
+}
+
+function Reason({ reason }: { reason: string }): React.JSX.Element {
+  const ref = useRef<HTMLDivElement>(null)
+  const [overflows, setOverflows] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return undefined
+    const observer = new ResizeObserver(() => setOverflows(el.scrollHeight > REASON_CLAMP_PX + 4))
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  return (
+    <div>
+      <div
+        ref={ref}
+        className="overflow-hidden text-secondary-text [&_p]:my-0 [&_p+p]:mt-1.5 [&_strong]:font-semibold [&_strong]:text-primary-text"
+        style={
+          expanded || !overflows
+            ? undefined
+            : {
+                maxHeight: REASON_CLAMP_PX,
+                maskImage: 'linear-gradient(to bottom, black 60%, transparent)'
+              }
+        }
+      >
+        <Suspense fallback={<p className="text-sm">{reason}</p>}>
+          <Markdown className="leading-relaxed">{formatReason(reason)}</Markdown>
+        </Suspense>
+      </div>
+      {overflows && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="mt-1 text-xs font-medium text-link hover:text-link-hover"
+        >
+          {expanded ? 'Show less' : 'Read more'}
+        </button>
+      )}
+    </div>
+  )
 }
 
 function VoterRow({ createdAt, user }: { createdAt: number; user: SuggestionUser }): React.JSX.Element {
   const relativeTime = useRelativeTime(createdAt)
   return (
     <div className="flex items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-quaternary-bg">
-      <SuggestionAvatar user={user} className="h-7 w-7" />
+      <SuggestionAvatar user={user} />
       <p className="min-w-0 flex-1 truncate text-sm text-primary-text">{suggestionUserLabel(user)}</p>
       <p className="shrink-0 text-xs text-tertiary-text">{relativeTime ?? 'just now'}</p>
     </div>
@@ -86,7 +161,7 @@ function VotersModal({ suggestion, onClose }: { suggestion: ValueSuggestion; onC
         className="flex max-h-[70vh] w-full max-w-sm flex-col overflow-hidden rounded-xl border border-border-card bg-primary-bg shadow-lg"
       >
         <div className="flex items-center justify-between border-b border-border-primary px-4 py-3">
-          <h2 className="text-sm font-semibold text-primary-text">Votes</h2>
+          <h2 className="text-sm font-semibold text-primary-text">Voters</h2>
           <button
             type="button"
             onClick={onClose}
@@ -120,91 +195,98 @@ function VotersModal({ suggestion, onClose }: { suggestion: ValueSuggestion; onC
 
 export function SuggestionRow({
   suggestion,
-  showVoteLink = true
+  kind
 }: {
   suggestion: ValueSuggestion
-  showVoteLink?: boolean
+  kind: 'change' | 'suggestion'
 }): React.JSX.Element {
+  const isSuggestion = kind === 'suggestion'
   const relativeTime = useRelativeTime(suggestion.created_at)
   const [showVoters, setShowVoters] = useState(false)
-  const [reasonExpanded, setReasonExpanded] = useState(false)
-
-  const reason = suggestion.reason ?? ''
-  const reasonIsLong = reason.length > 240
-  const websiteUrl = `https://jailbreakchangelogs.com/item/${encodeURIComponent(suggestion.item.type)}/${encodeURIComponent(suggestion.item.name)}?tab=suggestions`
+  const websiteUrl = `https://jailbreakchangelogs.com/items/suggestions/${suggestion.id}`
+  const updated = isSuggestion && suggestion.updated_at !== suggestion.created_at
 
   return (
-    <div className="rounded-2xl border border-border-card bg-secondary-bg p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <SuggestionAvatar user={suggestion.user} />
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-primary-text">{suggestionUserLabel(suggestion.user)}</p>
-            <p className="text-xs text-secondary-text">{relativeTime ?? 'just now'}</p>
-          </div>
-        </div>
-        <span
-          className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
-            STATUS_STYLES[suggestion.status] ?? 'bg-quaternary-bg text-secondary-text'
-          }`}
+    <div className="rounded-xl border border-border-card bg-secondary-bg p-4">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="mr-1 text-sm font-bold text-primary-text">#{suggestion.id}</span>
+        <span className={`${BADGE} border-border-card bg-tertiary-bg text-primary-text`}>{fieldLabel(suggestion.field)}</span>
+        {isSuggestion && (
+          <span
+            className={`${BADGE} capitalize ${
+              STATUS_STYLES[suggestion.status]
+                ? `${STATUS_STYLES[suggestion.status]} text-primary-text`
+                : 'border-border-card bg-tertiary-bg/40 text-secondary-text'
+            }`}
+          >
+            {suggestion.status}
+          </span>
+        )}
+        {isSuggestion && suggestion.is_vt === 1 && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <img src={VT_ICON} alt="Value Team" className="h-5 w-5" draggable={false} />
+            </TooltipTrigger>
+            <TooltipContent>Value Team Suggestion</TooltipContent>
+          </Tooltip>
+        )}
+        <button
+          type="button"
+          onClick={() => setShowVoters(true)}
+          aria-label="View voters"
+          className="ml-auto flex items-center overflow-hidden rounded-md border border-border-card text-xs font-semibold transition-colors hover:border-border-focus/60"
         >
-          {suggestion.status}
-        </span>
+          <span className="flex items-center gap-1 bg-button-success/10 px-2 py-1 text-button-success">
+            <ArrowUpIcon className="h-3.5 w-3.5" />
+            {suggestion.upvotes}
+          </span>
+          <span className="flex items-center gap-1 border-l border-border-card bg-button-danger/10 px-2 py-1 text-button-danger">
+            <ArrowDownIcon className="h-3.5 w-3.5" />
+            {suggestion.downvotes}
+          </span>
+        </button>
       </div>
 
-      <p className="mt-3 text-sm text-primary-text">
-        Suggested <span className="font-semibold capitalize">{suggestion.field.replace(/_/g, ' ')}</span>:{' '}
-        <span className="font-mono text-secondary-text">{formatFullValue(suggestion.current_value)}</span>
-        {' -> '}
-        <span className="font-mono font-semibold">{formatFullValue(suggestion.suggested_value)}</span>
+      <p className="mt-3 flex flex-wrap items-baseline gap-x-2 text-base font-bold [overflow-wrap:anywhere]">
+        <span className="text-secondary-text line-through decoration-button-danger/70">
+          {formatFullValue(suggestion.current_value) || 'N/A'}
+        </span>
+        <span className="text-sm text-tertiary-text">→</span>
+        <span className="text-primary-text">{formatFullValue(suggestion.suggested_value)}</span>
       </p>
 
-      {reason && (
-        <p className="mt-2 whitespace-pre-wrap text-sm text-secondary-text">
-          {reasonIsLong && !reasonExpanded ? `${reason.slice(0, 240)}...` : reason}
-          {reasonIsLong && (
-            <button
-              type="button"
-              onClick={() => setReasonExpanded((v) => !v)}
-              className="ml-1 font-medium text-button-info hover:underline"
-            >
-              {reasonExpanded ? 'Show less' : 'Read more'}
-            </button>
-          )}
-        </p>
+      {suggestion.reason && (
+        <div className="mt-2">
+          <Reason reason={suggestion.reason} />
+        </div>
       )}
 
       {suggestion.status === 'rejected' && suggestion.rejection_reason && (
-        <p className="mt-2 rounded-md border border-status-error/30 bg-status-error/10 px-2.5 py-1.5 text-xs text-status-error">
+        <p className="mt-2 rounded-md border border-status-error/30 bg-status-error/10 px-2.5 py-1.5 text-xs text-primary-text">
           Rejected: {suggestion.rejection_reason}
         </p>
       )}
 
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setShowVoters(true)}
-          className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-button-success transition-colors hover:bg-quaternary-bg"
-        >
-          <ArrowUpIcon className="h-3.5 w-3.5" />
-          {suggestion.upvotes}
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowVoters(true)}
-          className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-status-error transition-colors hover:bg-quaternary-bg"
-        >
-          <ArrowDownIcon className="h-3.5 w-3.5" />
-          {suggestion.downvotes}
-        </button>
-        {showVoteLink && suggestion.status === 'pending' && (
+      <div className="mt-3 flex items-center gap-2 border-t border-border-card pt-3">
+        <SuggestionAvatar user={suggestion.user} />
+        <p className="min-w-0 truncate text-sm font-medium text-primary-text">{suggestionUserLabel(suggestion.user)}</p>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="shrink-0 cursor-help text-xs text-tertiary-text">
+              {relativeTime ?? 'just now'}
+              {updated ? ' (Updated)' : ''}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>{formatFullDate(suggestion.created_at)}</TooltipContent>
+        </Tooltip>
+        {isSuggestion && suggestion.status === 'pending' && (
           <a
             href={websiteUrl}
             onClick={(e) => {
               e.preventDefault()
               void window.api.openExternal(websiteUrl)
             }}
-            className="ml-auto flex items-center gap-1 text-xs font-semibold text-link hover:text-link-hover"
+            className="ml-auto flex shrink-0 items-center gap-1 text-xs font-semibold text-link hover:text-link-hover"
           >
             Vote on website
             <ExternalLinkIcon className="h-3.5 w-3.5" />

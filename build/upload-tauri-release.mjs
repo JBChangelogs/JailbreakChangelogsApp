@@ -24,6 +24,8 @@ const BASE = 'https://updates.jailbreakchangelogs.com'
 const ARTIFACTS = [
   { file: 'JBCLSetup.exe', platforms: ['windows-x86_64'], legacySignature: true, download: 'JBCLSetup.exe', type: 'application/octet-stream' },
   { file: 'JBCLSetup.AppImage', platforms: ['linux-x86_64'], legacySignature: true, download: 'JBCLSetup.AppImage', type: 'application/octet-stream' },
+  { file: 'JBCLSetup.deb', platforms: ['linux-x86_64-deb'], download: 'JBCLSetup.deb', type: 'application/vnd.debian.binary-package' },
+  { file: 'JBCLSetup.rpm', platforms: ['linux-x86_64-rpm'], download: 'JBCLSetup.rpm', type: 'application/x-rpm' },
   { file: 'JBCLSetup.app.tar.gz', platforms: ['darwin-aarch64', 'darwin-x86_64'], type: 'application/gzip' },
   { file: 'JBCLSetup.dmg', platforms: [], download: 'JBCLSetup.dmg', type: 'application/x-apple-diskimage' }
 ]

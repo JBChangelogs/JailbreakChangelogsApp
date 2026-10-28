@@ -23,8 +23,12 @@
       "nsis",
       "app",
       "dmg",
-      "appimage"
+      "appimage",
+      "deb",
+      "rpm"
     ],
+    "shortDescription": "Jailbreak Changelogs desktop app",
+    "longDescription": "Values, trading, trackers and messages for Roblox Jailbreak, from Jailbreak Changelogs.",
     "createUpdaterArtifacts": true,
     "publisher": "Jailbreak Changelogs",
     "category": "SocialNetworking",
@@ -57,6 +61,12 @@
     "linux": {
       "appimage": {
         "bundleMediaFramework": false
+      },
+      "deb": {
+        "desktopTemplate": "linux/jailbreak-changelogs.desktop"
+      },
+      "rpm": {
+        "desktopTemplate": "linux/jailbreak-changelogs.desktop"
       }
     }
   },

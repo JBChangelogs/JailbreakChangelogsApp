@@ -1,0 +1,16 @@
+pkgname=jailbreak-changelogs-bin
+pkgver=0.8.3
+pkgrel=1
+pkgdesc='Jailbreak Changelogs desktop app'
+arch=('x86_64')
+url='https://jailbreakchangelogs.com'
+license=('LicenseRef-Proprietary')
+depends=('webkit2gtk-4.1' 'gtk3')
+provides=('jailbreak-changelogs')
+conflicts=('jailbreak-changelogs')
+source=("jailbreak-changelogs-${pkgver}.deb::https://updates.jailbreakchangelogs.com/tauri/${pkgver}/JBCLSetup.deb")
+sha256sums=('SKIP')
+
+package() {
+  bsdtar -xf "${srcdir}"/data.tar.* -C "${pkgdir}"
+}

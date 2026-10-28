@@ -15,8 +15,24 @@ fn send(app: &AppHandle, status: serde_json::Value) {
     let _ = app.emit_to("main", "updater:status", status);
 }
 
+#[cfg(target_os = "linux")]
+fn installed_by_other_package_manager() -> bool {
+    use tauri::utils::{config::BundleType, platform::bundle_type};
+    let tool = match bundle_type() {
+        Some(BundleType::Deb) => "dpkg",
+        Some(BundleType::Rpm) => "rpm",
+        _ => return false,
+    };
+    std::process::Command::new(tool).arg("--version").output().is_err()
+}
+
+#[cfg(not(target_os = "linux"))]
+fn installed_by_other_package_manager() -> bool {
+    false
+}
+
 pub async fn check(app: AppHandle, source: &'static str) {
-    if !crate::is_packaged() {
+    if !crate::is_packaged() || installed_by_other_package_manager() {
         return;
     }
     if let Some((update, bytes)) = PENDING.lock().unwrap().as_ref() {

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Categories=Network;
+Comment=Jailbreak Changelogs desktop app
+Exec=jailbreak-changelogs %u
+StartupWMClass=jailbreak-changelogs
+Icon=jailbreak-changelogs
+Name=Jailbreak Changelogs
+Terminal=false
+Type=Application
+MimeType=x-scheme-handler/jailbreakchangelogs;

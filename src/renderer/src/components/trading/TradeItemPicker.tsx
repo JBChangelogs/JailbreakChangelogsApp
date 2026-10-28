@@ -17,7 +17,6 @@ import { SearchInput } from '@renderer/components/ui/search-input'
 import { Tabs } from '@renderer/components/ui/tabs'
 import { FilterMenu } from '@renderer/components/tracker/FilterMenus'
 import { Kbd } from '@renderer/components/ui/kbd'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import type { Item } from '@shared/item'
 import type { TradeSide } from '@renderer/hooks/useTradeComposer'
 import { track, useSearchTracking } from '@renderer/lib/analytics'
@@ -281,7 +280,11 @@ function PickerCard({
       : item.demand
 
   return (
-    <div className="flex gap-2.5 rounded-2xl border border-border-card bg-tertiary-bg p-2.5">
+    <button
+      type="button"
+      onClick={onAdd}
+      className={`group flex w-full gap-2.5 rounded-2xl border border-border-card bg-tertiary-bg p-2.5 text-left transition-colors hover:bg-quaternary-bg ${disabled ? 'opacity-40' : ''}`}
+    >
       <img
         src={getItemImagePath(item.type, item.name)}
         alt=""
@@ -290,21 +293,7 @@ function PickerCard({
         draggable={false}
       />
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <div className="flex items-start justify-between gap-1.5">
-          <p className="min-w-0 truncate text-xs font-semibold text-primary-text">{item.name}</p>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={onAdd}
-                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-secondary-text transition-colors hover:bg-quaternary-bg hover:text-primary-text ${disabled ? 'opacity-40' : ''}`}
-              >
-                <PlusIcon className="h-3.5 w-3.5" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="left">Add</TooltipContent>
-          </Tooltip>
-        </div>
+        <p className="min-w-0 truncate text-xs font-semibold text-primary-text">{item.name}</p>
 
         <div className="flex flex-wrap items-center gap-1">
           <span
@@ -334,6 +323,12 @@ function PickerCard({
           </span>
         </div>
       </div>
-    </div>
+      <span
+        aria-hidden
+        className="flex w-8 shrink-0 items-center justify-center text-secondary-text transition-colors group-hover:text-primary-text"
+      >
+        <PlusIcon className="h-5 w-5" />
+      </span>
+    </button>
   )
 }

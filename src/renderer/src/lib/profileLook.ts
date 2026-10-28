@@ -2,6 +2,7 @@
 // custom one, their Discord one, or a background picked from their ID. Kept in step with the
 // site's src/utils/ui/avatar.tsx and src/components/Profile/Banner.tsx.
 
+import { accentColorToHex, toAccentStyle, type Accent } from '@renderer/lib/accentColor'
 import type { UserProfile } from '@shared/user'
 
 const BACKGROUNDS_BASE_URL = 'https://assets.jailbreakchangelogs.com/assets/backgrounds/v2'
@@ -60,4 +61,20 @@ export function profileBanner(
     }
   }
   return { primary: null, fallback }
+}
+
+const settingOn = (profile: UserProfile, key: string): boolean => {
+  const value = settingsOf(profile)[key]
+  return value === true || value === 1
+}
+
+export function profileAccent(profile: UserProfile): Accent | null {
+  if (!settingOn(profile, 'colored_profile_cards')) return null
+  const color = accentColorToHex(profile.custom_accent_color) ?? accentColorToHex(profile.accent_color)
+  if (!color) return null
+  return { color, gradient: accentColorToHex(profile.accent_gradient), style: toAccentStyle(profile.accent_style) }
+}
+
+export function profileBackground(profile: UserProfile): string | null {
+  return settingOn(profile, 'custom_background') && profile.custom_background ? profile.custom_background : null
 }

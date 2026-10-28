@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { FriendsSheet } from '@renderer/components/friends/FriendsSheet'
+import { useFriendsSync } from '@renderer/hooks/useFriends'
 import { TitleBar } from '@renderer/components/TitleBar'
 import { LoginGate } from '@renderer/components/LoginGate'
 import { AppAccessGate, useAppAccess } from '@renderer/components/AppAccessGate'
@@ -29,6 +31,8 @@ function App(): React.JSX.Element {
   const isChecking = status === 'checking'
   useRealtimePreferences()
   useNotificationToasts()
+  useFriendsSync()
+  const [friendsOpen, setFriendsOpen] = useState(false)
   useDesktopNotificationClicks()
   useRobloxPresence()
   useRealtimeUpdates()
@@ -74,7 +78,11 @@ function App(): React.JSX.Element {
     <div className="flex h-screen flex-col overflow-hidden bg-primary-bg text-primary-text">
       <UpdateBanner />
       <ThemeCursor />
-      <TitleBar canOpenSettings={hasAccess} />
+      <TitleBar
+        canOpenSettings={hasAccess}
+        friendsOpen={friendsOpen && hasAccess}
+        onToggleFriends={() => setFriendsOpen((open) => !open)}
+      />
 
       <div className="relative flex flex-1 overflow-hidden">
         {isChecking ? null : !isAuthenticated ? (
@@ -86,6 +94,11 @@ function App(): React.JSX.Element {
         ) : null}
         {showTransitionSplash && <TransitionSplash visible={transitionSplashVisible} />}
         {hasAccess && <SettingsPage />}
+        {friendsOpen && hasAccess && (
+          <div className="absolute inset-y-0 right-0 z-[1250] flex">
+            <FriendsSheet onClose={() => setFriendsOpen(false)} />
+          </div>
+        )}
         <UpdateScreen />
       </div>
       <ToastViewport />

@@ -52,9 +52,11 @@ export const NOTIFICATION_PREFERENCE_GROUPS: readonly {
   },
   {
     id: 'comments-and-followers',
-    label: 'Comments and followers',
-    description: 'Comments, replies and new followers.',
+    label: 'Friends, comments and followers',
+    description: 'Friend requests, comments, replies and new followers.',
     categories: [
+      { id: 'friend_request', label: 'Friend Request', description: 'Someone sends you a friend request.' },
+      { id: 'friend_request_accepted', label: 'Friend Request Accepted', description: 'Someone accepts your friend request.' },
       { id: 'inventory_comment', label: 'Inventory Comment', description: 'Someone comments on your scanned inventory.' },
       { id: 'profile_comment', label: 'Profile Comment', description: 'Someone comments on your profile.' },
       { id: 'new_follower', label: 'New Follower', description: 'Someone starts following your profile.' },

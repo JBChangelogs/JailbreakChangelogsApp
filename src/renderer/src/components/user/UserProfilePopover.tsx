@@ -6,10 +6,15 @@ import { UserBadges } from '@renderer/components/user/UserBadges'
 import { useAuth } from '@renderer/contexts/AuthContext'
 import { useCurrentUser } from '@renderer/hooks/useCurrentUser'
 import { usersApi } from '@renderer/lib/usersApi'
+import { FriendButton } from '@renderer/components/user/FriendButton'
+import { accentCardTheme } from '@renderer/lib/accentColor'
+import { cn } from '@renderer/lib/utils'
 import {
   avatarShapeClass,
   hidesPresence,
   isProfilePrivate,
+  profileAccent,
+  profileBackground,
   profileBanner
 } from '@renderer/lib/profileLook'
 import type { UserProfile } from '@shared/user'
@@ -26,6 +31,18 @@ function RobloxIcon({ className }: { className?: string }): React.JSX.Element {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor">
       <path d="M18.926 23.998 0 18.892 5.075.002 24 5.108ZM15.348 10.09l-5.282-1.453-1.414 5.273 5.282 1.453z" />
+    </svg>
+  )
+}
+
+function ProfileIcon({ className }: { className?: string }): React.JSX.Element {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.5 20.12a7.5 7.5 0 0 1 15 0A17.93 17.93 0 0 1 12 21.75c-2.68 0-5.22-.59-7.5-1.63Z"
+      />
     </svg>
   )
 }
@@ -110,10 +127,11 @@ function Banner({
 interface UserProfilePopoverProps {
   userId: string
   profile?: UserProfile
+  side?: 'right' | 'bottom'
   children: React.ReactNode
 }
 
-export function UserProfilePopover({ userId, profile, children }: UserProfilePopoverProps): React.JSX.Element {
+export function UserProfilePopover({ userId, profile, side = 'right', children }: UserProfilePopoverProps): React.JSX.Element {
   const { token } = useAuth()
   const { user: currentUser } = useCurrentUser()
   const [full, setFull] = useState<FullProfile | null>(null)
@@ -132,6 +150,10 @@ export function UserProfilePopover({ userId, profile, children }: UserProfilePop
   const label = displayProfile?.global_name || displayProfile?.username || displayProfile?.name
   const isPrivate = displayProfile ? isProfilePrivate(displayProfile, currentUser?.id) : false
   const showPresence = displayProfile && !isPrivate && !hidesPresence(displayProfile)
+  const accent = displayProfile ? profileAccent(displayProfile) : null
+  const background = displayProfile ? profileBackground(displayProfile) : null
+  const cardColor = accent ? 'bg-secondary-bg' : background ? '' : 'bg-primary-bg'
+  const isOwn = currentUser?.id === userId
 
   return (
     <Popover modal onOpenChange={handleOpenChange}>
@@ -140,11 +162,13 @@ export function UserProfilePopover({ userId, profile, children }: UserProfilePop
       </PopoverTrigger>
       {/* Always beside what was clicked (flipping sides near an edge), never over it. */}
       <PopoverContent
-        side="right"
+        side={side}
         align="start"
-        sideOffset={12}
+        sideOffset={side === 'bottom' ? 8 : 12}
         collisionPadding={12}
-        className="w-80 overflow-hidden p-0"
+        className="relative isolate w-80 overflow-hidden rounded-2xl p-0"
+        data-accent-cards={accent?.style}
+        style={accent ? accentCardTheme(accent) : undefined}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         {!displayProfile ? (
@@ -153,6 +177,13 @@ export function UserProfilePopover({ userId, profile, children }: UserProfilePop
           </p>
         ) : (
           <>
+            {background && (
+              <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
+                <img src={background} alt="" draggable={false} className="h-full w-full object-cover object-top" />
+                <div className="absolute inset-0 bg-primary-bg/85" />
+              </div>
+            )}
+            <div className={cn('relative', accent && 'bg-secondary-bg')}>
             <Banner
               key={`${userId}:${displayProfile.custom_banner ?? displayProfile.banner}:${isPrivate}`}
               userId={userId}
@@ -162,20 +193,29 @@ export function UserProfilePopover({ userId, profile, children }: UserProfilePop
             <div className="relative px-4">
               {/* Overlaps the banner with a ring cut out in the card's color, like Discord. */}
               <div className="relative -mt-11 w-fit">
-                <div className={`bg-primary-bg p-1 ${avatarShapeClass(displayProfile, true)}`}>
+                <div className={`p-1 ${cardColor} ${avatarShapeClass(displayProfile, true)}`}>
                   <UserAvatar id={userId} profile={displayProfile} className="h-20 w-20" />
                 </div>
                 {showPresence && (
                   <PresenceDot
                     presence={displayProfile.presence}
-                    className="absolute right-1 bottom-1 h-5 w-5 ring-4! ring-primary-bg!"
+                    className={`absolute right-1 bottom-1 h-5 w-5 ring-0! border-4 ${accent ? 'border-secondary-bg' : background ? 'border-transparent' : 'border-primary-bg'}`}
                   />
                 )}
               </div>
             </div>
             <div className="px-4 pt-2 pb-4">
-              <h3 className="truncate text-xl leading-tight font-bold text-primary-text">{label}</h3>
-              <p className="mt-0.5 truncate text-sm text-secondary-text">{displayProfile.username}</p>
+              <div className="flex items-start gap-2">
+                <div className="min-w-0 flex-1">
+                  <h3 className="truncate text-xl leading-tight font-bold text-primary-text">{label}</h3>
+                  <p className="mt-0.5 truncate text-sm text-secondary-text">{displayProfile.username}</p>
+                </div>
+                {token && !isOwn && (
+                  <div className="shrink-0">
+                    <FriendButton userId={userId} size="sm" />
+                  </div>
+                )}
+              </div>
               <div className="mt-2">
                 <UserBadges
                   usernumber={displayProfile.usernumber}
@@ -209,6 +249,14 @@ export function UserProfilePopover({ userId, profile, children }: UserProfilePop
               <div className="mt-3 flex flex-wrap items-center gap-1.5">
                 <button
                   type="button"
+                  onClick={() => void window.api.openExternal(`https://jailbreakchangelogs.com/users/${userId}`)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-border-card bg-tertiary-bg px-2 py-1 text-xs font-medium text-primary-text transition-colors hover:bg-quaternary-bg/60"
+                >
+                  <ProfileIcon className="h-3.5 w-3.5" />
+                  Profile
+                </button>
+                <button
+                  type="button"
                   onClick={() => void window.api.openExternal(`https://discord.com/users/${userId}`)}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-border-card bg-tertiary-bg px-2 py-1 text-xs font-medium text-primary-text transition-colors hover:bg-quaternary-bg/60"
                 >
@@ -232,6 +280,7 @@ export function UserProfilePopover({ userId, profile, children }: UserProfilePop
                     )
                   })()}
               </div>
+            </div>
             </div>
           </>
         )}

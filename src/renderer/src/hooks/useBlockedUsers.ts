@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { refreshFriends } from '@renderer/hooks/useFriends'
 import { useAuth } from '@renderer/contexts/AuthContext'
 import { messagesApi } from '@renderer/lib/messagesApi'
 import {
@@ -37,6 +38,7 @@ export function useBlockedUsers(): {
     addBlockedUser(userId)
     try {
       await messagesApi.blockUser(token, userId)
+      void refreshFriends()
     } catch (err) {
       removeBlockedUser(userId)
       throw err

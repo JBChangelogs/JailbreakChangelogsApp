@@ -50,4 +50,9 @@ export interface UserProfile {
   global_name?: string
   premiumtype?: number
   primary_guild?: UserPrimaryGuild | null
+  accent_color?: number | string | null
+  custom_accent_color?: number | string | null
+  accent_gradient?: number | string | null
+  accent_style?: string | null
+  custom_background?: string | null
 }

@@ -95,7 +95,7 @@ export function UserSearch({ onSelect }: { onSelect: (user: UserProfile) => void
   }
 
   return (
-    <div ref={containerRef} className="relative shrink-0 px-2 pt-2">
+    <div ref={containerRef} className="relative w-full">
       <div className="relative">
         <SearchIcon className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-secondary-text" />
         <input

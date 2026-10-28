@@ -43,7 +43,7 @@ export function RobberyTrackerScreen({
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
-      <div className="flex h-[53px] shrink-0 items-center gap-4 border-b border-border-primary px-5">
+      <div className="flex h-[57px] shrink-0 items-center gap-4 border-b border-border-primary px-5">
         <TrackerViewSwitcher value={trackerView} onChange={onChangeView} />
         <UptimeStatusBanner />
         <div className="flex shrink-0 items-center gap-3">

@@ -1,4 +1,5 @@
 import { useTrades } from '@renderer/contexts/TradesContext'
+import { SidebarHeader } from '@renderer/components/ui/sidebar-header'
 import { Tabs } from '@renderer/components/ui/tabs'
 import { SearchInput } from '@renderer/components/ui/search-input'
 import { Button } from '@renderer/components/ui/button'
@@ -18,8 +19,10 @@ export function TradesSidebar(): React.JSX.Element {
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
-      <div className="flex flex-col gap-2 p-2">
+      <SidebarHeader>
         <SearchInput value={searchQuery} onChange={setSearchQuery} placeholder="Search by item name..." />
+      </SidebarHeader>
+      <div className="flex flex-col gap-2 p-2">
         <Tabs
           value={tab}
           onChange={setTab}

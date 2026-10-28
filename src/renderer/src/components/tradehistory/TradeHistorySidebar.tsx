@@ -1,4 +1,5 @@
 import { useTradeHistory } from '@renderer/contexts/TradeHistoryContext'
+import { SidebarHeader } from '@renderer/components/ui/sidebar-header'
 import { Button } from '@renderer/components/ui/button'
 import { RobloxAvatar } from '@renderer/components/dupefinder/RobloxAvatar'
 import { DupeSearchBar } from '@renderer/components/dupefinder/DupeSearchBar'
@@ -12,13 +13,15 @@ export function TradeHistorySidebar(): React.JSX.Element {
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
-      <div className="flex flex-col gap-2 p-2">
+      <SidebarHeader>
         <DupeSearchBar
           onSearch={search}
           loading={lookup.status === 'loading'}
           placeholder="Username or ID"
           suggestDupeOwners={false}
         />
+      </SidebarHeader>
+      <div className="flex flex-col gap-2 p-2 empty:hidden">
         {showOwnTrades && (
           <Button type="button" size="sm" variant="secondary" className="w-full" onClick={showOwnTrades}>
             Show my trades

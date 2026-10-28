@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { SidebarHeader } from '@renderer/components/ui/sidebar-header'
 import { useAuth } from '@renderer/contexts/AuthContext'
 import { groupTypingKey, useRealtime } from '@renderer/contexts/RealtimeContext'
 import {
@@ -135,7 +136,9 @@ export function ConversationList({
   ].sort((a, b) => b.activity - a.activity)
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
-      <UserSearch onSelect={(user) => onSelect(user.id)} />
+      <SidebarHeader>
+        <UserSearch onSelect={(user) => onSelect(user.id)} />
+      </SidebarHeader>
       <div className="flex items-center justify-between p-3">
         <h1 className="text-xs font-bold uppercase tracking-wide text-quaternary-text">Messages</h1>
         <Tooltip>

@@ -1,4 +1,5 @@
 import { SORT_OPTIONS, useDupeFinder, type SortOrder } from '@renderer/contexts/DupeFinderContext'
+import { SidebarHeader } from '@renderer/components/ui/sidebar-header'
 import { Button } from '@renderer/components/ui/button'
 import { RobloxAvatar } from '@renderer/components/dupefinder/RobloxAvatar'
 import { DupeSearchBar } from '@renderer/components/dupefinder/DupeSearchBar'
@@ -45,7 +46,7 @@ export function DupeFinderSidebar(): React.JSX.Element {
   if (selectedItem) {
     return (
       <div className="flex h-full min-h-0 flex-1 flex-col">
-        <div className="flex items-center gap-2 border-b border-border-primary p-2">
+        <div className="flex h-[57px] shrink-0 items-center gap-2 border-b border-border-primary px-2">
           <button
             type="button"
             onClick={() => selectItem(null)}
@@ -78,11 +79,11 @@ export function DupeFinderSidebar(): React.JSX.Element {
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
-      <div className="flex flex-col gap-2 p-2">
+      <SidebarHeader>
         <DupeSearchBar onSearch={search} loading={state.status === 'loading'} />
-      </div>
+      </SidebarHeader>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
+      <div className="min-h-0 flex-1 overflow-y-auto p-2">
         {identity ? (
           <div className="rounded-2xl border border-border-card bg-tertiary-bg p-3">
             <div className="flex items-center gap-3">

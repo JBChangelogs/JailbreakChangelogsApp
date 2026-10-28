@@ -80,7 +80,7 @@ function TradesPane({ onMessageUser }: { onMessageUser: (userId: string) => void
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
-      <div className="flex items-center justify-between border-b border-border-primary px-5 py-4">
+      <div className="flex h-[57px] shrink-0 items-center justify-between border-b border-border-primary px-5">
         <h2 className="text-sm font-semibold text-primary-text">Trade Ads</h2>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-4">

@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { SidebarHeader } from '@renderer/components/ui/sidebar-header'
 import { SearchInput } from '@renderer/components/ui/search-input'
 import { Switch } from '@renderer/components/ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
@@ -126,8 +127,10 @@ export function RobberySidebarFilters(): React.JSX.Element {
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
-      <div className="flex flex-col gap-2 p-2">
+      <SidebarHeader>
         <SearchInput value={searchQuery} onChange={setSearchQuery} placeholder="Search robberies..." />
+      </SidebarHeader>
+      <div className="flex flex-col gap-2 p-2">
         <FilterMenu label="Sort" value={timeSort} options={TIME_SORT_OPTIONS} onChange={setTimeSort} />
         <FilterMenu label="Size" value={serverSize} options={SERVER_SIZE_OPTIONS} onChange={setServerSize} />
         {topCountries.length > 0 && (
@@ -144,7 +147,7 @@ export function RobberySidebarFilters(): React.JSX.Element {
         </label>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto border-t border-border-primary p-2">
+      <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
         <SectionHeader
           label="Robberies"
           hint={alertTypes.length > 0 ? `${alertTypes.length} alert${alertTypes.length === 1 ? '' : 's'} on` : 'Bell for alerts'}

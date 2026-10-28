@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { SidebarHeader } from '@renderer/components/ui/sidebar-header'
 import { useCalculator } from '@renderer/contexts/CalculatorContext'
 import { getClearShortcutsExpanded, setClearShortcutsExpanded } from '@renderer/lib/localPreferences'
 import { Tabs } from '@renderer/components/ui/tabs'
@@ -16,8 +17,10 @@ export function CalculatorSidebar(): React.JSX.Element {
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
-      <div className="flex flex-col gap-2 p-2">
+      <SidebarHeader>
         <SearchInput value={browse.search} onChange={browse.setSearch} placeholder="Search items..." />
+      </SidebarHeader>
+      <div className="flex flex-col gap-2 p-2">
         <SortMenu value={browse.sort} onChange={browse.setSort} groups={LOCAL_SORT_GROUPS} />
         {user?.roblox?.roblox_id && (
           <Tabs
@@ -31,7 +34,7 @@ export function CalculatorSidebar(): React.JSX.Element {
         )}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto border-t border-border-primary p-2">
+      <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
         <SectionHeader label="Type" count={browse.types.size} onClear={() => browse.types.forEach(browse.toggleType)} />
         <TypeTiles selected={browse.types} onToggle={browse.toggleType} />
 

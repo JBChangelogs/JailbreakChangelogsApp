@@ -295,7 +295,7 @@ export function TradeHistoryScreen(): React.JSX.Element {
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
-      <div className="flex items-center justify-between gap-3 border-b border-border-primary px-5 py-4">
+      <div className="flex h-[57px] shrink-0 items-center justify-between gap-3 border-b border-border-primary px-5">
         <h2 className="shrink-0 text-sm font-semibold text-primary-text">Trade History</h2>
         {robloxId && trades.length > 0 && !selectedDay && (
           <span className="min-w-0 truncate text-xs text-tertiary-text">

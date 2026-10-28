@@ -743,7 +743,7 @@ function MessageRow({
   onJumpToMessage,
   isHighlighted,
   isReplyTarget,
-  isReplyToMe,
+  isForMe,
   registerRef,
   showReadReceipt
 }: {
@@ -771,7 +771,7 @@ function MessageRow({
   onJumpToMessage: (messageId: string) => void
   isHighlighted: boolean
   isReplyTarget: boolean
-  isReplyToMe: boolean
+  isForMe: boolean
   registerRef: (id: string, el: HTMLDivElement | null) => void
   showReadReceipt: boolean
 }): React.JSX.Element {
@@ -935,7 +935,7 @@ function MessageRow({
           ? 'bg-status-info/15'
           : isReplyTarget
             ? 'bg-button-info/10 shadow-[inset_2px_0_0_var(--color-button-info)] hover:bg-button-info/10!'
-            : isReplyToMe
+            : isForMe
               ? 'bg-status-warning/10 shadow-[inset_2px_0_0_var(--color-status-warning)] hover:bg-status-warning/15!'
               : isContextMenuOpen
                 ? 'bg-tertiary-bg'
@@ -1698,7 +1698,7 @@ export function ConversationThread({
       ) : (
         <>
           {isGroup ? (
-            <div className="flex items-center gap-2.5 border-b border-border-primary px-5 py-2.5">
+            <div className="flex h-[57px] shrink-0 items-center gap-2.5 border-b border-border-primary px-5">
               <button
                 type="button"
                 onClick={() => isGroupOwner && setSettingsOpen(true)}
@@ -1761,13 +1761,13 @@ export function ConversationThread({
               </Tooltip>
             </div>
           ) : (
-            <div className="flex items-center gap-2.5 border-b border-border-primary px-5 py-2.5">
-              <UserProfilePopover userId={recipientId} profile={recipientProfile}>
+            <div className="flex h-[57px] shrink-0 items-center gap-2.5 border-b border-border-primary px-5">
+              <UserProfilePopover userId={recipientId} profile={recipientProfile} side="bottom">
                 <button type="button" className="rounded-full">
                   <UserAvatarWithPresence id={recipientId} profile={recipientProfile} className="h-8 w-8" />
                 </button>
               </UserProfilePopover>
-              <UserProfilePopover userId={recipientId} profile={recipientProfile}>
+              <UserProfilePopover userId={recipientId} profile={recipientProfile} side="bottom">
                 <button
                   type="button"
                   className="min-w-0 flex-1 truncate text-left text-sm font-semibold text-primary-text hover:underline"
@@ -1887,7 +1887,12 @@ export function ConversationThread({
                             onJumpToMessage={handleJumpToMessage}
                             isHighlighted={message.id === highlightedId}
                             isReplyTarget={message.id === replyTo?.id}
-                            isReplyToMe={!isMine && !!currentUser && parentMessage?.sender_id === currentUser.id}
+                            isForMe={
+                              !isMine &&
+                              !!currentUser &&
+                              (parentMessage?.sender_id === currentUser.id ||
+                                message.content.includes(`<@${currentUser.id}>`))
+                            }
                             registerRef={registerMessageRef}
                             showReadReceipt={index === lastMineIndex}
                           />

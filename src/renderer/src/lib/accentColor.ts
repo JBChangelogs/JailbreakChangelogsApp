@@ -34,7 +34,7 @@ const luminance = (hex: string): number => {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b
 }
 
-function readableTextColor(...hexes: [string, ...string[]]): '#000000' | '#ffffff' {
+export function readableTextColor(...hexes: [string, ...string[]]): '#000000' | '#ffffff' {
   const ls = hexes.map(luminance)
   const onBlack = Math.min(...ls.map((l) => (l + 0.05) / 0.05))
   const onWhite = Math.min(...ls.map((l) => 1.05 / (l + 0.05)))

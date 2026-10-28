@@ -102,11 +102,11 @@ function StatusBadge({ robbery, planeCountdown }: { robbery: RobberyData; planeC
 
   if (robbery.marker_name === 'Mansion') {
     if (robbery.status === 1) {
-      return <div className={`${badgeBase} border-white/40 bg-status-success text-white shadow-md ring-1 ring-black/20`}>Open</div>
+      return <div className={`${badgeBase} border-white/40 bg-status-success text-button-success-text shadow-md ring-1 ring-black/20`}>Open</div>
     }
     if (robbery.status === 2) {
       return (
-          <div className={`${badgeBase} border-white/40 bg-status-success text-white shadow-md ring-1 ring-black/20`}>
+          <div className={`${badgeBase} border-white/40 bg-status-success text-button-success-text shadow-md ring-1 ring-black/20`}>
           Ready to Open
         </div>
       )
@@ -123,7 +123,7 @@ function StatusBadge({ robbery, planeCountdown }: { robbery: RobberyData; planeC
           </div>
         )
       }
-      return <div className={`${badgeBase} border-white/40 bg-status-success text-white shadow-md ring-1 ring-black/20`}>Open</div>
+      return <div className={`${badgeBase} border-white/40 bg-status-success text-button-success-text shadow-md ring-1 ring-black/20`}>Open</div>
     case 2:
       return <div className={`${badgeBase} border-white/40 bg-status-warning text-black/85 shadow-md ring-1 ring-black/20`}>Active</div>
     case 3:
@@ -206,7 +206,7 @@ export function RobberyCard({ robbery, compact = false }: { robbery: RobberyData
           {alreadyJoined && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="flex h-6 w-6 items-center justify-center rounded-md border border-white/40 bg-status-success text-white shadow-md ring-1 ring-black/20">
+                <span className="flex h-6 w-6 items-center justify-center rounded-md border border-white/40 bg-status-success text-button-success-text shadow-md ring-1 ring-black/20">
                   <CheckIcon className="h-3.5 w-3.5" />
                 </span>
               </TooltipTrigger>

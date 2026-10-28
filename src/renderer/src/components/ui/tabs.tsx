@@ -49,7 +49,7 @@ export function Tabs<T extends string>({
           aria-hidden
           className={cn(
             'pointer-events-none absolute transition-[left,width] duration-200 ease-out',
-            filled ? 'inset-y-1 rounded-lg bg-button-info' : '-bottom-px h-0.5 rounded-full bg-button-info'
+            filled ? 'inset-y-1 rounded-lg bg-tab-active' : '-bottom-px h-0.5 rounded-full bg-button-info'
           )}
           style={{ left: indicator.left, width: indicator.width }}
         />

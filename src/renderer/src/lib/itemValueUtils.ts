@@ -143,50 +143,42 @@ export function getItemTypeColor(type: string): string {
   }
 }
 
+const DEMAND_CLASSES: Record<string, string> = {
+  'close-to-none': 'bg-demand-close-to-none text-demand-close-to-none-text',
+  'very-low': 'bg-demand-very-low text-demand-very-low-text',
+  low: 'bg-demand-low text-demand-low-text',
+  'below-average': 'bg-demand-below-average text-demand-below-average-text',
+  average: 'bg-demand-average text-demand-average-text',
+  decent: 'bg-demand-decent text-demand-decent-text',
+  high: 'bg-demand-high text-demand-high-text',
+  'very-high': 'bg-demand-very-high text-demand-very-high-text',
+  unknown: 'bg-demand-unknown text-demand-unknown-text'
+}
+
+const TREND_CLASSES: Record<string, string> = {
+  dropping: 'bg-trend-dropping text-trend-dropping-text',
+  unstable: 'bg-trend-unstable text-trend-unstable-text',
+  hoarded: 'bg-trend-hoarded text-trend-hoarded-text',
+  manipulated: 'bg-trend-manipulated text-trend-manipulated-text',
+  stable: 'bg-trend-stable text-trend-stable-text',
+  recovering: 'bg-trend-recovering text-trend-recovering-text',
+  rising: 'bg-trend-rising text-trend-rising-text',
+  hyped: 'bg-trend-hyped text-trend-hyped-text',
+  projected: 'bg-trend-projected text-trend-projected-text',
+  unknown: 'bg-trend-unknown text-trend-unknown-text'
+}
+
+function badgeKey(value: string | null | undefined, classes: Record<string, string>): string {
+  const key = value && value !== 'N/A' ? value.trim().toLowerCase().replaceAll(' ', '-') : 'unknown'
+  return Object.hasOwn(classes, key) ? key : 'unknown'
+}
+
 export function getDemandColor(demand: string | null | undefined): string {
-  switch (normalizeCase(demand)) {
-    case 'Close To None':
-      return 'bg-gray-600 text-white'
-    case 'Very Low':
-      return 'bg-red-600 text-white'
-    case 'Low':
-      return 'bg-orange-700 text-white'
-    case 'Below Average':
-      return 'bg-amber-500 text-black'
-    case 'Average':
-      return 'bg-[#D0F03C] text-black'
-    case 'Decent':
-      return 'bg-green-600 text-white'
-    case 'High':
-      return 'bg-blue-600 text-white'
-    case 'Very High':
-      return 'bg-purple-600 text-white'
-    default:
-      return 'bg-gray-600 text-white'
-  }
+  return DEMAND_CLASSES[badgeKey(demand, DEMAND_CLASSES)]
 }
 
 export function getTrendColor(trend: string | null | undefined): string {
-  switch (normalizeCase(trend)) {
-    case 'Dropping':
-      return 'bg-rose-600 text-white'
-    case 'Unstable':
-      return 'bg-amber-600 text-white'
-    case 'Hoarded':
-      return 'bg-violet-600 text-white'
-    case 'Manipulated':
-      return 'bg-yellow-600 text-black'
-    case 'Stable':
-      return 'bg-gray-500 text-white'
-    case 'Recovering':
-      return 'bg-orange-600 text-white'
-    case 'Rising':
-      return 'bg-blue-700 text-white'
-    case 'Hyped':
-      return 'bg-pink-500 text-white'
-    default:
-      return 'bg-gray-600 text-white'
-  }
+  return TREND_CLASSES[badgeKey(trend, TREND_CLASSES)]
 }
 
 const IMAGE_BASE = 'https://assets.jailbreakchangelogs.com/assets/images/items'

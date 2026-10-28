@@ -74,7 +74,7 @@ export function ItemCard({ item }: { item: Item }): React.JSX.Element {
     <button
       type="button"
       onClick={() => selectItem(item.id)}
-      className="group flex w-full cursor-pointer flex-col overflow-hidden rounded-2xl border-2 border-border-card bg-secondary-bg text-left transition-shadow duration-300 hover:shadow-lg"
+      className="group flex w-full cursor-pointer flex-col overflow-hidden rounded-2xl border-2 border-border-card bg-secondary-bg text-left transition-shadow duration-300 hover:shadow-lg hover:shadow-card-shadow"
     >
       <div className="relative w-full overflow-hidden bg-tertiary-bg" style={{ aspectRatio: '854 / 480' }}>
         <div className="absolute top-2 right-2 z-10">

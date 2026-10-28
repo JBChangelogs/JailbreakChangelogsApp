@@ -3,6 +3,7 @@
 // devices (the `custom_theme` preference). Shared themes someone used are remembered as codes in
 // `recent_custom_themes`, newest first.
 
+import { readableTextColor } from '@renderer/lib/accentColor'
 import { ICON, safeValue, type SiteTheme } from '@renderer/lib/themes'
 
 const API_BASE = 'https://api.jailbreakchangelogs.com'
@@ -70,6 +71,38 @@ export function asSiteTheme(theme: CustomTheme): SiteTheme {
   }
 }
 
+function marketThemeVars(vars: Record<string, string>): Record<string, string> {
+  const colors = Object.fromEntries(
+    Object.entries(vars).filter(([key]) => !key.startsWith('--color-badge-') && !/^--color-(demand|trend)-.+-text$/.test(key))
+  )
+  let canvas: CanvasRenderingContext2D | null | undefined
+  const resolve = (value: string): string => {
+    for (let i = 0; i < 8 && value.includes('var('); i++) {
+      value = value.replace(/var\((--color-[a-z0-9-]+)\)/g, (match, key: string) => colors[key] ?? match)
+    }
+    return value
+  }
+  for (const [key, value] of Object.entries(colors)) {
+    if (!/^--color-(demand|trend)-[a-z-]+$/.test(key)) continue
+    let hex = resolve(value)
+    if (!/^#[0-9a-f]{6}$/i.test(hex)) {
+      canvas ??= document.createElement('canvas').getContext('2d')
+      if (!canvas) continue
+      canvas.fillStyle = '#ffffff'
+      canvas.fillRect(0, 0, 1, 1)
+      for (const bg of [colors['--color-primary-bg'], colors['--color-secondary-bg'], hex]) {
+        if (!bg) continue
+        canvas.fillStyle = resolve(bg)
+        canvas.fillRect(0, 0, 1, 1)
+      }
+      const [r, g, b] = canvas.getImageData(0, 0, 1, 1).data
+      hex = `#${[r, g, b].map((n) => n.toString(16).padStart(2, '0')).join('')}`
+    }
+    colors[`${key}-text`] = readableTextColor(hex)
+  }
+  return colors
+}
+
 /** Puts the custom theme's CSS on the page, or removes it. Beats the site theme's `:root.slug`. */
 export function applyCustomThemeCss(theme: CustomTheme | null): void {
   const root = document.documentElement
@@ -85,7 +118,7 @@ export function applyCustomThemeCss(theme: CustomTheme | null): void {
     document.head.append(style)
   }
   const selector = ':root:root[data-custom-theme]'
-  const vars = Object.entries(theme.vars)
+  const vars = Object.entries(marketThemeVars(theme.vars))
     .map(([key, value]) => `${key}:${value};`)
     .join('')
   style.textContent =

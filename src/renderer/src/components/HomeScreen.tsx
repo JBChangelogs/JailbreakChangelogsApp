@@ -13,7 +13,6 @@ import { useTradeCompletedToasts } from '@renderer/hooks/useTradeCompletedToasts
 import { AccountPanel } from '@renderer/components/AccountPanel'
 import { RobloxStatusBar } from '@renderer/components/RobloxStatusBar'
 import { NavBar } from '@renderer/components/NavBar'
-import { TabsNotice } from '@renderer/components/TabBar'
 import { TabScope, useNavigationMode, useTabs, type Tab } from '@renderer/contexts/TabsContext'
 import { ConversationList } from '@renderer/components/messages/ConversationList'
 import { ConversationThread } from '@renderer/components/messages/ConversationThread'
@@ -257,7 +256,6 @@ export function HomeScreen(): React.JSX.Element {
           </BountyTrackerProvider>
         </RobberyTrackerProvider>
       </div>
-      <TabsNotice />
     </>
   )
 }
@@ -361,7 +359,7 @@ function DeferredMount({ children }: { children: React.ReactNode }): React.JSX.E
   if (ready) return <>{children}</>
   return (
     <div className="flex min-w-0 flex-1 flex-col" aria-busy="true">
-      <div className="h-12 shrink-0 border-b border-border-primary" />
+      <div className="h-[57px] shrink-0 border-b border-border-primary" />
       <div className="grid flex-1 grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] content-start gap-3 p-5">
         {Array.from({ length: 8 }, (_, i) => (
           <div key={i} className="h-44 animate-pulse rounded-xl bg-secondary-bg" />

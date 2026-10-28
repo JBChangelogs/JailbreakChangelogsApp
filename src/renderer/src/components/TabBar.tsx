@@ -1,18 +1,12 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@renderer/components/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@renderer/components/ui/dialog'
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@renderer/components/ui/context-menu'
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from '@renderer/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { TAB_INFO } from '@renderer/components/NavBar'
 import { useSettingsPage } from '@renderer/contexts/SettingsPageContext'
-import {
-  SINGLE_INSTANCE_TABS,
-  TAB_TYPES,
-  useNavigationMode,
-  useTabs,
-  type TabType
-} from '@renderer/contexts/TabsContext'
+import { SINGLE_INSTANCE_TABS, TAB_TYPES, useTabs, type TabType } from '@renderer/contexts/TabsContext'
+import { useUpdateStatus } from '@renderer/hooks/useUpdateStatus'
 import { getTabsNoticeVisible, setTabsNoticeVisible } from '@renderer/lib/localPreferences'
 import { cn } from '@renderer/lib/utils'
 
@@ -53,6 +47,16 @@ export function TabBar(): React.JSX.Element {
     return ordered.length === tabs.length ? ordered : tabs
   }, [tabs, dragOrder])
   const settings = useSettingsPage()
+  const { status: updateStatus } = useUpdateStatus()
+  const updating =
+    updateStatus?.state === 'downloading' ||
+    updateStatus?.state === 'downloaded' ||
+    (updateStatus?.state === 'available' && updateStatus.source === 'startup')
+  const [noticeOpen, setNoticeOpen] = useState(getTabsNoticeVisible)
+  const dismissNotice = (): void => {
+    setNoticeOpen(false)
+    setTabsNoticeVisible(false)
+  }
   const [knownIds, setKnownIds] = useState<ReadonlySet<string>>(() => new Set(tabs.map((tab) => tab.id)))
   const [entering, setEntering] = useState<ReadonlySet<string>>(new Set())
   const added = tabs.filter((tab) => !knownIds.has(tab.id)).map((tab) => tab.id)
@@ -464,9 +468,43 @@ export function TabBar(): React.JSX.Element {
           })}
         </PopoverContent>
       </Popover>
-      <Popover open={!!restorable} onOpenChange={(next) => !next && dismissRestore()}>
+      <Popover open={noticeOpen && !restorable && !updating} onOpenChange={(next) => !next && dismissNotice()}>
+        <PopoverAnchor virtualRef={plusRef as React.RefObject<HTMLButtonElement>} />
+        <PopoverContent
+          arrow
+          align="start"
+          alignOffset={-12}
+          className="w-80 p-4"
+          onInteractOutside={(e) => e.preventDefault()}
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
+          <p className="text-sm font-semibold text-primary-text">Tabs are here</p>
+          <p className="mt-1 text-xs text-secondary-text">
+            Use the + to open messages, trades, trackers, values, calculators and dupe finders. Your tabs are saved, so
+            you can pick up where you left off. Prefer the old sidebar? Switch back in Display settings anytime.
+          </p>
+          <div className="mt-3 flex justify-end gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                dismissNotice()
+                settings.open('display')
+              }}
+            >
+              Display settings
+            </Button>
+            <Button type="button" size="sm" onClick={dismissNotice}>
+              Got it
+            </Button>
+          </div>
+        </PopoverContent>
+      </Popover>
+      <Popover open={!!restorable && !updating} onOpenChange={(next) => !next && dismissRestore()}>
         <PopoverAnchor className="pointer-events-none absolute bottom-0 left-2 h-px w-px" />
         <PopoverContent
+          arrow
           align="start"
           className="w-72 p-4"
           onInteractOutside={(e) => e.preventDefault()}
@@ -488,48 +526,5 @@ export function TabBar(): React.JSX.Element {
         </PopoverContent>
       </Popover>
     </div>
-  )
-}
-
-export function TabsNotice(): React.JSX.Element | null {
-  const { mode } = useNavigationMode()
-  const settings = useSettingsPage()
-  const [open, setOpen] = useState(() => mode === 'tabs' && getTabsNoticeVisible())
-
-  const dismiss = (): void => {
-    setOpen(false)
-    setTabsNoticeVisible(false)
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={(next) => !next && dismiss()}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle>Tabs are here</DialogTitle>
-          <DialogDescription>Open pages as tabs in the title bar.</DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4 px-5 py-4 text-sm text-secondary-text">
-          <p>
-            Use the + next to your tabs to open messages, trades, trackers, values, calculators and dupe finders. Your
-            tabs are saved, so you can pick up where you left off.
-          </p>
-          <p>Prefer the old sidebar? Switch back to Simple navigation in Display settings anytime.</p>
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="secondary" onClick={dismiss}>
-              Got it
-            </Button>
-            <Button
-              type="button"
-              onClick={() => {
-                dismiss()
-                settings.open('display')
-              }}
-            >
-              Open Display settings
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
   )
 }

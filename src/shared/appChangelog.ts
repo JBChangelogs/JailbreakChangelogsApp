@@ -57,6 +57,31 @@ export function notesSince(notes: string, currentVersion: string | undefined): s
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.8.5',
+    date: '2026-10-28',
+    added: [
+      'Friends: a Friends button next to the app name shows how many friends you have and opens a list of your friends and pending requests, with a badge when someone sends you one',
+      'Add, accept, decline, cancel and remove friends from anyone\'s profile card, kept in sync with the website as it happens',
+      'Profile cards show the person\'s custom background and card colors, like their profile on the website',
+      'Notification settings for friend requests and accepted friend requests',
+      'Item pages have a Trading Metrics chart alongside value history'
+    ],
+    changed: [
+      'Item pages are redesigned: sections are in the sidebar under an item search, comments are at the bottom of the page, similar items open in a panel on the right, and the layout adapts to narrower windows',
+      'Value charts match the website, with Line and Bar views, range buttons and the current value and trend shown above the chart',
+      'Changes and suggestions are shown as compact cards with a Load more button instead of pages',
+      'Custom themes now color demand and trend badges, filled tabs and buttons the same way as on the website',
+      'Search bars sit in a header row lined up with the page header on every tab, including Messages',
+      'Messages that mention you are highlighted like replies to you',
+      'Clicking anywhere on an item while making a trade adds it',
+      'The "Tabs are here" message is a small popover by the + button instead of a window'
+    ],
+    fixed: [
+      'Tabs, notifications and the restore tabs prompt can no longer be opened while an update is installing',
+      'Clicking the person in a direct message\'s header opens their profile card below the name instead of over the sidebar'
+    ]
+  },
+  {
     version: '0.8.4',
     date: '2026-10-27',
     added: [

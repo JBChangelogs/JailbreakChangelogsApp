@@ -57,6 +57,15 @@ export function notesSince(notes: string, currentVersion: string | undefined): s
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.8.4',
+    date: '2026-10-27',
+    added: [
+      'Linux: the app is now also available as a .deb (Debian, Ubuntu, Mint) and .rpm (Fedora, openSUSE) package that uses your system\'s own web engine, which should run smoother than the AppImage, and updates itself',
+      'Arch Linux: each release includes a PKGBUILD you can install with makepkg'
+    ],
+    changed: ['Message notifications show who sent the message, and in group chats which group it was sent in, with mentions shown as names']
+  },
+  {
     version: '0.8.3',
     date: '2026-10-27',
     changed: [

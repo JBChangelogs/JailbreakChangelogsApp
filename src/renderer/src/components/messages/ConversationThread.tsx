@@ -988,6 +988,7 @@ function MessageRow({
   senderProfile,
   profiles,
   profileOf,
+  mentionCandidates,
   toMentionIds,
   currentUserId,
   frequentEmojis,
@@ -1016,6 +1017,7 @@ function MessageRow({
   senderProfile?: UserProfile;
   profiles: Map<string, UserProfile>;
   profileOf: (id: string) => UserProfile | undefined;
+  mentionCandidates: UserProfile[];
   toMentionIds: (text: string) => string;
   currentUserId: string | null;
   frequentEmojis: string[];
@@ -1041,6 +1043,22 @@ function MessageRow({
   const [isEditing, setIsEditing] = useState(false);
   const [editDraft, setEditDraft] = useState(message.content);
   const [editSaving, setEditSaving] = useState(false);
+
+  const [editQuery, setEditQuery] = useState<ComposerQuery | null>(null);
+  const [editActiveSuggestion, setEditActiveSuggestion] = useState(0);
+  const editTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const editDraftMirrorRef = useRef<HTMLDivElement>(null);
+  const editCursorRef = useRef<number | null>(null);
+
+  useLayoutEffect(() => {
+    if (editCursorRef.current !== null && editTextareaRef.current) {
+      editTextareaRef.current.setSelectionRange(
+        editCursorRef.current,
+        editCursorRef.current,
+      );
+    }
+  }, [editDraft]);
+
   const [isContextMenuOpen, setIsContextMenuOpen] = useState(false);
   const isPending = message.status === "sending";
   const isRead = isMine && showReadReceipt && message.read_at != null;
@@ -1185,7 +1203,94 @@ function MessageRow({
         (id) => profileOf(id)?.username || undefined,
       ),
     );
+    setEditQuery(null);
     setIsEditing(true);
+  };
+
+  const editQueryText = editQuery?.text.toLowerCase() ?? "";
+  const editSuggestions: {
+    key: string;
+    insert: string;
+    label: React.ReactNode;
+  }[] = !editQuery
+    ? []
+    : editQuery.trigger === "@"
+      ? mentionCandidates
+          .filter(
+            (p) =>
+              p.username.toLowerCase().startsWith(editQueryText) ||
+              profileDisplayName(p)?.toLowerCase().startsWith(editQueryText),
+          )
+          .slice(0, 8)
+          .map((p) => ({
+            key: p.id,
+            insert: `@${p.username}`,
+            label: (
+              <>
+                <UserAvatar
+                  id={p.id}
+                  profile={p}
+                  className="h-6 w-6 shrink-0"
+                />
+                <span className="text-primary-text">
+                  {profileDisplayName(p)}
+                </span>
+                <span className="text-tertiary-text">{p.username}</span>
+              </>
+            ),
+          }))
+      : suggest(
+          editDraft,
+          editTextareaRef.current?.selectionStart ?? editDraft.length,
+        )
+          .slice(0, 8)
+          .map((name: string) => {
+            const emojiChar = transform(`:${name}:`);
+            return {
+              key: name,
+              insert: emojiChar,
+              label: (
+                <>
+                  <span className="text-lg">
+                    <Emoji emoji={emojiChar} />
+                  </span>
+                  <span className="text-primary-text">:{name}:</span>
+                </>
+              ),
+            };
+          });
+
+  const handleEditChange = (
+    e: React.ChangeEvent<HTMLTextAreaElement>,
+  ): void => {
+    const rawVal = e.target.value;
+    const currentCursor = e.target.selectionStart;
+
+    const transformed = transform(rawVal);
+    const lengthDiff = rawVal.length - transformed.length;
+    editCursorRef.current = currentCursor - lengthDiff;
+
+    setEditDraft(transformed);
+    setEditQuery(composerQueryAtCursor(transformed, editCursorRef.current));
+    setEditActiveSuggestion(0);
+  };
+
+  const acceptEditSuggestion = (insert: string): void => {
+    const el = editTextareaRef.current;
+    const cursor = el?.selectionStart ?? editDraft.length;
+    const upToCursor = editDraft.slice(0, cursor);
+    const match = upToCursor.match(/[:@][a-z0-9_.]{0,32}$/i);
+    if (!match) return;
+    const startIdx = upToCursor.length - match[0].length;
+    if (editQuery?.trigger === ":") recordEmojiUse(insert);
+    const next = `${editDraft.slice(0, startIdx)}${insert} ${editDraft.slice(cursor)}`;
+    setEditDraft(next);
+    setEditQuery(null);
+    requestAnimationFrame(() => {
+      el?.focus();
+      const newCursor = startIdx + insert.length + 1;
+      el?.setSelectionRange(newCursor, newCursor);
+    });
   };
 
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -1328,9 +1433,58 @@ function MessageRow({
             </div>
           )}
           {isEditing ? (
-            <div className="space-y-1.5 pt-0.5">
-              <div className="flex rounded-xl border border-border-card bg-tertiary-bg px-4 py-2.5">
+            <div className="relative space-y-1.5 pt-0.5">
+              {editQuery && editSuggestions.length > 0 && (
+                <div
+                  className={`absolute right-0 bottom-full left-0 mb-2 z-30 overflow-hidden ${FLOATING_PANEL_SURFACE}`}
+                >
+                  <div className="border-b border-border-primary px-3 py-2 text-[10px] font-bold tracking-wide text-tertiary-text uppercase">
+                    {editQuery.trigger === "@" ? "Members" : "Emojis"} matching{" "}
+                    {editQuery.trigger}
+                    {editQuery.text}
+                  </div>
+                  <div className="max-h-48 overflow-y-auto p-1">
+                    {editSuggestions.map((suggestion, index) => (
+                      <button
+                        key={suggestion.key}
+                        type="button"
+                        onMouseEnter={() => setEditActiveSuggestion(index)}
+                        onClick={() => acceptEditSuggestion(suggestion.insert)}
+                        className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors ${
+                          index === editActiveSuggestion
+                            ? "bg-quaternary-bg"
+                            : ""
+                        }`}
+                      >
+                        {suggestion.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="relative flex rounded-xl border border-border-card bg-tertiary-bg px-4 py-2.5">
+                <div
+                  ref={editDraftMirrorRef}
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words px-4 py-2.5 text-base leading-6 text-primary-text"
+                >
+                  {splitDraftMentions(editDraft, mentionCandidates).map(
+                    (part, i) =>
+                      i % 2 === 1 ? (
+                        <span
+                          key={i}
+                          className="rounded-[3px] bg-button-info/30 text-[color-mix(in_srgb,var(--color-button-info)_25%,white)]"
+                        >
+                          {part}
+                        </span>
+                      ) : (
+                        part
+                      ),
+                  )}
+                  {"\u200b"}
+                </div>
                 <textarea
+                  ref={editTextareaRef}
                   autoFocus
                   onFocus={(e) =>
                     e.currentTarget.setSelectionRange(
@@ -1339,8 +1493,45 @@ function MessageRow({
                     )
                   }
                   value={editDraft}
-                  onChange={(e) => setEditDraft(e.target.value)}
+                  onChange={handleEditChange}
+                  onScroll={(e) => {
+                    if (editDraftMirrorRef.current) {
+                      editDraftMirrorRef.current.scrollTop =
+                        e.currentTarget.scrollTop;
+                    }
+                  }}
                   onKeyDown={(e) => {
+                    if (editSuggestions.length > 0) {
+                      if (e.key === "ArrowDown") {
+                        e.preventDefault();
+                        setEditActiveSuggestion(
+                          (i) => (i + 1) % editSuggestions.length,
+                        );
+                        return;
+                      }
+                      if (e.key === "ArrowUp") {
+                        e.preventDefault();
+                        setEditActiveSuggestion(
+                          (i) =>
+                            (i - 1 + editSuggestions.length) %
+                            editSuggestions.length,
+                        );
+                        return;
+                      }
+                      if (e.key === "Enter" || e.key === "Tab") {
+                        e.preventDefault();
+                        acceptEditSuggestion(
+                          editSuggestions[editActiveSuggestion].insert,
+                        );
+                        return;
+                      }
+                      if (e.key === "Escape") {
+                        e.preventDefault();
+                        setEditQuery(null);
+                        return;
+                      }
+                    }
+
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
                       void saveEdit();
@@ -1348,11 +1539,12 @@ function MessageRow({
                       e.preventDefault();
                       setIsEditing(false);
                       setEditDraft(message.content);
+                      setEditQuery(null);
                     }
                   }}
                   rows={1}
                   maxLength={MAX_LENGTH}
-                  className="box-border max-h-64 w-full resize-none overflow-y-auto border-none bg-transparent text-base leading-6 text-primary-text shadow-none field-sizing-content focus:outline-none"
+                  className="relative box-border max-h-64 w-full resize-none overflow-y-auto border-none bg-transparent text-base leading-6 text-transparent caret-primary-text shadow-none field-sizing-content focus:outline-none"
                 />
               </div>
               <p className="text-xs text-tertiary-text">
@@ -2354,6 +2546,7 @@ export function ConversationThread({
                             canDelete={canDelete}
                             profiles={profiles}
                             profileOf={profileOf}
+                            mentionCandidates={mentionCandidates}
                             toMentionIds={toMentionIds}
                             frequentEmojis={frequentEmojis}
                             allEmojis={allEmojis}

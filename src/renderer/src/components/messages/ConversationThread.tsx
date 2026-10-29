@@ -5,6 +5,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  useMemo,
 } from "react";
 import { Button } from "@renderer/components/ui/button";
 import { MessagesIcon } from "@renderer/components/NavBar";
@@ -107,7 +108,7 @@ import type { TradeOffer } from "@shared/trading";
 import type { UserProfile } from "@shared/user";
 import type { VipServerWithOwner } from "@shared/servers";
 import { track } from "@renderer/lib/analytics";
-import { transform, suggest } from "@dev-kas/emoji-shortcode-transform";
+import { createEmojiTransform } from "@dev-kas/emoji-shortcode-transform";
 
 const AVATAR_GROUP_GAP_MS = 5 * 60 * 1000;
 // Below this width (chat + member list), the member list stops taking room from the chat.
@@ -1010,6 +1011,8 @@ function MessageRow({
   isForMe,
   registerRef,
   showReadReceipt,
+  transform,
+  suggest,
 }: {
   message: DisplayMessage;
   showSenderInfo: boolean;
@@ -1039,6 +1042,8 @@ function MessageRow({
   isForMe: boolean;
   registerRef: (id: string, el: HTMLDivElement | null) => void;
   showReadReceipt: boolean;
+  transform: (text: string) => string;
+  suggest: (text: string, cursor: number) => string[];
 }): React.JSX.Element {
   const [isEditing, setIsEditing] = useState(false);
   const [editDraft, setEditDraft] = useState(message.content);
@@ -1985,6 +1990,11 @@ export function ConversationThread({
   const allEmojis = Object.values(emojis);
   const frequentEmojis = useFrequentEmojis(4);
 
+  const { transform, suggest } = useMemo(
+    () => createEmojiTransform(emojis),
+    [emojis],
+  );
+
   const [draft, setDraft] = useState("");
   const [composerQuery, setComposerQuery] = useState<ComposerQuery | null>(
     null,
@@ -2573,6 +2583,8 @@ export function ConversationThread({
                             }
                             registerRef={registerMessageRef}
                             showReadReceipt={index === lastMineIndex}
+                            transform={transform}
+                            suggest={suggest}
                           />
                         </Fragment>
                       );

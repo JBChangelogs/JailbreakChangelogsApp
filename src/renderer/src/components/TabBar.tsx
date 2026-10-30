@@ -1,241 +1,326 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Button } from '@renderer/components/ui/button'
-import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@renderer/components/ui/context-menu'
-import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from '@renderer/components/ui/popover'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
-import { TAB_INFO } from '@renderer/components/NavBar'
-import { useSettingsPage } from '@renderer/contexts/SettingsPageContext'
-import { SINGLE_INSTANCE_TABS, TAB_TYPES, useTabs, type TabType } from '@renderer/contexts/TabsContext'
-import { useUpdateStatus } from '@renderer/hooks/useUpdateStatus'
-import { getTabsNoticeVisible, setTabsNoticeVisible } from '@renderer/lib/localPreferences'
-import { cn } from '@renderer/lib/utils'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Button } from "@renderer/components/ui/button";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+  ContextMenuSeparator,
+} from "@renderer/components/ui/context-menu";
+import {
+  Popover,
+  PopoverAnchor,
+  PopoverContent,
+  PopoverTrigger,
+} from "@renderer/components/ui/popover";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@renderer/components/ui/tooltip";
+import { TAB_INFO } from "@renderer/components/NavBar";
+import { useSettingsPage } from "@renderer/contexts/SettingsPageContext";
+import {
+  SINGLE_INSTANCE_TABS,
+  TAB_TYPES,
+  useTabs,
+  type TabType,
+} from "@renderer/contexts/TabsContext";
+import { useUpdateStatus } from "@renderer/hooks/useUpdateStatus";
+import {
+  getTabsNoticeVisible,
+  setTabsNoticeVisible,
+} from "@renderer/lib/localPreferences";
+import { cn } from "@renderer/lib/utils";
 
-const CLOSE_ANIMATION_MS = 150
+const CLOSE_ANIMATION_MS = 150;
 
-const TAB_SHAPE_INSET = 1.5
+const TAB_SHAPE_INSET = 1.5;
 
-const DRAG_THRESHOLD = 5
+const DRAG_THRESHOLD = 5;
 
-const REORDER_ANIMATION: KeyframeAnimationOptions = { duration: 200, easing: 'cubic-bezier(0.2, 0, 0, 1)' }
-
+const REORDER_ANIMATION: KeyframeAnimationOptions = {
+  duration: 200,
+  easing: "cubic-bezier(0.2, 0, 0, 1)",
+};
 
 function PlusIcon({ className }: { className?: string }): React.JSX.Element {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.25}>
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.25}
+    >
       <path strokeLinecap="round" d="M12 5v14M5 12h14" />
     </svg>
-  )
+  );
 }
 
 interface DragLayout {
-  listLeft: number
-  min: number
-  max: number
-  naturalLeft: number
-  width: number
-  centers: { id: string; left: number; center: number }[]
+  listLeft: number;
+  min: number;
+  max: number;
+  naturalLeft: number;
+  width: number;
+  centers: { id: string; left: number; center: number }[];
 }
 
 export function TabBar(): React.JSX.Element {
-  const { tabs, activeTab, activate, open, close, closeTabs, move, meta, restorable, restore, dismissRestore } =
-    useTabs()
-  const [dragOrder, setDragOrder] = useState<string[] | null>(null)
+  const {
+    tabs,
+    activeTab,
+    activate,
+    open,
+    close,
+    closeTabs,
+    move,
+    meta,
+    restorable,
+    restore,
+    dismissRestore,
+  } = useTabs();
+  const [dragOrder, setDragOrder] = useState<string[] | null>(null);
   const orderedTabs = useMemo(() => {
-    if (!dragOrder) return tabs
-    const byId = new Map(tabs.map((tab) => [tab.id, tab]))
-    const ordered = dragOrder.flatMap((id) => byId.get(id) ?? [])
-    return ordered.length === tabs.length ? ordered : tabs
-  }, [tabs, dragOrder])
-  const settings = useSettingsPage()
-  const { status: updateStatus } = useUpdateStatus()
+    if (!dragOrder) return tabs;
+    const byId = new Map(tabs.map((tab) => [tab.id, tab]));
+    const ordered = dragOrder.flatMap((id) => byId.get(id) ?? []);
+    return ordered.length === tabs.length ? ordered : tabs;
+  }, [tabs, dragOrder]);
+  const settings = useSettingsPage();
+  const { status: updateStatus } = useUpdateStatus();
   const updating =
-    updateStatus?.state === 'downloading' ||
-    updateStatus?.state === 'downloaded' ||
-    (updateStatus?.state === 'available' && updateStatus.source === 'startup')
-  const [noticeOpen, setNoticeOpen] = useState(getTabsNoticeVisible)
+    updateStatus?.state === "downloading" ||
+    updateStatus?.state === "downloaded" ||
+    (updateStatus?.state === "available" && updateStatus.source === "startup");
+  const [noticeOpen, setNoticeOpen] = useState(getTabsNoticeVisible);
   const dismissNotice = (): void => {
-    setNoticeOpen(false)
-    setTabsNoticeVisible(false)
-  }
-  const [knownIds, setKnownIds] = useState<ReadonlySet<string>>(() => new Set(tabs.map((tab) => tab.id)))
-  const [entering, setEntering] = useState<ReadonlySet<string>>(new Set())
-  const added = tabs.filter((tab) => !knownIds.has(tab.id)).map((tab) => tab.id)
+    setNoticeOpen(false);
+    setTabsNoticeVisible(false);
+  };
+  const [knownIds, setKnownIds] = useState<ReadonlySet<string>>(
+    () => new Set(tabs.map((tab) => tab.id)),
+  );
+  const [entering, setEntering] = useState<ReadonlySet<string>>(new Set());
+  const added = tabs
+    .filter((tab) => !knownIds.has(tab.id))
+    .map((tab) => tab.id);
   if (added.length) {
-    setKnownIds(new Set([...knownIds, ...added]))
-    setEntering(new Set([...entering, ...added]))
+    setKnownIds(new Set([...knownIds, ...added]));
+    setEntering(new Set([...entering, ...added]));
   }
-  const [closing, setClosing] = useState<ReadonlySet<string>>(new Set())
-  const [pickerOpen, setPickerOpen] = useState(false)
-  const [menuHidden, setMenuHidden] = useState(false)
+  const [closing, setClosing] = useState<ReadonlySet<string>>(new Set());
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [menuHidden, setMenuHidden] = useState(false);
   const openMenu = (open: boolean): void => {
-    setPickerOpen(open)
-    if (open) setMenuHidden(false)
-  }
+    setPickerOpen(open);
+    if (open) setMenuHidden(false);
+  };
   const dismissMenu = (): void => {
-    setMenuHidden(true)
-    setPickerOpen(false)
-  }
-  const closable = tabs.length - closing.size > 1
-  const tabRefs = useRef(new Map<string, HTMLDivElement>())
-  const indicatorRef = useRef<HTMLDivElement>(null)
-  const placedOnce = useRef(false)
+    setMenuHidden(true);
+    setPickerOpen(false);
+  };
+  const closable = tabs.length - closing.size > 1;
+  const tabRefs = useRef(new Map<string, HTMLDivElement>());
+  const indicatorRef = useRef<HTMLDivElement>(null);
+  const placedOnce = useRef(false);
   const drag = useRef<{
-    id: string
-    pointerId: number
-    startX: number
-    startLeft: number
-    x: number
-    offset: number
-    moving: boolean
-    frame: number
-    layout: DragLayout | null
-  } | null>(null)
-  const lastPositions = useRef(new Map<string, number>())
-  const [draggingTabs, setDraggingTabs] = useState(false)
-  const plusRef = useRef<HTMLButtonElement>(null)
-  const [plusShift, setPlusShift] = useState(0)
+    id: string;
+    pointerId: number;
+    startX: number;
+    startLeft: number;
+    x: number;
+    offset: number;
+    moving: boolean;
+    frame: number;
+    layout: DragLayout | null;
+  } | null>(null);
+  const lastPositions = useRef(new Map<string, number>());
+  const [draggingTabs, setDraggingTabs] = useState(false);
+  const plusRef = useRef<HTMLButtonElement>(null);
+  const [plusShift, setPlusShift] = useState(0);
+  const [closedHistory, setClosedHistory] = useState<TabType[]>([]);
 
-  const snap = (value: number): number => Math.round(value * devicePixelRatio) / devicePixelRatio
+  const snap = (value: number): number =>
+    Math.round(value * devicePixelRatio) / devicePixelRatio;
 
   const placeIndicator = (animate: boolean): void => {
-    const indicator = indicatorRef.current
-    const el = tabRefs.current.get(activeTab.id)
-    const list = el?.parentElement
-    if (!indicator || !el || !list || drag.current?.moving) return
-    const shift = new DOMMatrix(getComputedStyle(el).transform).m41
-    const rect = el.getBoundingClientRect()
-    const listLeft = list.getBoundingClientRect().left
-    const left = snap(rect.left - shift + TAB_SHAPE_INSET)
-    const right = snap(rect.right - shift - TAB_SHAPE_INSET)
-    indicator.style.transition = animate && placedOnce.current ? '' : 'none'
-    indicator.style.transform = `translateX(${left - listLeft}px)`
-    indicator.style.width = `${right - left}px`
-    indicator.style.visibility = 'visible'
-    placedOnce.current = true
-  }
-  const placeIndicatorRef = useRef(placeIndicator)
-  placeIndicatorRef.current = placeIndicator
+    const indicator = indicatorRef.current;
+    const el = tabRefs.current.get(activeTab.id);
+    const list = el?.parentElement;
+    if (!indicator || !el || !list || drag.current?.moving) return;
+    const shift = new DOMMatrix(getComputedStyle(el).transform).m41;
+    const rect = el.getBoundingClientRect();
+    const listLeft = list.getBoundingClientRect().left;
+    const left = snap(rect.left - shift + TAB_SHAPE_INSET);
+    const right = snap(rect.right - shift - TAB_SHAPE_INSET);
+    indicator.style.transition = animate && placedOnce.current ? "" : "none";
+    indicator.style.transform = `translateX(${left - listLeft}px)`;
+    indicator.style.width = `${right - left}px`;
+    indicator.style.visibility = "visible";
+    placedOnce.current = true;
+  };
+  const placeIndicatorRef = useRef(placeIndicator);
+  placeIndicatorRef.current = placeIndicator;
 
   const measureDrag = (): void => {
-    const current = drag.current
-    const el = current && tabRefs.current.get(current.id)
-    const list = el?.parentElement
-    const plus = plusRef.current
-    if (!current || !el || !list || !plus) return
-    const style = getComputedStyle(list)
+    const current = drag.current;
+    const el = current && tabRefs.current.get(current.id);
+    const list = el?.parentElement;
+    const plus = plusRef.current;
+    if (!current || !el || !list || !plus) return;
+    const style = getComputedStyle(list);
     current.layout = {
       listLeft: list.getBoundingClientRect().left,
       min: parseFloat(style.paddingLeft),
-      max: list.clientWidth - parseFloat(style.paddingRight) - plus.offsetWidth - 4 - el.offsetWidth,
+      max:
+        list.clientWidth -
+        parseFloat(style.paddingRight) -
+        plus.offsetWidth -
+        4 -
+        el.offsetWidth,
       naturalLeft: el.offsetLeft,
       width: el.offsetWidth,
       centers: orderedTabs.map((tab) => {
-        const tabEl = tabRefs.current.get(tab.id)
+        const tabEl = tabRefs.current.get(tab.id);
         return {
           id: tab.id,
           left: tabEl?.offsetLeft ?? 0,
-          center: tabEl ? tabEl.offsetLeft + tabEl.offsetWidth / 2 : 0
-        }
-      })
-    }
-  }
+          center: tabEl ? tabEl.offsetLeft + tabEl.offsetWidth / 2 : 0,
+        };
+      }),
+    };
+  };
 
   const updateDrag = (): void => {
-    const current = drag.current
-    const layout = current?.layout
-    const el = current && tabRefs.current.get(current.id)
-    const indicator = indicatorRef.current
-    if (!current?.moving || !layout || !el) return
-    const left = Math.min(Math.max(current.startLeft + current.x - current.startX, layout.min), layout.max)
-    current.offset = left - layout.naturalLeft
-    el.style.transform = `translateX(${current.offset}px)`
+    const current = drag.current;
+    const layout = current?.layout;
+    const el = current && tabRefs.current.get(current.id);
+    const indicator = indicatorRef.current;
+    if (!current?.moving || !layout || !el) return;
+    const left = Math.min(
+      Math.max(current.startLeft + current.x - current.startX, layout.min),
+      layout.max,
+    );
+    current.offset = left - layout.naturalLeft;
+    el.style.transform = `translateX(${current.offset}px)`;
     if (indicator && current.id === activeTab.id) {
-      const shapeLeft = snap(layout.listLeft + left + TAB_SHAPE_INSET)
-      const shapeRight = snap(layout.listLeft + left + layout.width - TAB_SHAPE_INSET)
-      indicator.style.transform = `translateX(${shapeLeft - layout.listLeft}px)`
-      indicator.style.width = `${shapeRight - shapeLeft}px`
+      const shapeLeft = snap(layout.listLeft + left + TAB_SHAPE_INSET);
+      const shapeRight = snap(
+        layout.listLeft + left + layout.width - TAB_SHAPE_INSET,
+      );
+      indicator.style.transform = `translateX(${shapeLeft - layout.listLeft}px)`;
+      indicator.style.width = `${shapeRight - shapeLeft}px`;
     }
-    const center = left + layout.width / 2
-    const target = layout.centers.filter((tab) => tab.id !== current.id && tab.center < center).length
-    if (target === layout.centers.findIndex((tab) => tab.id === current.id)) return
-    lastPositions.current = new Map(layout.centers.map((tab) => [tab.id, tab.left]))
-    current.layout = null
-    const ids = layout.centers.map((tab) => tab.id).filter((tabId) => tabId !== current.id)
-    ids.splice(target, 0, current.id)
-    setDragOrder(ids)
-  }
-  const updateDragRef = useRef(updateDrag)
-  updateDragRef.current = updateDrag
-  const measureDragRef = useRef(measureDrag)
-  measureDragRef.current = measureDrag
+    const center = left + layout.width / 2;
+    const target = layout.centers.filter(
+      (tab) => tab.id !== current.id && tab.center < center,
+    ).length;
+    if (target === layout.centers.findIndex((tab) => tab.id === current.id))
+      return;
+    lastPositions.current = new Map(
+      layout.centers.map((tab) => [tab.id, tab.left]),
+    );
+    current.layout = null;
+    const ids = layout.centers
+      .map((tab) => tab.id)
+      .filter((tabId) => tabId !== current.id);
+    ids.splice(target, 0, current.id);
+    setDragOrder(ids);
+  };
+  const updateDragRef = useRef(updateDrag);
+  updateDragRef.current = updateDrag;
+  const measureDragRef = useRef(measureDrag);
+  measureDragRef.current = measureDrag;
 
   useLayoutEffect(() => {
-    const previous = lastPositions.current
+    const previous = lastPositions.current;
     tabRefs.current.forEach((el, id) => {
-      const before = previous.get(id)
-      if (before === undefined || id === drag.current?.id || before === el.offsetLeft) return
-      el.animate([{ transform: `translateX(${before - el.offsetLeft}px)` }, { transform: 'none' }], REORDER_ANIMATION)
-    })
-    lastPositions.current = new Map()
+      const before = previous.get(id);
+      if (
+        before === undefined ||
+        id === drag.current?.id ||
+        before === el.offsetLeft
+      )
+        return;
+      el.animate(
+        [
+          { transform: `translateX(${before - el.offsetLeft}px)` },
+          { transform: "none" },
+        ],
+        REORDER_ANIMATION,
+      );
+    });
+    lastPositions.current = new Map();
     if (drag.current?.moving) {
-      measureDragRef.current()
-      updateDragRef.current()
+      measureDragRef.current();
+      updateDragRef.current();
     }
-    placeIndicatorRef.current(true)
-    const observer = new ResizeObserver(() => placeIndicatorRef.current(true))
-    tabRefs.current.forEach((tabEl) => observer.observe(tabEl))
-    return () => observer.disconnect()
-  }, [activeTab.id, orderedTabs])
+    placeIndicatorRef.current(true);
+    const observer = new ResizeObserver(() => placeIndicatorRef.current(true));
+    tabRefs.current.forEach((tabEl) => observer.observe(tabEl));
+    return () => observer.disconnect();
+  }, [activeTab.id, orderedTabs]);
 
   const onDragMove = (e: PointerEvent): void => {
-    const current = drag.current
-    if (!current || current.pointerId !== e.pointerId) return
-    current.x = e.clientX
+    const current = drag.current;
+    if (!current || current.pointerId !== e.pointerId) return;
+    current.x = e.clientX;
     if (!current.moving) {
-      if (Math.abs(current.x - current.startX) < DRAG_THRESHOLD) return
-      current.moving = true
-      measureDrag()
-      if (indicatorRef.current) indicatorRef.current.style.transition = 'none'
-      const plus = plusRef.current
-      const layout = current.layout
+      if (Math.abs(current.x - current.startX) < DRAG_THRESHOLD) return;
+      current.moving = true;
+      measureDrag();
+      if (indicatorRef.current) indicatorRef.current.style.transition = "none";
+      const plus = plusRef.current;
+      const layout = current.layout;
       if (plus && layout) {
-        const el = tabRefs.current.get(current.id)
-        const list = el?.parentElement
-        const end = list ? list.getBoundingClientRect().right - parseFloat(getComputedStyle(list).paddingRight) : 0
-        setPlusShift(Math.max(0, end - plus.getBoundingClientRect().right))
+        const el = tabRefs.current.get(current.id);
+        const list = el?.parentElement;
+        const end = list
+          ? list.getBoundingClientRect().right -
+            parseFloat(getComputedStyle(list).paddingRight)
+          : 0;
+        setPlusShift(Math.max(0, end - plus.getBoundingClientRect().right));
       }
-      setDraggingTabs(true)
-      dismissMenu()
+      setDraggingTabs(true);
+      dismissMenu();
     }
-    if (current.frame) return
+    if (current.frame) return;
     current.frame = requestAnimationFrame(() => {
-      current.frame = 0
-      if (!current.layout) measureDragRef.current()
-      updateDragRef.current()
-    })
-  }
+      current.frame = 0;
+      if (!current.layout) measureDragRef.current();
+      updateDragRef.current();
+    });
+  };
 
   const endDrag = (): void => {
-    const current = drag.current
-    drag.current = null
-    if (!current?.moving) return
-    cancelAnimationFrame(current.frame)
-    if (dragOrder) move(current.id, dragOrder.indexOf(current.id))
-    setDragOrder(null)
-    setDraggingTabs(false)
-    setPlusShift(0)
-    const el = tabRefs.current.get(current.id)
-    if (!el) return
-    el.style.transform = ''
-    el.animate([{ transform: `translateX(${current.offset}px)` }, { transform: 'none' }], REORDER_ANIMATION)
-    placeIndicator(true)
-  }
-  const dragHandlers = useRef({ onDragMove, endDrag })
-  dragHandlers.current = { onDragMove, endDrag }
+    const current = drag.current;
+    drag.current = null;
+    if (!current?.moving) return;
+    cancelAnimationFrame(current.frame);
+    if (dragOrder) move(current.id, dragOrder.indexOf(current.id));
+    setDragOrder(null);
+    setDraggingTabs(false);
+    setPlusShift(0);
+    const el = tabRefs.current.get(current.id);
+    if (!el) return;
+    el.style.transform = "";
+    el.animate(
+      [{ transform: `translateX(${current.offset}px)` }, { transform: "none" }],
+      REORDER_ANIMATION,
+    );
+    placeIndicator(true);
+  };
+  const dragHandlers = useRef({ onDragMove, endDrag });
+  dragHandlers.current = { onDragMove, endDrag };
 
-  const startDrag = (e: React.PointerEvent<HTMLDivElement>, id: string): void => {
-    const list = e.currentTarget.parentElement
-    const pointerId = e.pointerId
+  const startDrag = (
+    e: React.PointerEvent<HTMLDivElement>,
+    id: string,
+  ): void => {
+    const list = e.currentTarget.parentElement;
+    const pointerId = e.pointerId;
     drag.current = {
       id,
       pointerId,
@@ -245,74 +330,153 @@ export function TabBar(): React.JSX.Element {
       offset: 0,
       moving: false,
       frame: 0,
-      layout: null
-    }
-    const onMove = (ev: PointerEvent): void => dragHandlers.current.onDragMove(ev)
+      layout: null,
+    };
+    const onMove = (ev: PointerEvent): void =>
+      dragHandlers.current.onDragMove(ev);
     const onEnd = (ev: PointerEvent): void => {
-      if (ev.pointerId !== pointerId) return
-      window.removeEventListener('pointermove', onMove)
-      window.removeEventListener('pointerup', onEnd)
-      window.removeEventListener('pointercancel', onEnd)
-      list?.removeEventListener('lostpointercapture', onEnd)
-      dragHandlers.current.endDrag()
-    }
-    window.addEventListener('pointermove', onMove)
-    window.addEventListener('pointerup', onEnd)
-    window.addEventListener('pointercancel', onEnd)
-    list?.setPointerCapture(pointerId)
-    list?.addEventListener('lostpointercapture', onEnd)
-  }
+      if (ev.pointerId !== pointerId) return;
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onEnd);
+      window.removeEventListener("pointercancel", onEnd);
+      list?.removeEventListener("lostpointercapture", onEnd);
+      dragHandlers.current.endDrag();
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onEnd);
+    window.addEventListener("pointercancel", onEnd);
+    list?.setPointerCapture(pointerId);
+    list?.addEventListener("lostpointercapture", onEnd);
+  };
 
   const select = (id: string): void => {
-    if (settings.isOpen) settings.close()
-    activate(id)
-  }
-
-  const startClose = (id: string): void => {
-    if (closing.has(id) || !closable) return
-    setClosing((prev) => new Set(prev).add(id))
-    setTimeout(() => {
-      close(id)
-      setClosing((prev) => {
-        const next = new Set(prev)
-        next.delete(id)
-        return next
-      })
-    }, CLOSE_ANIMATION_MS)
-  }
-
-  const closeMany = (ids: string[], keepId: string): void => {
-    const pending = ids.filter((id) => !closing.has(id))
-    if (pending.length === 0) return
-    setClosing((prev) => new Set([...prev, ...pending]))
-    setTimeout(() => {
-      closeTabs(pending, keepId)
-      setClosing((prev) => new Set([...prev].filter((id) => !pending.includes(id))))
-    }, CLOSE_ANIMATION_MS)
-  }
+    if (settings.isOpen) settings.close();
+    activate(id);
+  };
 
   const pick = (type: TabType): void => {
-    if (settings.isOpen) settings.close()
-    dismissMenu()
-    open(type, { newTab: true })
-  }
+    if (settings.isOpen) settings.close();
+    dismissMenu();
+    open(type, { newTab: true });
+  };
 
+  const startClose = (id: string): void => {
+    if (closing.has(id) || !closable) return;
+    const tabToClose = tabs.find((t) => t.id === id);
+    if (tabToClose) {
+      setClosedHistory((prev) => [...prev, tabToClose.type]);
+    }
+    setClosing((prev) => new Set(prev).add(id));
+    setTimeout(() => {
+      close(id);
+      setClosing((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }, CLOSE_ANIMATION_MS);
+  };
+
+  const closeMany = (ids: string[], keepId: string): void => {
+    const pending = ids.filter((id) => !closing.has(id));
+    if (pending.length === 0) return;
+    const typesToPush = tabs
+      .filter((t) => pending.includes(t.id))
+      .map((t) => t.type);
+    setClosedHistory((prev) => [...prev, ...typesToPush]);
+    setClosing((prev) => new Set([...prev, ...pending]));
+    setTimeout(() => {
+      closeTabs(pending, keepId);
+      setClosing(
+        (prev) => new Set([...prev].filter((id) => !pending.includes(id))),
+      );
+    }, CLOSE_ANIMATION_MS);
+  };
+
+  const restoreClosedTab = (): void => {
+    setClosedHistory((prev) => {
+      const next = [...prev];
+      while (next.length > 0) {
+        const type = next.pop()!;
+        if (
+          SINGLE_INSTANCE_TABS.has(type) &&
+          tabs.some((t) => t.type === type)
+        ) {
+          continue;
+        }
+        if (settings.isOpen) settings.close();
+        open(type, { newTab: true });
+        break;
+      }
+      return next;
+    });
+  };
+
+  const openDefaultTab = (): void => {
+    pick("values");
+  };
+
+  const shortcutsRef = useRef({
+    activeId: activeTab.id,
+    startClose,
+    restoreClosedTab,
+    openDefaultTab,
+  });
+  shortcutsRef.current = {
+    activeId: activeTab.id,
+    startClose,
+    restoreClosedTab,
+    openDefaultTab,
+  };
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent): void => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+
+      const key = e.key.toLowerCase();
+
+      // ctrl/cmd+w -> close tab
+      if ((key === "w" || e.code === "KeyW") && !e.shiftKey) {
+        e.preventDefault();
+        shortcutsRef.current.startClose(shortcutsRef.current.activeId);
+      }
+
+      // ctrl/cmd+t -> open values tab
+      if ((key === "t" || e.code === "KeyT") && !e.shiftKey) {
+        e.preventDefault();
+        shortcutsRef.current.openDefaultTab();
+      }
+
+      // ctrl/cmd+shift+t -> reopen closed tab
+      if ((key === "t" || e.code === "KeyT") && e.shiftKey) {
+        e.preventDefault();
+        shortcutsRef.current.restoreClosedTab();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
   return (
-    <div role="tablist" aria-label="Tabs" className="relative flex h-full min-w-0 flex-1 items-end pr-10 pl-2">
+    <div
+      role="tablist"
+      aria-label="Tabs"
+      className="relative flex h-full min-w-0 flex-1 items-end pr-10 pl-2"
+    >
       <div
         ref={indicatorRef}
         aria-hidden
-        style={{ visibility: 'hidden' }}
+        style={{ visibility: "hidden" }}
         className={cn(
-          'pointer-events-none absolute bottom-[-1px] left-0 z-[1] h-[32px] rounded-t-lg border border-b-0 border-border-primary bg-primary-bg before:absolute before:bottom-0 before:-left-[8px] before:size-2 before:bg-[radial-gradient(circle_at_0_0,transparent_6.75px,var(--color-border-primary)_7.25px,var(--color-border-primary)_7.75px,var(--color-primary-bg)_8.25px)] after:absolute after:-right-[8px] after:bottom-0 after:size-2 after:bg-[radial-gradient(circle_at_100%_0,transparent_6.75px,var(--color-border-primary)_7.25px,var(--color-border-primary)_7.75px,var(--color-primary-bg)_8.25px)]',
-          'transition-[transform,width] duration-200 ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none'
+          "pointer-events-none absolute bottom-[-1px] left-0 z-[1] h-[32px] rounded-t-lg border border-b-0 border-border-primary bg-primary-bg before:absolute before:bottom-0 before:-left-[8px] before:size-2 before:bg-[radial-gradient(circle_at_0_0,transparent_6.75px,var(--color-border-primary)_7.25px,var(--color-border-primary)_7.75px,var(--color-primary-bg)_8.25px)] after:absolute after:-right-[8px] after:bottom-0 after:size-2 after:bg-[radial-gradient(circle_at_100%_0,transparent_6.75px,var(--color-border-primary)_7.25px,var(--color-border-primary)_7.75px,var(--color-primary-bg)_8.25px)]",
+          "transition-[transform,width] duration-200 ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none",
         )}
       />
       {orderedTabs.map((tab, index) => {
-        const { Icon, label: typeLabel } = TAB_INFO[tab.type]
-        const active = tab.id === activeTab.id
-        const { title, badge } = meta[tab.id] ?? {}
-        const label = title || typeLabel
+        const { Icon, label: typeLabel } = TAB_INFO[tab.type];
+        const active = tab.id === activeTab.id;
+        const { title, badge } = meta[tab.id] ?? {};
+        const label = title || typeLabel;
         return (
           <ContextMenu key={tab.id}>
             <Tooltip delayDuration={500}>
@@ -320,8 +484,8 @@ export function TabBar(): React.JSX.Element {
                 <ContextMenuTrigger asChild>
                   <div
                     ref={(el) => {
-                      if (el) tabRefs.current.set(tab.id, el)
-                      else tabRefs.current.delete(tab.id)
+                      if (el) tabRefs.current.set(tab.id, el);
+                      else tabRefs.current.delete(tab.id);
                     }}
                     role="tab"
                     data-tab-type={tab.type}
@@ -329,97 +493,138 @@ export function TabBar(): React.JSX.Element {
                     tabIndex={active ? 0 : -1}
                     data-tauri-drag-region="false"
                     onPointerDown={(e) => {
-                      if (e.button === 1) e.preventDefault()
-                      if (e.button !== 0) return
-                      select(tab.id)
-                      startDrag(e, tab.id)
+                      if (e.button === 1) e.preventDefault();
+                      if (e.button !== 0) return;
+                      select(tab.id);
+                      startDrag(e, tab.id);
                     }}
                     onAuxClick={(e) => e.button === 1 && startClose(tab.id)}
                     onKeyDown={(e) => {
-                      if (e.key !== 'Enter' && e.key !== ' ') return
-                      e.preventDefault()
-                      select(tab.id)
+                      if (e.key !== "Enter" && e.key !== " ") return;
+                      e.preventDefault();
+                      select(tab.id);
                     }}
                     className={cn(
-                      'group relative -mb-px flex h-[32px] min-w-0 flex-[0_1_15rem] border border-b-0 border-transparent text-xs font-medium whitespace-nowrap transition-colors duration-200',
-                      active ? 'z-[2] text-primary-text' : 'text-secondary-text hover:text-primary-text',
-                      closing.has(tab.id)
-                        ? 'animate-tab-out pointer-events-none overflow-hidden'
-                        : entering.has(tab.id) && 'animate-tab-in overflow-hidden'
+                      "group relative flex h-full min-w-0 flex-[0_1_15rem] border border-b-0 border-transparent transition-colors duration-200",
                     )}
-                    onAnimationEnd={(e) => {
-                      if (e.target !== e.currentTarget || e.animationName !== 'tab-in') return
-                      setEntering((prev) => {
-                        const next = new Set(prev)
-                        next.delete(tab.id)
-                        return next
-                      })
-                    }}
                   >
-                    {!active && (
-                      <span
-                        aria-hidden
-                        className="pointer-events-none absolute inset-x-[1.5px] -top-px bottom-[4px] rounded-lg transition-colors group-hover:bg-quaternary-bg/50"
-                      />
-                    )}
-                    <span className="relative mb-[5px] flex min-w-0 flex-1 items-center gap-2 pr-[7px] pl-3">
-                      <span className="relative flex shrink-0 [&_svg]:h-4 [&_svg]:w-4">
-                        <Icon />
-                        {!!badge && !active && (
-                          <span className="absolute -top-1.5 -right-2 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-card-tag-bg px-0.5 text-[8px] font-semibold text-card-tag-text">
-                            {badge > 99 ? '99+' : badge}
-                          </span>
+                    <div
+                      className={cn(
+                        "flex h-[32px] w-full text-xs font-medium whitespace-nowrap transition-colors duration-200",
+                        active
+                          ? "z-[2] text-primary-text"
+                          : "text-secondary-text group-hover:text-primary-text",
+                        closing.has(tab.id)
+                          ? "animate-tab-out pointer-events-none overflow-hidden"
+                          : entering.has(tab.id) &&
+                              "animate-tab-in overflow-hidden",
+                      )}
+                      onAnimationEnd={(e) => {
+                        if (
+                          e.target !== e.currentTarget ||
+                          e.animationName !== "tab-in"
+                        )
+                          return;
+                        setEntering((prev) => {
+                          const next = new Set(prev);
+                          next.delete(tab.id);
+                          return next;
+                        });
+                      }}
+                    >
+                      {!active && (
+                        <span
+                          aria-hidden
+                          className="pointer-events-none absolute inset-x-[1.5px] top-[2px] bottom-[4px] rounded-lg transition-colors group-hover:bg-quaternary-bg/50"
+                        />
+                      )}
+                      <span className="relative mb-[-4px] flex min-w-0 flex-1 items-center gap-2 pr-[7px] pl-3">
+                        <span className="relative flex shrink-0 [&_svg]:h-4 [&_svg]:w-4">
+                          <Icon />
+                          {!!badge && !active && (
+                            <span className="absolute -top-1.5 -right-2 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-card-tag-bg px-0.5 text-[8px] font-semibold text-card-tag-text">
+                              {badge > 99 ? "99+" : badge}
+                            </span>
+                          )}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate">{label}</span>
+                        {closable && (
+                          <button
+                            type="button"
+                            aria-label={`Close ${label}`}
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              startClose(tab.id);
+                            }}
+                            className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-tertiary-text hover:bg-quaternary-bg hover:text-primary-text"
+                          >
+                            <PlusIcon className="h-4 w-4 rotate-45" />
+                          </button>
                         )}
                       </span>
-                      <span className="min-w-0 flex-1 truncate">{label}</span>
-                      {closable && (
-                        <button
-                          type="button"
-                          aria-label={`Close ${label}`}
-                          onPointerDown={(e) => e.stopPropagation()}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            startClose(tab.id)
-                          }}
-                          className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-tertiary-text hover:bg-quaternary-bg hover:text-primary-text"
-                        >
-                          <PlusIcon className="h-4 w-4 rotate-45" />
-                        </button>
-                      )}
-                    </span>
+                    </div>
                   </div>
                 </ContextMenuTrigger>
               </TooltipTrigger>
-              {!draggingTabs && <TooltipContent side="bottom">{label}</TooltipContent>}
+              {!draggingTabs && (
+                <TooltipContent side="bottom">{label}</TooltipContent>
+              )}
             </Tooltip>
             <ContextMenuContent className="w-48">
               <ContextMenuItem
+                disabled={closedHistory.length === 0}
+                onSelect={restoreClosedTab}
+              >
+                Reopen closed tab
+              </ContextMenuItem>
+              <ContextMenuSeparator />
+              <ContextMenuItem
                 disabled={orderedTabs.length < 2}
-                onSelect={() => closeMany(orderedTabs.filter((other) => other.id !== tab.id).map((other) => other.id), tab.id)}
+                onSelect={() =>
+                  closeMany(
+                    orderedTabs
+                      .filter((other) => other.id !== tab.id)
+                      .map((other) => other.id),
+                    tab.id,
+                  )
+                }
               >
                 Close other tabs
               </ContextMenuItem>
               <ContextMenuItem
                 disabled={index === 0}
-                onSelect={() => closeMany(orderedTabs.slice(0, index).map((other) => other.id), tab.id)}
+                onSelect={() =>
+                  closeMany(
+                    orderedTabs.slice(0, index).map((other) => other.id),
+                    tab.id,
+                  )
+                }
               >
                 Close tabs to the left
               </ContextMenuItem>
               <ContextMenuItem
                 disabled={index === orderedTabs.length - 1}
-                onSelect={() => closeMany(orderedTabs.slice(index + 1).map((other) => other.id), tab.id)}
+                onSelect={() =>
+                  closeMany(
+                    orderedTabs.slice(index + 1).map((other) => other.id),
+                    tab.id,
+                  )
+                }
               >
                 Close tabs to the right
               </ContextMenuItem>
             </ContextMenuContent>
           </ContextMenu>
-        )
+        );
       })}
       <span
         aria-hidden
         className={cn(
-          'h-4 w-px shrink-0 self-center bg-border-primary transition-opacity duration-150 [[role=tab]:hover+&]:opacity-0',
-          (orderedTabs[orderedTabs.length - 1]?.id === activeTab.id || draggingTabs) && 'opacity-0'
+          "h-4 w-px shrink-0 self-center bg-border-primary transition-opacity duration-150 [[role=tab]:hover+&]:opacity-0",
+          (orderedTabs[orderedTabs.length - 1]?.id === activeTab.id ||
+            draggingTabs) &&
+            "opacity-0",
         )}
       />
       <Popover open={pickerOpen} onOpenChange={openMenu}>
@@ -430,14 +635,25 @@ export function TabBar(): React.JSX.Element {
                 type="button"
                 aria-label="New tab"
                 ref={plusRef}
-                style={plusShift ? { transform: `translateX(${plusShift}px)` } : undefined}
+                style={
+                  plusShift
+                    ? { transform: `translateX(${plusShift}px)` }
+                    : undefined
+                }
                 data-tauri-drag-region="false"
                 className={cn(
-                  'mb-[5px] ml-1 flex h-6 w-6 shrink-0 items-center justify-center self-end rounded-full transition-[color,background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-quaternary-bg hover:text-primary-text motion-reduce:transition-none',
-                  pickerOpen ? 'bg-quaternary-bg text-primary-text' : 'text-secondary-text'
+                  "mb-[5px] ml-1 flex h-6 w-6 shrink-0 items-center justify-center self-end rounded-full transition-[color,background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-quaternary-bg hover:text-primary-text motion-reduce:transition-none",
+                  pickerOpen
+                    ? "bg-quaternary-bg text-primary-text"
+                    : "text-secondary-text",
                 )}
               >
-                <PlusIcon className={cn('h-4 w-4 transition-transform duration-200', pickerOpen && 'rotate-45')} />
+                <PlusIcon
+                  className={cn(
+                    "h-4 w-4 transition-transform duration-200",
+                    pickerOpen && "rotate-45",
+                  )}
+                />
               </button>
             </PopoverTrigger>
           </TooltipTrigger>
@@ -445,12 +661,14 @@ export function TabBar(): React.JSX.Element {
         </Tooltip>
         <PopoverContent
           align="start"
-          className={cn('w-60 p-1.5', menuHidden && 'invisible')}
+          className={cn("w-60 p-1.5", menuHidden && "invisible")}
           onCloseAutoFocus={(e) => e.preventDefault()}
         >
           {TAB_TYPES.map((type) => {
-            const { Icon, title } = TAB_INFO[type]
-            const alreadyOpen = SINGLE_INSTANCE_TABS.has(type) && tabs.some((tab) => tab.type === type)
+            const { Icon, title } = TAB_INFO[type];
+            const alreadyOpen =
+              SINGLE_INSTANCE_TABS.has(type) &&
+              tabs.some((tab) => tab.type === type);
             return (
               <button
                 key={type}
@@ -462,14 +680,21 @@ export function TabBar(): React.JSX.Element {
                   <Icon />
                 </span>
                 <span className="min-w-0 flex-1 truncate">{title}</span>
-                {alreadyOpen && <span className="text-xs text-tertiary-text">Open</span>}
+                {alreadyOpen && (
+                  <span className="text-xs text-tertiary-text">Open</span>
+                )}
               </button>
-            )
+            );
           })}
         </PopoverContent>
       </Popover>
-      <Popover open={noticeOpen && !restorable && !updating} onOpenChange={(next) => !next && dismissNotice()}>
-        <PopoverAnchor virtualRef={plusRef as React.RefObject<HTMLButtonElement>} />
+      <Popover
+        open={noticeOpen && !restorable && !updating}
+        onOpenChange={(next) => !next && dismissNotice()}
+      >
+        <PopoverAnchor
+          virtualRef={plusRef as React.RefObject<HTMLButtonElement>}
+        />
         <PopoverContent
           arrow
           align="start"
@@ -478,10 +703,14 @@ export function TabBar(): React.JSX.Element {
           onInteractOutside={(e) => e.preventDefault()}
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
-          <p className="text-sm font-semibold text-primary-text">Tabs are here</p>
+          <p className="text-sm font-semibold text-primary-text">
+            Tabs are here
+          </p>
           <p className="mt-1 text-xs text-secondary-text">
-            Use the + to open messages, trades, trackers, values, calculators and dupe finders. Your tabs are saved, so
-            you can pick up where you left off. Prefer the old sidebar? Switch back in Display settings anytime.
+            Use the + to open messages, trades, trackers, values, calculators
+            and dupe finders. Your tabs are saved, so you can pick up where you
+            left off. Prefer the old sidebar? Switch back in Display settings
+            anytime.
           </p>
           <div className="mt-3 flex justify-end gap-2">
             <Button
@@ -489,8 +718,8 @@ export function TabBar(): React.JSX.Element {
               size="sm"
               variant="secondary"
               onClick={() => {
-                dismissNotice()
-                settings.open('display')
+                dismissNotice();
+                settings.open("display");
               }}
             >
               Display settings
@@ -501,7 +730,10 @@ export function TabBar(): React.JSX.Element {
           </div>
         </PopoverContent>
       </Popover>
-      <Popover open={!!restorable && !updating} onOpenChange={(next) => !next && dismissRestore()}>
+      <Popover
+        open={!!restorable && !updating}
+        onOpenChange={(next) => !next && dismissRestore()}
+      >
         <PopoverAnchor className="pointer-events-none absolute bottom-0 left-2 h-px w-px" />
         <PopoverContent
           arrow
@@ -510,13 +742,21 @@ export function TabBar(): React.JSX.Element {
           onInteractOutside={(e) => e.preventDefault()}
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
-          <p className="text-sm font-semibold text-primary-text">Restore your tabs?</p>
+          <p className="text-sm font-semibold text-primary-text">
+            Restore your tabs?
+          </p>
           <p className="mt-1 text-xs text-secondary-text">
-            You also had {restorable?.length === 1 ? 'this tab' : 'these tabs'} open last time:{' '}
-            {restorable?.map((tab) => TAB_INFO[tab.type].label).join(', ')}.
+            You also had {restorable?.length === 1 ? "this tab" : "these tabs"}{" "}
+            open last time:{" "}
+            {restorable?.map((tab) => TAB_INFO[tab.type].label).join(", ")}.
           </p>
           <div className="mt-3 flex justify-end gap-2">
-            <Button type="button" size="sm" variant="secondary" onClick={dismissRestore}>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={dismissRestore}
+            >
               Cancel
             </Button>
             <Button type="button" size="sm" onClick={restore}>
@@ -526,5 +766,5 @@ export function TabBar(): React.JSX.Element {
         </PopoverContent>
       </Popover>
     </div>
-  )
+  );
 }

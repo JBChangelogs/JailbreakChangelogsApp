@@ -1,285 +1,385 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { useItems } from '@renderer/hooks/useItems'
-import { dupesApi, DupeUserNotFoundError, NoDupesFoundError } from '@renderer/lib/dupesApi'
-import { computeDuplicateInfo, getDupedValueForItem, mergeDupeFinderWithMetadata } from '@renderer/lib/dupeUtils'
-import type { DupeFinderItem, RobloxUserSummary } from '@shared/dupe'
-import type { Item } from '@shared/item'
-import { track } from '@renderer/lib/analytics'
-import { useTabState, useTabTitle } from '@renderer/contexts/TabsContext'
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useItems } from "@renderer/hooks/useItems";
+import {
+  dupesApi,
+  DupeUserNotFoundError,
+  NoDupesFoundError,
+} from "@renderer/lib/dupesApi";
+import {
+  computeDuplicateInfo,
+  getDupedValueForItem,
+  mergeDupeFinderWithMetadata,
+} from "@renderer/lib/dupeUtils";
+import type { DupeFinderItem, RobloxUserSummary } from "@shared/dupe";
+import type { Item } from "@shared/item";
+import { track } from "@renderer/lib/analytics";
+import { useTabState, useTabTitle } from "@renderer/contexts/TabsContext";
 
-export type SortOrder = 'duplicates' | 'alpha-asc' | 'alpha-desc' | 'created-asc' | 'created-desc' | 'duped-desc' | 'duped-asc'
+export type SortOrder =
+  | "duplicates"
+  | "alpha-asc"
+  | "alpha-desc"
+  | "created-asc"
+  | "created-desc"
+  | "duped-desc"
+  | "duped-asc";
 
 export const SORT_OPTIONS: readonly { value: SortOrder; label: string }[] = [
-  { value: 'duplicates', label: 'Duplicates First' },
-  { value: 'alpha-asc', label: 'Name (A-Z)' },
-  { value: 'alpha-desc', label: 'Name (Z-A)' },
-  { value: 'created-desc', label: 'Logged (Newest)' },
-  { value: 'created-asc', label: 'Logged (Oldest)' },
-  { value: 'duped-desc', label: 'Duped Value (High-Low)' },
-  { value: 'duped-asc', label: 'Duped Value (Low-High)' }
-]
+  { value: "duplicates", label: "Duplicates First" },
+  { value: "alpha-asc", label: "Name (A-Z)" },
+  { value: "alpha-desc", label: "Name (Z-A)" },
+  { value: "created-desc", label: "Logged (Newest)" },
+  { value: "created-asc", label: "Logged (Oldest)" },
+  { value: "duped-desc", label: "Duped Value (High-Low)" },
+  { value: "duped-asc", label: "Duped Value (Low-High)" },
+];
 
 export type SearchState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'not-found'; message: string }
-  | { status: 'no-dupes'; robloxId: string; user: RobloxUserSummary | null }
-  | { status: 'success'; robloxId: string; user: RobloxUserSummary | null; items: DupeFinderItem[] }
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "not-found"; message: string }
+  | { status: "no-dupes"; robloxId: string; user: RobloxUserSummary | null }
+  | {
+      status: "success";
+      robloxId: string;
+      user: RobloxUserSummary | null;
+      items: DupeFinderItem[];
+    };
 
 export type CompareState =
-  | { status: 'closed' }
-  | { status: 'loading' }
-  | { status: 'error'; message: string }
-  | { status: 'ready'; og: DupeFinderItem; duplicate: DupeFinderItem }
+  | { status: "closed" }
+  | { status: "loading" }
+  | { status: "error"; message: string }
+  | { status: "ready"; og: DupeFinderItem; duplicate: DupeFinderItem };
 
 export function currentOwnerId(item: DupeFinderItem, fallback: string): string {
-  return item.latest_owner || item.user_id || fallback
+  return item.latest_owner || item.user_id || fallback;
 }
 
 /** Who first owned this copy, as the dupe cards show it. */
-export function originalOwnerId(item: DupeFinderItem, fallback: string): string {
-  return item.info?.find((entry) => entry.title === 'Original Owner')?.value || fallback
+export function originalOwnerId(
+  item: DupeFinderItem,
+  fallback: string,
+): string {
+  return (
+    item.info?.find((entry) => entry.title === "Original Owner")?.value ||
+    fallback
+  );
 }
 
 interface DupeFinderContextValue {
-  state: SearchState
-  search: (input: string) => void
-  searchTerm: string
-  setSearchTerm: (value: string) => void
-  selectedCategories: Set<string>
-  toggleCategory: (category: string) => void
-  clearCategories: () => void
-  sortOrder: SortOrder
-  setSortOrder: (value: SortOrder) => void
-  categories: string[]
-  sortedData: DupeFinderItem[]
-  mergedDupeCount: number
-  totalDupedValue: number
-  duplicateCounts: Map<string, number>
-  duplicateOrders: Map<string, number>
-  itemsMap: Map<number, Item>
-  ownerProfiles: Record<string, RobloxUserSummary>
-  selectedItem: DupeFinderItem | null
-  selectItem: (item: DupeFinderItem | null) => void
-  compareState: CompareState
-  openCompare: (dupeFinderItemId: string) => void
-  closeCompare: () => void
+  state: SearchState;
+  search: (input: string) => void;
+  searchTerm: string;
+  setSearchTerm: (value: string) => void;
+  selectedCategories: Set<string>;
+  toggleCategory: (category: string) => void;
+  clearCategories: () => void;
+  sortOrder: SortOrder;
+  setSortOrder: (value: SortOrder) => void;
+  categories: string[];
+  sortedData: DupeFinderItem[];
+  mergedDupeCount: number;
+  totalDupedValue: number;
+  duplicateCounts: Map<string, number>;
+  duplicateOrders: Map<string, number>;
+  itemsMap: Map<number, Item>;
+  ownerProfiles: Record<string, RobloxUserSummary>;
+  selectedItem: DupeFinderItem | null;
+  selectItem: (item: DupeFinderItem | null) => void;
+  compareState: CompareState;
+  openCompare: (dupeFinderItemId: string) => void;
+  closeCompare: () => void;
 }
 
-const DupeFinderContext = createContext<DupeFinderContextValue | null>(null)
+const DupeFinderContext = createContext<DupeFinderContextValue | null>(null);
 
-export function DupeFinderProvider({ children }: { children: React.ReactNode }): React.JSX.Element {
-  const { items: itemsData } = useItems()
-  const [state, setState] = useState<SearchState>({ status: 'idle' })
-  const [searchTerm, setSearchTerm] = useState('')
-  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set())
-  const [sortOrder, setSortOrder] = useTabState<SortOrder>('dupefinder.sort', 'duplicates')
-  const [lastSearch, setLastSearch] = useTabState<string | null>('dupefinder.search', null)
-  const [ownerProfiles, setOwnerProfiles] = useState<Record<string, RobloxUserSummary>>({})
-  const [selectedItem, setSelectedItem] = useState<DupeFinderItem | null>(null)
-  const [compareState, setCompareState] = useState<CompareState>({ status: 'closed' })
+export function DupeFinderProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}): React.JSX.Element {
+  const { items: itemsData } = useItems();
+  const [state, setState] = useState<SearchState>({ status: "idle" });
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(
+    new Set(),
+  );
+  const [sortOrder, setSortOrder] = useTabState<SortOrder>(
+    "dupefinder.sort",
+    "duplicates",
+  );
+  const [lastSearch, setLastSearch] = useTabState<string | null>(
+    "dupefinder.search",
+    null,
+  );
+  const [ownerProfiles, setOwnerProfiles] = useState<
+    Record<string, RobloxUserSummary>
+  >({});
+  const [selectedItem, setSelectedItem] = useState<DupeFinderItem | null>(null);
+  const [compareState, setCompareState] = useState<CompareState>({
+    status: "closed",
+  });
 
-  const searchedLength = useRef(0)
+  const searchedLength = useRef(0);
   useEffect(() => {
-    if (state.status === 'idle' || state.status === 'loading') return
-    const results = state.status === 'success' ? state.items.length : 0
-    track('search', { surface: 'dupefinder', query_len: searchedLength.current, results })
-  }, [state])
+    if (state.status === "idle" || state.status === "loading") return;
+    const results = state.status === "success" ? state.items.length : 0;
+    track("search", {
+      surface: "dupefinder",
+      query_len: searchedLength.current,
+      results,
+    });
+  }, [state]);
 
   const search = (input: string): void => {
-    setLastSearch(input)
-    searchedLength.current = input.trim().length
-    setState({ status: 'loading' })
-    setSearchTerm('')
-    setSelectedCategories(new Set())
-    setOwnerProfiles({})
-    setSelectedItem(null)
-    setCompareState({ status: 'closed' })
-    void performSearch(input)
-  }
+    setLastSearch(input);
+    searchedLength.current = input.trim().length;
+    setState({ status: "loading" });
+    setSearchTerm("");
+    setSelectedCategories(new Set());
+    setOwnerProfiles({});
+    setSelectedItem(null);
+    setCompareState({ status: "closed" });
+    void performSearch(input);
+  };
 
   const selectItem = (item: DupeFinderItem | null): void => {
-    setSelectedItem(item)
-    if (!item) return
-    const missingIds = [...new Set(item.history.map((entry) => String(entry.UserId)))].filter(
-      (id) => !(id in ownerProfiles)
-    )
-    if (missingIds.length === 0) return
+    setSelectedItem(item);
+    if (!item) return;
+    const missingIds = [
+      ...new Set(item.history.map((entry) => String(entry.UserId))),
+    ].filter((id) => !(id in ownerProfiles));
+    if (missingIds.length === 0) return;
     dupesApi
       .fetchUsersBatch(missingIds)
       .then((batch) => setOwnerProfiles((prev) => ({ ...prev, ...batch })))
-      .catch(() => {
-      })
-  }
+      .catch(() => {});
+  };
 
   const openCompare = (dupeFinderItemId: string): void => {
-    setCompareState({ status: 'loading' })
+    setCompareState({ status: "loading" });
     dupesApi
       .fetchDuplicateVariants(dupeFinderItemId)
       .then((result) => {
         if (!result) {
-          setCompareState({ status: 'error', message: 'No matching variant found for this item.' })
-          return
+          setCompareState({
+            status: "error",
+            message: "No matching variant found for this item.",
+          });
+          return;
         }
-        setCompareState({ status: 'ready', og: result.og, duplicate: result.duplicate })
-        const ids = new Set<string>()
+        setCompareState({
+          status: "ready",
+          og: result.og,
+          duplicate: result.duplicate,
+        });
+        const ids = new Set<string>();
         for (const item of [result.og, result.duplicate]) {
-          ids.add(currentOwnerId(item, ''))
-          for (const entry of item.history) ids.add(String(entry.UserId))
+          ids.add(currentOwnerId(item, ""));
+          for (const entry of item.history) ids.add(String(entry.UserId));
         }
-        ids.delete('')
+        ids.delete("");
         dupesApi
           .fetchUsersBatch([...ids])
           .then((batch) => setOwnerProfiles((prev) => ({ ...prev, ...batch })))
-          .catch(() => {})
+          .catch(() => {});
       })
-      .catch(() => setCompareState({ status: 'error', message: 'Server error while comparing variants.' }))
-  }
+      .catch(() =>
+        setCompareState({
+          status: "error",
+          message: "Server error while comparing variants.",
+        }),
+      );
+  };
 
-  const closeCompare = (): void => setCompareState({ status: 'closed' })
+  const closeCompare = (): void => setCompareState({ status: "closed" });
 
   const performSearch = async (input: string): Promise<void> => {
-    const isUsername = !/^\d+$/.test(input)
-    let robloxId = input
+    const isUsername = !/^\d+$/.test(input);
+    let robloxId = input;
 
     if (isUsername) {
       try {
-        const user = await dupesApi.resolveUsername(input)
+        const user = await dupesApi.resolveUsername(input);
         if (!user) {
-          setState({ status: 'not-found', message: `Username "${input}" not found. Please check the spelling and try again.` })
-          return
+          setState({
+            status: "not-found",
+            message: `Username "${input}" not found. Please check the spelling and try again.`,
+          });
+          return;
         }
-        robloxId = String(user.id)
+        robloxId = String(user.id);
       } catch (err) {
         setState({
-          status: 'not-found',
+          status: "not-found",
           message:
             err instanceof DupeUserNotFoundError
               ? `Username "${input}" not found. Please check the spelling and try again.`
-              : 'Server error while looking up that username. Please try searching by Roblox ID instead.'
-        })
-        return
+              : "Server error while looking up that username. Please try searching by Roblox ID instead.",
+        });
+        return;
       }
     }
 
-    const searchedUserPromise = dupesApi.fetchUsersBatch([robloxId]).catch(() => ({}))
+    const searchedUserPromise = dupesApi
+      .fetchUsersBatch([robloxId])
+      .catch(() => ({}));
     try {
-      const dupeItems = await dupesApi.fetchUserDupes(robloxId)
-      const user = (await searchedUserPromise)[robloxId] ?? null
+      const dupeItems = await dupesApi.fetchUserDupes(robloxId);
+      const user = (await searchedUserPromise)[robloxId] ?? null;
 
       if (dupeItems.length === 0) {
-        setState({ status: 'no-dupes', robloxId, user })
-        return
+        setState({ status: "no-dupes", robloxId, user });
+        return;
       }
 
-      setState({ status: 'success', robloxId, user, items: dupeItems })
-      setOwnerProfiles((prev) => ({ ...prev, ...(user ? { [robloxId]: user } : {}) }))
+      setState({ status: "success", robloxId, user, items: dupeItems });
+      setOwnerProfiles((prev) => ({
+        ...prev,
+        ...(user ? { [robloxId]: user } : {}),
+      }));
 
       const ownerIds = [
-        ...new Set(dupeItems.flatMap((item) => [currentOwnerId(item, robloxId), originalOwnerId(item, robloxId)]))
-      ]
+        ...new Set(
+          dupeItems.flatMap((item) => [
+            currentOwnerId(item, robloxId),
+            originalOwnerId(item, robloxId),
+          ]),
+        ),
+      ];
       dupesApi
         .fetchUsersBatch(ownerIds)
         .then((batch) => setOwnerProfiles((prev) => ({ ...prev, ...batch })))
-        .catch(() => {
-        })
+        .catch(() => {});
     } catch (err) {
-      const user = (await searchedUserPromise)[robloxId] ?? null
+      const user = (await searchedUserPromise)[robloxId] ?? null;
       if (err instanceof NoDupesFoundError) {
-        setState({ status: 'no-dupes', robloxId, user })
+        setState({ status: "no-dupes", robloxId, user });
       } else {
-        setState({ status: 'not-found', message: 'Server error while fetching dupe data. Please try again later.' })
+        setState({
+          status: "not-found",
+          message:
+            "Server error while fetching dupe data. Please try again later.",
+        });
       }
     }
-  }
+  };
 
   useEffect(() => {
-    if (lastSearch) search(lastSearch)
-  }, [])
+    if (lastSearch) search(lastSearch);
+  }, []);
 
-  const searchedUser = state.status === 'success' || state.status === 'no-dupes' ? state.user : null
-  useTabTitle(searchedUser?.name ?? lastSearch ?? undefined)
+  const searchedUser =
+    state.status === "success" || state.status === "no-dupes"
+      ? state.user
+      : null;
+  const title = searchedUser?.name ?? lastSearch ?? undefined;
+  useTabTitle(title ? `Dupe Finder | ${title}` : undefined);
 
   const mergedDupeData = useMemo(
-    () => (state.status === 'success' ? mergeDupeFinderWithMetadata(state.items, itemsData) : []),
-    [state, itemsData]
-  )
+    () =>
+      state.status === "success"
+        ? mergeDupeFinderWithMetadata(state.items, itemsData)
+        : [],
+    [state, itemsData],
+  );
 
   const categories = useMemo(
     () => [...new Set(mergedDupeData.map((item) => item.categoryTitle))].sort(),
-    [mergedDupeData]
-  )
+    [mergedDupeData],
+  );
 
-  const itemsMap = useMemo(() => new Map(itemsData.map((item) => [item.id, item])), [itemsData])
+  const itemsMap = useMemo(
+    () => new Map(itemsData.map((item) => [item.id, item])),
+    [itemsData],
+  );
 
   const filteredData = useMemo(() => {
-    const query = searchTerm.trim().toLowerCase()
+    const query = searchTerm.trim().toLowerCase();
     return mergedDupeData.filter((item) => {
-      if (!itemsMap.has(item.item_id)) return false
+      if (!itemsMap.has(item.item_id)) return false;
       const matchesSearch =
-        !query || item.title.toLowerCase().includes(query) || item.categoryTitle.toLowerCase().includes(query)
-      const matchesCategory = selectedCategories.size === 0 || selectedCategories.has(item.categoryTitle)
-      return matchesSearch && matchesCategory
-    })
-  }, [mergedDupeData, itemsMap, searchTerm, selectedCategories])
+        !query ||
+        item.title.toLowerCase().includes(query) ||
+        item.categoryTitle.toLowerCase().includes(query);
+      const matchesCategory =
+        selectedCategories.size === 0 ||
+        selectedCategories.has(item.categoryTitle);
+      return matchesSearch && matchesCategory;
+    });
+  }, [mergedDupeData, itemsMap, searchTerm, selectedCategories]);
 
   const { counts: duplicateCounts, orders: duplicateOrders } = useMemo(
     () => computeDuplicateInfo(mergedDupeData),
-    [mergedDupeData]
-  )
-  const hasDuplicates = useMemo(() => [...duplicateCounts.values()].some((count) => count > 1), [duplicateCounts])
-  const effectiveSort: SortOrder = sortOrder === 'duplicates' && !hasDuplicates ? 'created-desc' : sortOrder
+    [mergedDupeData],
+  );
+  const hasDuplicates = useMemo(
+    () => [...duplicateCounts.values()].some((count) => count > 1),
+    [duplicateCounts],
+  );
+  const effectiveSort: SortOrder =
+    sortOrder === "duplicates" && !hasDuplicates ? "created-desc" : sortOrder;
 
   const sortedData = useMemo(() => {
     const dupedValue = (item: DupeFinderItem): number => {
-      const data = itemsMap.get(item.item_id)
-      return data ? getDupedValueForItem(data) : 0
-    }
+      const data = itemsMap.get(item.item_id);
+      return data ? getDupedValueForItem(data) : 0;
+    };
     return [...filteredData].sort((a, b) => {
       switch (effectiveSort) {
-        case 'duplicates': {
-          const aCount = duplicateCounts.get(`${a.categoryTitle}-${a.title}`) ?? 0
-          const bCount = duplicateCounts.get(`${b.categoryTitle}-${b.title}`) ?? 0
-          if (aCount > 1 && bCount === 1) return -1
-          if (aCount === 1 && bCount > 1) return 1
-          const cmp = a.title.localeCompare(b.title)
-          return cmp !== 0 ? cmp : a.id.localeCompare(b.id)
+        case "duplicates": {
+          const aCount =
+            duplicateCounts.get(`${a.categoryTitle}-${a.title}`) ?? 0;
+          const bCount =
+            duplicateCounts.get(`${b.categoryTitle}-${b.title}`) ?? 0;
+          if (aCount > 1 && bCount === 1) return -1;
+          if (aCount === 1 && bCount > 1) return 1;
+          const cmp = a.title.localeCompare(b.title);
+          return cmp !== 0 ? cmp : a.id.localeCompare(b.id);
         }
-        case 'alpha-asc':
-          return a.title.localeCompare(b.title)
-        case 'alpha-desc':
-          return b.title.localeCompare(a.title)
-        case 'created-asc':
-          return a.logged_at - b.logged_at
-        case 'created-desc':
-          return b.logged_at - a.logged_at
-        case 'duped-desc':
-          return dupedValue(b) - dupedValue(a)
-        case 'duped-asc':
-          return dupedValue(a) - dupedValue(b)
+        case "alpha-asc":
+          return a.title.localeCompare(b.title);
+        case "alpha-desc":
+          return b.title.localeCompare(a.title);
+        case "created-asc":
+          return a.logged_at - b.logged_at;
+        case "created-desc":
+          return b.logged_at - a.logged_at;
+        case "duped-desc":
+          return dupedValue(b) - dupedValue(a);
+        case "duped-asc":
+          return dupedValue(a) - dupedValue(b);
         default:
-          return 0
+          return 0;
       }
-    })
-  }, [filteredData, effectiveSort, duplicateCounts, itemsMap])
+    });
+  }, [filteredData, effectiveSort, duplicateCounts, itemsMap]);
 
   const totalDupedValue = useMemo(() => {
-    let total = 0
+    let total = 0;
     for (const dupeItem of mergedDupeData) {
-      const data = itemsMap.get(dupeItem.item_id)
-      if (data) total += getDupedValueForItem(data)
+      const data = itemsMap.get(dupeItem.item_id);
+      if (data) total += getDupedValueForItem(data);
     }
-    return total
-  }, [mergedDupeData, itemsMap])
+    return total;
+  }, [mergedDupeData, itemsMap]);
 
   const toggleCategory = (category: string): void => {
     setSelectedCategories((prev) => {
-      const next = new Set(prev)
-      if (next.has(category)) next.delete(category)
-      else next.add(category)
-      return next
-    })
-  }
+      const next = new Set(prev);
+      if (next.has(category)) next.delete(category);
+      else next.add(category);
+      return next;
+    });
+  };
 
   const value: DupeFinderContextValue = {
     state,
@@ -303,14 +403,19 @@ export function DupeFinderProvider({ children }: { children: React.ReactNode }):
     selectItem,
     compareState,
     openCompare,
-    closeCompare
-  }
+    closeCompare,
+  };
 
-  return <DupeFinderContext.Provider value={value}>{children}</DupeFinderContext.Provider>
+  return (
+    <DupeFinderContext.Provider value={value}>
+      {children}
+    </DupeFinderContext.Provider>
+  );
 }
 
 export function useDupeFinder(): DupeFinderContextValue {
-  const ctx = useContext(DupeFinderContext)
-  if (!ctx) throw new Error('useDupeFinder must be used within a DupeFinderProvider')
-  return ctx
+  const ctx = useContext(DupeFinderContext);
+  if (!ctx)
+    throw new Error("useDupeFinder must be used within a DupeFinderProvider");
+  return ctx;
 }

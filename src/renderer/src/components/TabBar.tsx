@@ -139,7 +139,6 @@ export function TabBar(): React.JSX.Element {
   const lastPositions = useRef(new Map<string, number>());
   const [draggingTabs, setDraggingTabs] = useState(false);
   const plusRef = useRef<HTMLButtonElement>(null);
-  const [plusShift, setPlusShift] = useState(0);
   const [closedHistory, setClosedHistory] = useState<TabType[]>([]);
 
   const snap = (value: number): number =>
@@ -168,18 +167,12 @@ export function TabBar(): React.JSX.Element {
     const current = drag.current;
     const el = current && tabRefs.current.get(current.id);
     const list = el?.parentElement;
-    const plus = plusRef.current;
-    if (!current || !el || !list || !plus) return;
+    if (!current || !el || !list) return;
     const style = getComputedStyle(list);
     current.layout = {
       listLeft: list.getBoundingClientRect().left,
       min: parseFloat(style.paddingLeft),
-      max:
-        list.clientWidth -
-        parseFloat(style.paddingRight) -
-        plus.offsetWidth -
-        4 -
-        el.offsetWidth,
+      max: list.scrollWidth - parseFloat(style.paddingRight) - el.offsetWidth,
       naturalLeft: el.offsetLeft,
       width: el.offsetWidth,
       centers: orderedTabs.map((tab) => {
@@ -272,17 +265,9 @@ export function TabBar(): React.JSX.Element {
       current.moving = true;
       measureDrag();
       if (indicatorRef.current) indicatorRef.current.style.transition = "none";
-      const plus = plusRef.current;
-      const layout = current.layout;
-      if (plus && layout) {
-        const el = tabRefs.current.get(current.id);
-        const list = el?.parentElement;
-        const end = list
-          ? list.getBoundingClientRect().right -
-            parseFloat(getComputedStyle(list).paddingRight)
-          : 0;
-        setPlusShift(Math.max(0, end - plus.getBoundingClientRect().right));
-      }
+      tabRefs.current
+        .get(current.id)
+        ?.scrollIntoView({ block: "nearest", inline: "nearest" });
       setDraggingTabs(true);
       dismissMenu();
     }
@@ -302,7 +287,6 @@ export function TabBar(): React.JSX.Element {
     if (dragOrder) move(current.id, dragOrder.indexOf(current.id));
     setDragOrder(null);
     setDraggingTabs(false);
-    setPlusShift(0);
     const el = tabRefs.current.get(current.id);
     if (!el) return;
     el.style.transform = "";
@@ -353,6 +337,12 @@ export function TabBar(): React.JSX.Element {
     if (settings.isOpen) settings.close();
     activate(id);
   };
+
+  useLayoutEffect(() => {
+    tabRefs.current
+      .get(activeTab.id)
+      ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [activeTab.id, orderedTabs]);
 
   const pick = (type: TabType): void => {
     if (settings.isOpen) settings.close();
@@ -461,163 +451,221 @@ export function TabBar(): React.JSX.Element {
     <div
       role="tablist"
       aria-label="Tabs"
-      className="relative flex h-full min-w-0 flex-1 items-end pr-10 pl-2"
+      className="relative flex h-full min-w-0 flex-1 pr-10 pl-2"
     >
       <div
-        ref={indicatorRef}
-        aria-hidden
-        style={{ visibility: "hidden" }}
-        className={cn(
-          "pointer-events-none absolute bottom-[-1px] left-0 z-[1] h-[32px] rounded-t-lg border border-b-0 border-border-primary bg-primary-bg before:absolute before:bottom-0 before:-left-[8px] before:size-2 before:bg-[radial-gradient(circle_at_0_0,transparent_6.75px,var(--color-border-primary)_7.25px,var(--color-border-primary)_7.75px,var(--color-primary-bg)_8.25px)] after:absolute after:-right-[8px] after:bottom-0 after:size-2 after:bg-[radial-gradient(circle_at_100%_0,transparent_6.75px,var(--color-border-primary)_7.25px,var(--color-border-primary)_7.75px,var(--color-primary-bg)_8.25px)]",
-          "transition-[transform,width] duration-200 ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none",
-        )}
-      />
-      {orderedTabs.map((tab, index) => {
-        const { Icon, label: typeLabel } = TAB_INFO[tab.type];
-        const active = tab.id === activeTab.id;
-        const { title, badge } = meta[tab.id] ?? {};
-        const label = title || typeLabel;
-        return (
-          <ContextMenu key={tab.id}>
-            <Tooltip delayDuration={500}>
-              <TooltipTrigger asChild>
-                <ContextMenuTrigger asChild>
-                  <div
-                    ref={(el) => {
-                      if (el) tabRefs.current.set(tab.id, el);
-                      else tabRefs.current.delete(tab.id);
-                    }}
-                    role="tab"
-                    data-tab-type={tab.type}
-                    aria-selected={active}
-                    tabIndex={active ? 0 : -1}
-                    data-tauri-drag-region="false"
-                    onPointerDown={(e) => {
-                      if (e.button === 1) e.preventDefault();
-                      if (e.button !== 0) return;
-                      select(tab.id);
-                      startDrag(e, tab.id);
-                    }}
-                    onAuxClick={(e) => e.button === 1 && startClose(tab.id)}
-                    onKeyDown={(e) => {
-                      if (e.key !== "Enter" && e.key !== " ") return;
-                      e.preventDefault();
-                      select(tab.id);
-                    }}
-                    className={cn(
-                      "group relative flex h-full min-w-0 flex-[0_1_15rem] border border-b-0 border-transparent transition-colors duration-200",
-                    )}
-                  >
-                    <div
-                      className={cn(
-                        "flex h-[32px] w-full text-xs font-medium whitespace-nowrap transition-colors duration-200",
-                        active
-                          ? "z-[2] text-primary-text"
-                          : "text-secondary-text group-hover:text-primary-text",
-                        closing.has(tab.id)
-                          ? "animate-tab-out pointer-events-none overflow-hidden"
-                          : entering.has(tab.id) &&
-                              "animate-tab-in overflow-hidden",
-                      )}
-                      onAnimationEnd={(e) => {
-                        if (
-                          e.target !== e.currentTarget ||
-                          e.animationName !== "tab-in"
-                        )
-                          return;
-                        setEntering((prev) => {
-                          const next = new Set(prev);
-                          next.delete(tab.id);
-                          return next;
-                        });
-                      }}
-                    >
-                      {!active && (
-                        <span
-                          aria-hidden
-                          className="pointer-events-none absolute inset-x-[1.5px] top-[2px] bottom-[4px] rounded-lg transition-colors group-hover:bg-quaternary-bg/50"
-                        />
-                      )}
-                      <span className="relative mb-[-4px] flex min-w-0 flex-1 items-center gap-2 pr-[7px] pl-3">
-                        <span className="relative flex shrink-0 [&_svg]:h-4 [&_svg]:w-4">
-                          <Icon />
-                          {!!badge && !active && (
-                            <span className="absolute -top-1.5 -right-2 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-card-tag-bg px-0.5 text-[8px] font-semibold text-card-tag-text">
-                              {badge > 99 ? "99+" : badge}
-                            </span>
-                          )}
-                        </span>
-                        <span className="min-w-0 flex-1 truncate">{label}</span>
-                        {closable && (
-                          <button
-                            type="button"
-                            aria-label={`Close ${label}`}
-                            onPointerDown={(e) => e.stopPropagation()}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              startClose(tab.id);
-                            }}
-                            className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-tertiary-text hover:bg-quaternary-bg hover:text-primary-text"
-                          >
-                            <PlusIcon className="h-4 w-4 rotate-45" />
-                          </button>
+        style={{
+          flexBasis: `${orderedTabs.length * 15}rem`,
+          scrollbarWidth: "none",
+        }}
+        className="h-[calc(100%+1px)] min-w-0 flex-[0_1_auto] overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:!hidden"
+        onWheel={(e) => {
+          if (!e.deltaY || e.deltaX) return;
+          e.currentTarget.scrollLeft += e.deltaY;
+          e.preventDefault();
+        }}
+        onScroll={(e) => {
+          const lastTabId = orderedTabs[orderedTabs.length - 1]?.id;
+          if (!lastTabId) return;
+          const lastTab = tabRefs.current.get(lastTabId);
+          if (!lastTab) return;
+          const maxScroll = Math.max(
+            0,
+            lastTab.offsetLeft +
+              lastTab.offsetWidth -
+              e.currentTarget.clientWidth,
+          );
+          if (e.currentTarget.scrollLeft > maxScroll)
+            e.currentTarget.scrollLeft = maxScroll;
+        }}
+      >
+        <div className="relative flex h-[calc(100%-1px)] min-w-full w-full items-end">
+          <div
+            ref={indicatorRef}
+            aria-hidden
+            style={{ visibility: "hidden" }}
+            className={cn(
+              "pointer-events-none absolute bottom-[-2px] left-0 z-[1] h-[32px] rounded-t-lg border border-b-0 border-border-primary bg-primary-bg shadow-[0_2px_0_var(--color-primary-bg)] before:absolute before:bottom-0 before:-left-[8px] before:size-2 before:bg-[radial-gradient(circle_at_0_0,transparent_6.75px,var(--color-border-primary)_7.25px,var(--color-border-primary)_7.75px,var(--color-primary-bg)_8.25px)] after:absolute after:-right-[8px] after:bottom-0 after:size-2 after:bg-[radial-gradient(circle_at_100%_0,transparent_6.75px,var(--color-border-primary)_7.25px,var(--color-border-primary)_7.75px,var(--color-primary-bg)_8.25px)]",
+              "transition-[transform,width] duration-200 ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none",
+            )}
+          />
+          {orderedTabs.map((tab, index) => {
+            const { Icon, label: typeLabel } = TAB_INFO[tab.type];
+            const active = tab.id === activeTab.id;
+            const { title, badge } = meta[tab.id] ?? {};
+            const label = title || typeLabel;
+            return (
+              <ContextMenu key={tab.id}>
+                <Tooltip delayDuration={500}>
+                  <TooltipTrigger asChild>
+                    <ContextMenuTrigger asChild>
+                      <div
+                        ref={(el) => {
+                          if (el) tabRefs.current.set(tab.id, el);
+                          else tabRefs.current.delete(tab.id);
+                        }}
+                        role="tab"
+                        data-tab-type={tab.type}
+                        aria-selected={active}
+                        tabIndex={active ? 0 : -1}
+                        data-tauri-drag-region="false"
+                        onPointerDown={(e) => {
+                          if (e.button === 1) e.preventDefault();
+                          if (e.button !== 0) return;
+                          select(tab.id);
+                          startDrag(e, tab.id);
+                        }}
+                        onAuxClick={(e) => e.button === 1 && startClose(tab.id)}
+                        onKeyDown={(e) => {
+                          if (e.key !== "Enter" && e.key !== " ") return;
+                          e.preventDefault();
+                          select(tab.id);
+                        }}
+                        className={cn(
+                          "group relative flex h-full @container min-w-10 flex-[0_1_15rem] overflow-hidden border border-b-0 border-transparent transition-colors duration-200",
+                          active && "min-w-12",
                         )}
-                      </span>
-                    </div>
-                  </div>
-                </ContextMenuTrigger>
-              </TooltipTrigger>
-              {!draggingTabs && (
-                <TooltipContent side="bottom">{label}</TooltipContent>
-              )}
-            </Tooltip>
-            <ContextMenuContent className="w-48">
-              <ContextMenuItem
-                disabled={closedHistory.length === 0}
-                onSelect={restoreClosedTab}
-              >
-                Reopen closed tab
-              </ContextMenuItem>
-              <ContextMenuSeparator />
-              <ContextMenuItem
-                disabled={orderedTabs.length < 2}
-                onSelect={() =>
-                  closeMany(
-                    orderedTabs
-                      .filter((other) => other.id !== tab.id)
-                      .map((other) => other.id),
-                    tab.id,
-                  )
-                }
-              >
-                Close other tabs
-              </ContextMenuItem>
-              <ContextMenuItem
-                disabled={index === 0}
-                onSelect={() =>
-                  closeMany(
-                    orderedTabs.slice(0, index).map((other) => other.id),
-                    tab.id,
-                  )
-                }
-              >
-                Close tabs to the left
-              </ContextMenuItem>
-              <ContextMenuItem
-                disabled={index === orderedTabs.length - 1}
-                onSelect={() =>
-                  closeMany(
-                    orderedTabs.slice(index + 1).map((other) => other.id),
-                    tab.id,
-                  )
-                }
-              >
-                Close tabs to the right
-              </ContextMenuItem>
-            </ContextMenuContent>
-          </ContextMenu>
-        );
-      })}
+                      >
+                        <div
+                          className={cn(
+                            "flex h-[32px] w-full text-xs font-medium whitespace-nowrap transition-colors duration-200",
+                            active
+                              ? "z-[2] text-primary-text"
+                              : "text-secondary-text group-hover:text-primary-text",
+                            closing.has(tab.id)
+                              ? "animate-tab-out pointer-events-none overflow-hidden"
+                              : entering.has(tab.id) &&
+                                  "animate-tab-in overflow-hidden",
+                          )}
+                          onAnimationEnd={(e) => {
+                            if (
+                              e.target !== e.currentTarget ||
+                              e.animationName !== "tab-in"
+                            )
+                              return;
+                            setEntering((prev) => {
+                              const next = new Set(prev);
+                              next.delete(tab.id);
+                              return next;
+                            });
+                          }}
+                        >
+                          {!active && (
+                            <span
+                              aria-hidden
+                              className="pointer-events-none absolute inset-x-[1.5px] top-[2px] bottom-[4px] rounded-lg transition-colors group-hover:bg-quaternary-bg/50"
+                            />
+                          )}
+                          <span
+                            className={cn(
+                              "relative mb-[-4px] flex min-w-0 flex-1 items-center gap-2 overflow-hidden pr-[7px] pl-3",
+                              active
+                                ? "@max-[48px]:justify-center @max-[48px]:p-0"
+                                : "@max-[40px]:justify-center @max-[40px]:p-0",
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                "relative flex shrink-0 [&_svg]:h-4 [&_svg]:w-4",
+                                active
+                                  ? "@max-[48px]:hidden"
+                                  : "@max-[40px]:absolute @max-[40px]:inset-0 @max-[40px]:items-center @max-[40px]:justify-center",
+                              )}
+                            >
+                              <Icon />
+                              {!!badge && !active && (
+                                <span className="absolute -top-1.5 -right-2 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-card-tag-bg px-0.5 text-[8px] font-semibold text-card-tag-text">
+                                  {badge > 99 ? "99+" : badge}
+                                </span>
+                              )}
+                            </span>
+                            <span
+                              className={cn(
+                                "min-w-0 flex-1 truncate",
+                                active
+                                  ? "@max-[48px]:hidden"
+                                  : "@max-[40px]:hidden",
+                              )}
+                            >
+                              {label}
+                            </span>
+                            {closable && (
+                              <button
+                                type="button"
+                                aria-label={`Close ${label}`}
+                                onPointerDown={(e) => e.stopPropagation()}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  startClose(tab.id);
+                                }}
+                                className={cn(
+                                  "flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-tertiary-text hover:bg-quaternary-bg hover:text-primary-text",
+                                  active
+                                    ? "@max-[48px]:absolute @max-[48px]:inset-0 @max-[48px]:m-auto"
+                                    : "@max-[40px]:hidden",
+                                )}
+                              >
+                                <PlusIcon className="h-4 w-4 rotate-45" />
+                              </button>
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    </ContextMenuTrigger>
+                  </TooltipTrigger>
+                  {!draggingTabs && (
+                    <TooltipContent side="bottom">{label}</TooltipContent>
+                  )}
+                </Tooltip>
+                <ContextMenuContent className="w-48">
+                  <ContextMenuItem
+                    disabled={closedHistory.length === 0}
+                    onSelect={restoreClosedTab}
+                  >
+                    Reopen closed tab
+                  </ContextMenuItem>
+                  <ContextMenuSeparator />
+                  <ContextMenuItem
+                    disabled={orderedTabs.length < 2}
+                    onSelect={() =>
+                      closeMany(
+                        orderedTabs
+                          .filter((other) => other.id !== tab.id)
+                          .map((other) => other.id),
+                        tab.id,
+                      )
+                    }
+                  >
+                    Close other tabs
+                  </ContextMenuItem>
+                  <ContextMenuItem
+                    disabled={index === 0}
+                    onSelect={() =>
+                      closeMany(
+                        orderedTabs.slice(0, index).map((other) => other.id),
+                        tab.id,
+                      )
+                    }
+                  >
+                    Close tabs to the left
+                  </ContextMenuItem>
+                  <ContextMenuItem
+                    disabled={index === orderedTabs.length - 1}
+                    onSelect={() =>
+                      closeMany(
+                        orderedTabs.slice(index + 1).map((other) => other.id),
+                        tab.id,
+                      )
+                    }
+                  >
+                    Close tabs to the right
+                  </ContextMenuItem>
+                </ContextMenuContent>
+              </ContextMenu>
+            );
+          })}
+        </div>
+      </div>
       <span
         aria-hidden
         className={cn(
@@ -635,11 +683,6 @@ export function TabBar(): React.JSX.Element {
                 type="button"
                 aria-label="New tab"
                 ref={plusRef}
-                style={
-                  plusShift
-                    ? { transform: `translateX(${plusShift}px)` }
-                    : undefined
-                }
                 data-tauri-drag-region="false"
                 className={cn(
                   "mb-[5px] ml-1 flex h-6 w-6 shrink-0 items-center justify-center self-end rounded-full transition-[color,background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-quaternary-bg hover:text-primary-text motion-reduce:transition-none",

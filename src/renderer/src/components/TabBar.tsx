@@ -1,10 +1,11 @@
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@renderer/components/ui/button";
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
+  ContextMenuSeparator,
 } from "@renderer/components/ui/context-menu";
 import {
   Popover,
@@ -139,6 +140,7 @@ export function TabBar(): React.JSX.Element {
   const [draggingTabs, setDraggingTabs] = useState(false);
   const plusRef = useRef<HTMLButtonElement>(null);
   const [plusShift, setPlusShift] = useState(0);
+  const [closedHistory, setClosedHistory] = useState<TabType[]>([]);
 
   const snap = (value: number): number =>
     Math.round(value * devicePixelRatio) / devicePixelRatio;
@@ -352,8 +354,18 @@ export function TabBar(): React.JSX.Element {
     activate(id);
   };
 
+  const pick = (type: TabType): void => {
+    if (settings.isOpen) settings.close();
+    dismissMenu();
+    open(type, { newTab: true });
+  };
+
   const startClose = (id: string): void => {
     if (closing.has(id) || !closable) return;
+    const tabToClose = tabs.find((t) => t.id === id);
+    if (tabToClose) {
+      setClosedHistory((prev) => [...prev, tabToClose.type]);
+    }
     setClosing((prev) => new Set(prev).add(id));
     setTimeout(() => {
       close(id);
@@ -368,6 +380,10 @@ export function TabBar(): React.JSX.Element {
   const closeMany = (ids: string[], keepId: string): void => {
     const pending = ids.filter((id) => !closing.has(id));
     if (pending.length === 0) return;
+    const typesToPush = tabs
+      .filter((t) => pending.includes(t.id))
+      .map((t) => t.type);
+    setClosedHistory((prev) => [...prev, ...typesToPush]);
     setClosing((prev) => new Set([...prev, ...pending]));
     setTimeout(() => {
       closeTabs(pending, keepId);
@@ -377,12 +393,70 @@ export function TabBar(): React.JSX.Element {
     }, CLOSE_ANIMATION_MS);
   };
 
-  const pick = (type: TabType): void => {
-    if (settings.isOpen) settings.close();
-    dismissMenu();
-    open(type, { newTab: true });
+  const restoreClosedTab = (): void => {
+    setClosedHistory((prev) => {
+      const next = [...prev];
+      while (next.length > 0) {
+        const type = next.pop()!;
+        if (
+          SINGLE_INSTANCE_TABS.has(type) &&
+          tabs.some((t) => t.type === type)
+        ) {
+          continue;
+        }
+        if (settings.isOpen) settings.close();
+        open(type, { newTab: true });
+        break;
+      }
+      return next;
+    });
   };
 
+  const openDefaultTab = (): void => {
+    pick("values");
+  };
+
+  const shortcutsRef = useRef({
+    activeId: activeTab.id,
+    startClose,
+    restoreClosedTab,
+    openDefaultTab,
+  });
+  shortcutsRef.current = {
+    activeId: activeTab.id,
+    startClose,
+    restoreClosedTab,
+    openDefaultTab,
+  };
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent): void => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+
+      const key = e.key.toLowerCase();
+
+      // ctrl/cmd+w -> close tab
+      if ((key === "w" || e.code === "KeyW") && !e.shiftKey) {
+        e.preventDefault();
+        shortcutsRef.current.startClose(shortcutsRef.current.activeId);
+      }
+
+      // ctrl/cmd+t -> open values tab
+      if ((key === "t" || e.code === "KeyT") && !e.shiftKey) {
+        e.preventDefault();
+        shortcutsRef.current.openDefaultTab();
+      }
+
+      // ctrl/cmd+shift+t -> reopen closed tab
+      if ((key === "t" || e.code === "KeyT") && e.shiftKey) {
+        e.preventDefault();
+        shortcutsRef.current.restoreClosedTab();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
   return (
     <div
       role="tablist"
@@ -498,6 +572,13 @@ export function TabBar(): React.JSX.Element {
               )}
             </Tooltip>
             <ContextMenuContent className="w-48">
+              <ContextMenuItem
+                disabled={closedHistory.length === 0}
+                onSelect={restoreClosedTab}
+              >
+                Reopen closed tab
+              </ContextMenuItem>
+              <ContextMenuSeparator />
               <ContextMenuItem
                 disabled={orderedTabs.length < 2}
                 onSelect={() =>

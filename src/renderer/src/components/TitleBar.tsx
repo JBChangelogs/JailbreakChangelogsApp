@@ -79,7 +79,8 @@ export function TitleBar({
   const startupUpdating =
     (updateStatus?.state === 'available' || updateStatus?.state === 'downloading' || updateStatus?.state === 'downloaded') &&
     updateStatus.source === 'startup'
-  const showTabs = canOpenSettings && mode === 'tabs' && !settingsOpen && !startupUpdating
+  const tabsLayout = canOpenSettings && mode === 'tabs' && !startupUpdating
+  const showTabs = tabsLayout && !settingsOpen
   const isMac = window.api.platform === 'darwin'
   const friends = useFriends()
   const incomingRequests = friends?.incoming.size ?? 0
@@ -94,7 +95,7 @@ export function TitleBar({
       className="flex h-9 shrink-0 select-none items-center border-b border-border-primary bg-secondary-bg"
       data-tauri-drag-region="deep"
     >
-      <div className={`flex shrink-0 items-center gap-2 px-3 text-xs font-semibold text-secondary-text ${isMac ? 'pl-20' : ''} ${showTabs ? 'h-[34px] w-64 self-end' : ''}`}>
+      <div className={`flex shrink-0 items-center gap-2 px-3 text-xs font-semibold text-secondary-text ${isMac ? 'pl-20' : ''} ${tabsLayout ? 'h-[34px] w-64 self-end' : ''}`}>
         <img src={appIcon} alt="" className="header-logo h-6 w-6 shrink-0" draggable={false} />
         <span className="text-primary-text">Jailbreak Changelogs</span>
         {canOpenSettings && !startupUpdating && (

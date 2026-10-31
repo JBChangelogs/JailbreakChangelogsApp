@@ -23,6 +23,7 @@ import { useSettingsPage } from "@renderer/contexts/SettingsPageContext";
 import {
   SINGLE_INSTANCE_TABS,
   TAB_TYPES,
+  useTabPreferences,
   useTabs,
   type TabType,
 } from "@renderer/contexts/TabsContext";
@@ -38,6 +39,10 @@ const CLOSE_ANIMATION_MS = 150;
 const TAB_SHAPE_INSET = 1.5;
 
 const DRAG_THRESHOLD = 5;
+
+const AUTOSCROLL_EDGE = 32;
+
+const AUTOSCROLL_SPEED = 12;
 
 const REORDER_ANIMATION: KeyframeAnimationOptions = {
   duration: 200,
@@ -89,6 +94,7 @@ export function TabBar(): React.JSX.Element {
     return ordered.length === tabs.length ? ordered : tabs;
   }, [tabs, dragOrder]);
   const settings = useSettingsPage();
+  const { newTabType } = useTabPreferences();
   const { status: updateStatus } = useUpdateStatus();
   const updating =
     updateStatus?.state === "downloading" ||
@@ -130,6 +136,8 @@ export function TabBar(): React.JSX.Element {
     pointerId: number;
     startX: number;
     startLeft: number;
+    scroller: HTMLElement | null;
+    startScroll: number;
     x: number;
     offset: number;
     moving: boolean;
@@ -137,7 +145,8 @@ export function TabBar(): React.JSX.Element {
     layout: DragLayout | null;
   } | null>(null);
   const lastPositions = useRef(new Map<string, number>());
-  const [draggingTabs, setDraggingTabs] = useState(false);
+  const [dragSpace, setDragSpace] = useState<number | null>(null);
+  const draggingTabs = dragSpace !== null;
   const plusRef = useRef<HTMLButtonElement>(null);
   const [closedHistory, setClosedHistory] = useState<TabType[]>([]);
 
@@ -169,10 +178,18 @@ export function TabBar(): React.JSX.Element {
     const list = el?.parentElement;
     if (!current || !el || !list) return;
     const style = getComputedStyle(list);
+    const last = tabRefs.current.get(orderedTabs[orderedTabs.length - 1].id);
     current.layout = {
       listLeft: list.getBoundingClientRect().left,
       min: parseFloat(style.paddingLeft),
-      max: list.scrollWidth - parseFloat(style.paddingRight) - el.offsetWidth,
+      max:
+        Math.max(
+          (last ? last.offsetLeft + last.offsetWidth : 0) +
+            parseFloat(style.paddingRight),
+          list.clientWidth,
+        ) -
+        parseFloat(style.paddingLeft) -
+        el.offsetWidth,
       naturalLeft: el.offsetLeft,
       width: el.offsetWidth,
       centers: orderedTabs.map((tab) => {
@@ -192,12 +209,26 @@ export function TabBar(): React.JSX.Element {
     const el = current && tabRefs.current.get(current.id);
     const indicator = indicatorRef.current;
     if (!current?.moving || !layout || !el) return;
+    const scrollLeft = current.scroller?.scrollLeft ?? 0;
+    const visibleRight = current.scroller
+      ? scrollLeft + current.scroller.clientWidth - layout.min - layout.width
+      : layout.max;
     const left = Math.min(
-      Math.max(current.startLeft + current.x - current.startX, layout.min),
+      Math.max(
+        current.startLeft +
+          current.x -
+          current.startX +
+          scrollLeft -
+          current.startScroll,
+        layout.min,
+        scrollLeft + layout.min,
+      ),
       layout.max,
+      visibleRight,
     );
     current.offset = left - layout.naturalLeft;
     el.style.transform = `translateX(${current.offset}px)`;
+    el.style.zIndex = "2";
     if (indicator && current.id === activeTab.id) {
       const shapeLeft = snap(layout.listLeft + left + TAB_SHAPE_INSET);
       const shapeRight = snap(
@@ -254,7 +285,7 @@ export function TabBar(): React.JSX.Element {
     const observer = new ResizeObserver(() => placeIndicatorRef.current(true));
     tabRefs.current.forEach((tabEl) => observer.observe(tabEl));
     return () => observer.disconnect();
-  }, [activeTab.id, orderedTabs]);
+  }, [activeTab.id, orderedTabs, draggingTabs]);
 
   const onDragMove = (e: PointerEvent): void => {
     const current = drag.current;
@@ -268,15 +299,31 @@ export function TabBar(): React.JSX.Element {
       tabRefs.current
         .get(current.id)
         ?.scrollIntoView({ block: "nearest", inline: "nearest" });
-      setDraggingTabs(true);
+      const scroller = current.scroller;
+      const end = scroller?.parentElement?.getBoundingClientRect().right;
+      setDragSpace(
+        scroller && end !== undefined
+          ? Math.max(0, end - scroller.getBoundingClientRect().right + 8)
+          : 0,
+      );
       dismissMenu();
     }
     if (current.frame) return;
-    current.frame = requestAnimationFrame(() => {
+    const tick = (): void => {
       current.frame = 0;
       if (!current.layout) measureDragRef.current();
+      const scroller = current.scroller;
+      const rect = scroller?.getBoundingClientRect();
+      const speed = rect
+        ? Math.max(0, Math.min(1, (current.x - rect.right) / AUTOSCROLL_EDGE + 1)) -
+          Math.max(0, Math.min(1, (rect.left - current.x) / AUTOSCROLL_EDGE + 1))
+        : 0;
+      if (scroller && speed) scroller.scrollLeft += speed * AUTOSCROLL_SPEED;
       updateDragRef.current();
-    });
+      if (speed && drag.current === current)
+        current.frame = requestAnimationFrame(tick);
+    };
+    current.frame = requestAnimationFrame(tick);
   };
 
   const endDrag = (): void => {
@@ -286,14 +333,14 @@ export function TabBar(): React.JSX.Element {
     cancelAnimationFrame(current.frame);
     if (dragOrder) move(current.id, dragOrder.indexOf(current.id));
     setDragOrder(null);
-    setDraggingTabs(false);
+    setDragSpace(null);
     const el = tabRefs.current.get(current.id);
     if (!el) return;
     el.style.transform = "";
     el.animate(
       [{ transform: `translateX(${current.offset}px)` }, { transform: "none" }],
       REORDER_ANIMATION,
-    );
+    ).onfinish = () => (el.style.zIndex = "");
     placeIndicator(true);
   };
   const dragHandlers = useRef({ onDragMove, endDrag });
@@ -310,6 +357,8 @@ export function TabBar(): React.JSX.Element {
       pointerId,
       startX: e.clientX,
       startLeft: e.currentTarget.offsetLeft,
+      scroller: list?.parentElement ?? null,
+      startScroll: list?.parentElement?.scrollLeft ?? 0,
       x: e.clientX,
       offset: 0,
       moving: false,
@@ -403,7 +452,7 @@ export function TabBar(): React.JSX.Element {
   };
 
   const openDefaultTab = (): void => {
-    pick("values");
+    pick(newTabType);
   };
 
   const shortcutsRef = useRef({
@@ -431,7 +480,7 @@ export function TabBar(): React.JSX.Element {
         shortcutsRef.current.startClose(shortcutsRef.current.activeId);
       }
 
-      // ctrl/cmd+t -> open values tab
+      // ctrl/cmd+t -> open new tab type from settings
       if ((key === "t" || e.code === "KeyT") && !e.shiftKey) {
         e.preventDefault();
         shortcutsRef.current.openDefaultTab();
@@ -455,10 +504,15 @@ export function TabBar(): React.JSX.Element {
     >
       <div
         style={{
-          flexBasis: `${orderedTabs.length * 15}rem`,
+          flexBasis: draggingTabs
+            ? `calc(${orderedTabs.length * 15 + 1}rem + ${dragSpace}px)`
+            : `${orderedTabs.length * 15 + 1}rem`,
+          marginRight: draggingTabs
+            ? `calc(-0.5rem - ${dragSpace}px)`
+            : undefined,
           scrollbarWidth: "none",
         }}
-        className="h-[calc(100%+1px)] min-w-0 flex-[0_1_auto] overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:!hidden"
+        className="-mx-2 h-[calc(100%+1px)] min-w-0 flex-[0_1_auto] scroll-px-2 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:!hidden"
         onWheel={(e) => {
           if (!e.deltaY || e.deltaX) return;
           e.currentTarget.scrollLeft += e.deltaY;
@@ -472,14 +526,24 @@ export function TabBar(): React.JSX.Element {
           const maxScroll = Math.max(
             0,
             lastTab.offsetLeft +
-              lastTab.offsetWidth -
+              lastTab.offsetWidth +
+              parseFloat(
+                getComputedStyle(lastTab.parentElement!).paddingRight,
+              ) -
               e.currentTarget.clientWidth,
           );
           if (e.currentTarget.scrollLeft > maxScroll)
             e.currentTarget.scrollLeft = maxScroll;
         }}
       >
-        <div className="relative flex h-[calc(100%-1px)] min-w-full w-full items-end">
+        <div
+          style={{
+            paddingRight: draggingTabs
+              ? `calc(0.5rem + ${dragSpace}px)`
+              : undefined,
+          }}
+          className="relative flex h-[calc(100%-1px)] min-w-full w-full items-end px-2"
+        >
           <div
             ref={indicatorRef}
             aria-hidden
@@ -553,7 +617,7 @@ export function TabBar(): React.JSX.Element {
                           {!active && (
                             <span
                               aria-hidden
-                              className="pointer-events-none absolute inset-x-[1.5px] top-[2px] bottom-[4px] rounded-lg transition-colors group-hover:bg-quaternary-bg/50"
+                              className="pointer-events-none absolute inset-x-[1.5px] top-[4px] bottom-[3px] rounded-lg transition-colors group-hover:bg-quaternary-bg/50"
                             />
                           )}
                           <span
@@ -685,7 +749,8 @@ export function TabBar(): React.JSX.Element {
                 ref={plusRef}
                 data-tauri-drag-region="false"
                 className={cn(
-                  "mb-[5px] ml-1 flex h-6 w-6 shrink-0 items-center justify-center self-end rounded-full transition-[color,background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-quaternary-bg hover:text-primary-text motion-reduce:transition-none",
+                  "mb-[5px] ml-1 flex h-6 w-6 shrink-0 items-center justify-center self-end rounded-full transition-[color,background-color,transform,opacity] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-quaternary-bg hover:text-primary-text motion-reduce:transition-none",
+                  draggingTabs && "pointer-events-none opacity-0",
                   pickerOpen
                     ? "bg-quaternary-bg text-primary-text"
                     : "text-secondary-text",
@@ -752,7 +817,7 @@ export function TabBar(): React.JSX.Element {
           <p className="mt-1 text-xs text-secondary-text">
             Use the + to open messages, trades, trackers, values, calculators
             and dupe finders. Your tabs are saved, so you can pick up where you
-            left off. Prefer the old sidebar? Switch back in Display settings
+            left off. Prefer the old sidebar? Switch back in App settings
             anytime.
           </p>
           <div className="mt-3 flex justify-end gap-2">
@@ -762,10 +827,10 @@ export function TabBar(): React.JSX.Element {
               variant="secondary"
               onClick={() => {
                 dismissNotice();
-                settings.open("display");
+                settings.open("app");
               }}
             >
-              Display settings
+              App settings
             </Button>
             <Button type="button" size="sm" onClick={dismissNotice}>
               Got it

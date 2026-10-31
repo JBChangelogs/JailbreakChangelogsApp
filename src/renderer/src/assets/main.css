@@ -1,6 +1,7 @@
 @layer theme, base, mui, components, utilities;
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "@fontsource-variable/geist";
 
 .ccpa-footer [data-ccpa-link] a,
 .ccpa-footer [data-ccpa-link] a span {
@@ -49,6 +50,7 @@
 }
 
 @theme {
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
   --color-primary-bg: #121317;
   --color-secondary-bg: #17181d;
   --color-tertiary-bg: #1c1e24;

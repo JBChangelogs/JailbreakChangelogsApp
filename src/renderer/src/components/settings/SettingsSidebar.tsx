@@ -177,6 +177,15 @@ export function UninstallDialog({
   )
 }
 
+export function AppWindowIcon({ className }: { className?: string }): React.JSX.Element {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path strokeLinecap="round" d="M3 9h18M7 6.5h.01M10 6.5h.01" />
+    </svg>
+  )
+}
+
 export function UserIcon({ className }: { className?: string }): React.JSX.Element {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -204,6 +213,7 @@ export function GiftIcon({ className }: { className?: string }): React.JSX.Eleme
 const SECTIONS: { id: SettingsSectionId; label: string; icon: (props: { className?: string }) => React.JSX.Element }[] = [
   { id: 'account', label: 'Profile', icon: UserIcon },
   { id: 'display', label: 'Display', icon: PaletteIcon },
+  { id: 'app', label: 'App', icon: AppWindowIcon },
   { id: 'privacy', label: 'Privacy', icon: ShieldIcon },
   { id: 'notifications', label: 'Notifications', icon: BellIcon },
   { id: 'richPresence', label: 'Rich Presence', icon: GamepadIcon },

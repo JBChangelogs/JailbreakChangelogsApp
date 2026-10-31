@@ -6,11 +6,12 @@ import {
   setSettingsPageSection
 } from '@renderer/lib/localPreferences'
 
-export type SettingsSectionId = 'account' | 'display' | 'privacy' | 'notifications' | 'richPresence' | 'gifts' | 'whatsNew'
+export type SettingsSectionId = 'account' | 'display' | 'app' | 'privacy' | 'notifications' | 'richPresence' | 'gifts' | 'whatsNew'
 
 const VALID_SECTIONS: readonly string[] = [
   'account',
   'display',
+  'app',
   'privacy',
   'notifications',
   'richPresence',

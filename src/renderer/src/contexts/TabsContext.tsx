@@ -70,8 +70,40 @@ interface NavigationModeValue {
   setMode: (mode: NavigationMode) => void
 }
 
+export type RestoreTabsMode = 'auto' | 'ask' | 'off'
+
+const RESTORE_TABS_MODES: readonly RestoreTabsMode[] = ['auto', 'ask', 'off']
+
+interface TabPreferencesValue {
+  newTabType: TabType
+  startTabType: TabType
+  restoreMode: RestoreTabsMode
+  setNewTabType: (type: TabType) => void
+  setStartTabType: (type: TabType) => void
+  setRestoreMode: (mode: RestoreTabsMode) => void
+}
+
 const STORAGE_KEY = 'jbcl:tabs'
 const TAB_STATE_PREFIX = 'jbcl:tab:'
+const NEW_TAB_TYPE_KEY = 'jbcl:new-tab-type'
+const START_TAB_TYPE_KEY = 'jbcl:start-tab-type'
+const RESTORE_TABS_KEY = 'jbcl:restore-tabs'
+
+function readPreference<T extends string>(key: string, valid: readonly T[], fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key)
+    return valid.includes(raw as T) ? (raw as T) : fallback
+  } catch {
+    return fallback
+  }
+}
+
+function writePreference(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value)
+  } catch {
+  }
+}
 
 const createTab = (type: TabType): Tab => ({ id: crypto.randomUUID(), type })
 
@@ -99,7 +131,7 @@ function loadSaved(): TabsState | null {
 }
 
 function freshState(): TabsState {
-  const first = createTab('messages')
+  const first = createTab(readPreference(START_TAB_TYPE_KEY, TAB_TYPES, 'messages'))
   return { tabs: [first], activeId: first.id }
 }
 
@@ -120,10 +152,13 @@ function clearTabState(id: string): void {
 
 function startup(): { state: TabsState; previous: TabsState | null } {
   const saved = loadSaved()
+  const restoreMode = readPreference(RESTORE_TABS_KEY, RESTORE_TABS_MODES, 'ask')
+  const tabsMode = getNavigationMode() === 'tabs'
   const savedIds = new Set(saved?.tabs.map((tab) => tab.id))
-  clearTabStates((id) => savedIds.has(id))
-  if (!saved || getNavigationMode() !== 'tabs') return { state: saved ?? freshState(), previous: null }
+  clearTabStates((id) => savedIds.has(id) && !(tabsMode && restoreMode === 'off'))
+  if (!saved || !tabsMode || restoreMode === 'auto') return { state: saved ?? freshState(), previous: null }
   const state = freshState()
+  if (restoreMode === 'off') return { state, previous: null }
   const openTypes = new Set(state.tabs.map((tab) => tab.type))
   const tabs = saved.tabs.filter((tab) => USER_TABS.has(tab.type) || !openTypes.has(tab.type))
   if (tabs.length === 0) return { state: saved, previous: null }
@@ -133,6 +168,23 @@ function startup(): { state: TabsState; previous: TabsState | null } {
 const TabsStateContext = createContext<TabsStateValue | null>(null)
 const TabActionsContext = createContext<TabActionsValue | null>(null)
 const NavigationModeContext = createContext<NavigationModeValue | null>(null)
+const TabPreferencesContext = createContext<TabPreferencesValue | null>(null)
+
+function usePreference<T extends string>(
+  key: string,
+  valid: readonly T[],
+  fallback: T
+): [T, (value: T) => void] {
+  const [value, setValue] = useState(() => readPreference(key, valid, fallback))
+  const set = useCallback(
+    (next: T) => {
+      setValue(next)
+      writePreference(key, next)
+    },
+    [key]
+  )
+  return [value, set]
+}
 
 export function TabsProvider({ children }: { children: React.ReactNode }): React.JSX.Element {
   const [initial] = useState(startup)
@@ -140,6 +192,9 @@ export function TabsProvider({ children }: { children: React.ReactNode }): React
   const [previous, setPrevious] = useState(initial.previous)
   const [meta, setMetaState] = useState<Record<string, TabMeta>>({})
   const [mode, setModeState] = useState<NavigationMode>(getNavigationMode)
+  const [newTabType, setNewTabType] = usePreference(NEW_TAB_TYPE_KEY, TAB_TYPES, 'values')
+  const [startTabType, setStartTabType] = usePreference(START_TAB_TYPE_KEY, TAB_TYPES, 'messages')
+  const [restoreMode, setRestoreMode] = usePreference(RESTORE_TABS_KEY, RESTORE_TABS_MODES, 'ask')
   const activeTab = state.tabs.find((tab) => tab.id === state.activeId) ?? state.tabs[0]
 
   useEffect(() => {
@@ -242,11 +297,17 @@ export function TabsProvider({ children }: { children: React.ReactNode }): React
     [activate, open, close, closeTabs, restore, dismissRestore, move, setMeta]
   )
   const modeValue = useMemo(() => ({ mode, setMode }), [mode, setMode])
+  const preferences = useMemo(
+    () => ({ newTabType, startTabType, restoreMode, setNewTabType, setStartTabType, setRestoreMode }),
+    [newTabType, startTabType, restoreMode, setNewTabType, setStartTabType, setRestoreMode]
+  )
 
   return (
     <TabActionsContext.Provider value={actions}>
       <NavigationModeContext.Provider value={modeValue}>
-        <TabsStateContext.Provider value={stateValue}>{children}</TabsStateContext.Provider>
+        <TabPreferencesContext.Provider value={preferences}>
+          <TabsStateContext.Provider value={stateValue}>{children}</TabsStateContext.Provider>
+        </TabPreferencesContext.Provider>
       </NavigationModeContext.Provider>
     </TabActionsContext.Provider>
   )
@@ -268,6 +329,10 @@ export function useTabActions(): TabActionsValue {
 
 export function useNavigationMode(): NavigationModeValue {
   return useRequired(NavigationModeContext)
+}
+
+export function useTabPreferences(): TabPreferencesValue {
+  return useRequired(TabPreferencesContext)
 }
 
 const TabIdContext = createContext('global')

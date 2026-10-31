@@ -29,6 +29,7 @@ export interface DesktopApi {
   platform: string
   openExternal: (url: string) => Promise<void>
   onProtocolUrl: (callback: (url: string) => void) => () => void
+  takePendingProtocolUrls: () => Promise<string[]>
   window: {
     minimize: () => void
     toggleMaximize: () => void

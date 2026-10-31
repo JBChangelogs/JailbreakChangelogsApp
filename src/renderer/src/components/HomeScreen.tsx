@@ -5,7 +5,9 @@ import { useConversations } from '@renderer/hooks/useConversations'
 import { useGroupChats } from '@renderer/hooks/useGroupChats'
 import { useNavigationHistory } from '@renderer/hooks/useNavigationHistory'
 import { useSettingsPage, type SettingsSectionId } from '@renderer/contexts/SettingsPageContext'
-import { parseChatKey } from '@renderer/lib/messagesApi'
+import { chatKey, parseChatKey } from '@renderer/lib/messagesApi'
+import { parseGroupInviteCode } from '@renderer/lib/groupInvites'
+import { GroupInviteDialog } from '@renderer/components/messages/GroupChatDialogs'
 import { useUnreadCount } from '@renderer/hooks/useUnreadCount'
 import { useCurrentUser } from '@renderer/hooks/useCurrentUser'
 import { useMessageToasts } from '@renderer/hooks/useMessageToasts'
@@ -135,6 +137,26 @@ export function HomeScreen(): React.JSX.Element {
 
   useTradeCompletedToasts(() => open('tradehistory'))
 
+  const [inviteCode, setInviteCode] = useState<string | null>(null)
+  useEffect(() => {
+    const takeInvites = (): void => {
+      void window.api.takePendingProtocolUrls().then((urls) => {
+        const code = (urls ?? []).map(parseGroupInviteCode).filter((c) => c !== null).at(-1)
+        if (code) setInviteCode(code)
+      })
+    }
+    takeInvites()
+    return window.api.onProtocolUrl(takeInvites)
+  }, [])
+
+  const openGroup = useCallback(
+    (groupId: string) => {
+      open('messages')
+      setSelectedId(chatKey({ kind: 'group', id: groupId }))
+    },
+    [open, setSelectedId]
+  )
+
   const reportedLocation = activeType === 'tracker' ? trackerView : activeType
   useEffect(() => {
     setLocation(reportedLocation)
@@ -256,6 +278,15 @@ export function HomeScreen(): React.JSX.Element {
           </BountyTrackerProvider>
         </RobberyTrackerProvider>
       </div>
+      <GroupInviteDialog
+        code={inviteCode}
+        onClose={() => setInviteCode(null)}
+        onJoined={(group) => {
+          upsertGroup(group)
+          openGroup(group.id)
+        }}
+        onOpenGroup={openGroup}
+      />
     </>
   )
 }

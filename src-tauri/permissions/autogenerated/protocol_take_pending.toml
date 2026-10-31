@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-protocol-take-pending"
+description = "Enables the protocol_take_pending command without any pre-configured scope."
+commands.allow = ["protocol_take_pending"]
+
+[[permission]]
+identifier = "deny-protocol-take-pending"
+description = "Denies the protocol_take_pending command without any pre-configured scope."
+commands.deny = ["protocol_take_pending"]

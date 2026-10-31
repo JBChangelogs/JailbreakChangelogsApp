@@ -24,6 +24,7 @@ const api: DesktopApi = {
   platform: window.__JBCL_PLATFORM__ ?? 'win32',
   openExternal: (url) => invoke('open_external', { url }),
   onProtocolUrl: (callback) => subscribe('protocol:url', callback),
+  takePendingProtocolUrls: () => invoke<string[]>('protocol_take_pending'),
   window: {
     minimize: () => void appWindow.minimize(),
     toggleMaximize: () => void appWindow.toggleMaximize(),

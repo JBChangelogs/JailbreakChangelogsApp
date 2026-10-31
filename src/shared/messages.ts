@@ -44,6 +44,21 @@ export interface GroupChatSummary extends GroupChat {
   message: MessageItem | null
 }
 
+export interface GroupInvite {
+  code: string
+  expires_in: number
+}
+
+export interface GroupInvitePreview {
+  id: string
+  name: string
+  owner_id: string
+  member_ids: string[]
+  member_count: number
+  max_members: number
+  is_member: boolean
+}
+
 export interface GroupChatsResponse {
   groups: GroupChatSummary[]
   total_groups: number

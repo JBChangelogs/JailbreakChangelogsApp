@@ -1,5 +1,6 @@
 const COMMANDS: &[&str] = &[
     "open_external",
+    "protocol_take_pending",
     "auth_login",
     "auth_get_token",
     "auth_logout",

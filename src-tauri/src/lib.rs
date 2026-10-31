@@ -45,6 +45,7 @@ static USER_AGENT: OnceLock<String> = OnceLock::new();
 static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
 static DEVTOOLS_ACCESS: Mutex<Option<(String, bool)>> = Mutex::new(None);
 static QUITTING: AtomicBool = AtomicBool::new(false);
+static PENDING_PROTOCOL_URLS: Mutex<Vec<String>> = Mutex::new(Vec::new());
 
 pub fn data_dir() -> &'static Path {
     DATA_DIR.get().expect("data dir is set in setup")
@@ -150,9 +151,10 @@ fn devtools_allowed() -> bool {
 }
 
 fn deliver_protocol_url(app: &AppHandle, url: &str) {
-    let _ = app.emit_to("main", "protocol:url", url);
     let Ok(parsed) = tauri::Url::parse(url) else { return };
     if parsed.host_str() != Some("auth") {
+        PENDING_PROTOCOL_URLS.lock().unwrap().push(url.to_string());
+        let _ = app.emit_to("main", "protocol:url", url);
         return;
     }
     let param = |name: &str| parsed.query_pairs().find(|(k, _)| k == name).map(|(_, v)| v.into_owned());
@@ -326,6 +328,11 @@ fn open_external(app: AppHandle, url: String) {
 }
 
 #[tauri::command]
+fn protocol_take_pending() -> Vec<String> {
+    std::mem::take(&mut *PENDING_PROTOCOL_URLS.lock().unwrap())
+}
+
+#[tauri::command]
 fn auth_login(app: AppHandle) {
     open_url(&app, OAUTH_LOGIN_URL);
 }
@@ -486,6 +493,7 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             open_external,
+            protocol_take_pending,
             auth_login,
             auth_get_token,
             auth_logout,

@@ -53,6 +53,7 @@ import {
 } from "@renderer/components/messages/UserAvatar";
 import {
   GroupMembersSidebar,
+  InviteLinkSection,
   RenameGroupDialog,
   MAX_GROUP_MEMBERS,
   profileDisplayName,
@@ -683,6 +684,7 @@ function OfferAcceptedCard({
 const GROUP_EVENT_TYPES = new Set([
   "group_renamed",
   "members_added",
+  "member_joined",
   "member_removed",
   "member_left",
 ]);
@@ -746,6 +748,13 @@ function GroupEventText({
         </>
       );
     }
+    case "member_joined":
+      return (
+        <>
+          {name(metadata.user_id ?? message.sender_id)} joined the group with
+          an invite link.
+        </>
+      );
     case "member_removed":
       return (
         <>
@@ -1111,7 +1120,7 @@ function MessageRow({
 
     if (typeof metaType === "string" && GROUP_EVENT_TYPES.has(metaType)) {
       const icon =
-        metaType === "members_added" ? (
+        metaType === "members_added" || metaType === "member_joined" ? (
           <ArrowIcon className="h-4.5 w-4.5 text-status-success" />
         ) : metaType === "group_renamed" ? (
           <EditIcon className="h-4.5 w-4.5 text-tertiary-text" />
@@ -2814,6 +2823,7 @@ export function ConversationThread({
           suggestedIds={suggestedUserIds}
           excludeIds={group.member_ids}
           maxSelect={MAX_GROUP_MEMBERS - group.member_ids.length}
+          footer={<InviteLinkSection groupId={group.id} />}
           onConfirm={async (users) => {
             if (!token) return;
             onGroupUpdated(

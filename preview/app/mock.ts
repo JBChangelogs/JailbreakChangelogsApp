@@ -168,6 +168,7 @@ const robberies = [
 /* ---------- Routes ---------- */
 
 type Handler = (url: URL, body: unknown, match: RegExpMatchArray) => unknown
+let inviteCode = 'K7MPX4QD'
 const conversation = (id: string): MessageItem[] => threads.get(id) ?? []
 const handlers: [string, RegExp, Handler][] = [
   ['GET', /^\/v2\/themes\/shared\/([A-Z0-9]+)$/i, (_url, _body, match) => customThemes.get(match[1].toUpperCase())],
@@ -212,6 +213,14 @@ const handlers: [string, RegExp, Handler][] = [
     groupThread.push(sent)
     return { success: true, message: sent }
   }],
+  ['POST', /^\/v2\/group-chats\/(\d+)\/invite$/, (_, __, m) => (m[1] === GROUP_ID ? { code: inviteCode, expires_in: 604800 } : undefined)],
+  ['DELETE', /^\/v2\/group-chats\/(\d+)\/invite$/, () => {
+    inviteCode = Math.random().toString(36).slice(2, 10).toUpperCase()
+    return { success: true }
+  }],
+  ['GET', /^\/v2\/group-chats\/invites\/(\w+)$/, (_, __, m) => m[1] === inviteCode
+    ? { id: group.id, name: group.name, owner_id: group.owner_id, member_ids: group.member_ids, member_count: group.member_ids.length, max_members: 10, is_member: true }
+    : undefined],
   ['GET', /^\/v2\/notifications\/unread-count$/, () => ({ unread_count: 0 })],
   ['GET', /^\/v2\/notifications(\/history)?$/, () => ({ items: [], total: 0, page: 1, total_pages: 0, size: 5 })],
   ['GET', /^\/v2\/trades$/, (u) => {
@@ -339,6 +348,7 @@ const subscribers = new Map<string, Set<(value: unknown) => void>>()
 const bridge: Record<string, unknown> = {
   platform: 'win32',
   'auth.getToken': async () => 'preview',
+  takePendingProtocolUrls: async () => (params.get('invite') ? [`jailbreakchangelogs://invite/${params.get('invite')}`] : []),
   'window.isMaximized': async () => false,
   'scanner.status': async () => ({ available: true, provider: 'preview' }),
   'scanner.getAuto': async () => ({ enabled: autoEnabled }),

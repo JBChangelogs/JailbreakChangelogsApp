@@ -6,12 +6,15 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui
 import { useAuth } from '@renderer/contexts/AuthContext'
 import { groupTypingKey, useRealtime } from '@renderer/contexts/RealtimeContext'
 import { useUserProfiles } from '@renderer/hooks/useUserProfiles'
-import { groupChatsApi, type GroupChat } from '@renderer/lib/messagesApi'
-import { UserAvatarWithPresence } from '@renderer/components/messages/UserAvatar'
+import { ApiRequestError, groupChatsApi, type GroupChat } from '@renderer/lib/messagesApi'
+import { groupInviteUrl } from '@renderer/lib/groupInvites'
+import { showToast } from '@renderer/lib/toast'
+import { GroupAvatar, UserAvatarWithPresence } from '@renderer/components/messages/UserAvatar'
 import { UserProfilePopover } from '@renderer/components/user/UserProfilePopover'
 import { UserNameSkeleton } from '@renderer/components/messages/UserNameSkeleton'
 import { useUserSearch } from '@renderer/components/messages/UserSearch'
 import type { UserProfile } from '@shared/user'
+import type { GroupInvite, GroupInvitePreview } from '@shared/messages'
 
 export const MAX_GROUP_MEMBERS = 10
 const MAX_GROUP_NAME_LENGTH = 64
@@ -76,6 +79,7 @@ interface UserPickerDialogProps {
   excludeIds?: string[]
   maxSelect: number
   askGroupName?: boolean
+  footer?: React.ReactNode
   onConfirm: (users: UserProfile[], groupName: string) => Promise<void>
 }
 
@@ -90,6 +94,7 @@ export function UserPickerDialog({
   excludeIds = [],
   maxSelect,
   askGroupName = false,
+  footer,
   onConfirm
 }: UserPickerDialogProps): React.JSX.Element {
   const [query, setQuery] = useState('')
@@ -140,7 +145,7 @@ export function UserPickerDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="h-[560px] max-w-md">
+      <DialogContent className={`${footer ? 'h-[680px]' : 'h-[560px]'} max-h-[calc(100vh-4rem)] max-w-md`}>
         <div className="shrink-0 px-5 pt-5 pb-3">
           <DialogTitle className="text-lg font-bold">{title}</DialogTitle>
           <p className="mt-1 text-sm text-tertiary-text">{subtitle}</p>
@@ -219,6 +224,7 @@ export function UserPickerDialog({
             {typeof confirmLabel === 'function' ? confirmLabel(selected.length) : confirmLabel}
           </Button>
         </div>
+        {footer && <div className="shrink-0 border-t border-border-primary p-5">{footer}</div>}
       </DialogContent>
     </Dialog>
   )
@@ -401,6 +407,209 @@ export function LeaveGroupDialog({
               {confirmDelete ? 'Delete Group' : 'Leave Group'}
             </Button>
           </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function formatExpiry(seconds: number): string {
+  const days = Math.round(seconds / 86400)
+  if (days >= 1) return `${days} ${days === 1 ? 'day' : 'days'}`
+  const hours = Math.max(1, Math.round(seconds / 3600))
+  return `${hours} ${hours === 1 ? 'hour' : 'hours'}`
+}
+
+export function InviteLinkSection({ groupId }: { groupId: string }): React.JSX.Element {
+  const { token } = useAuth()
+  const [invite, setInvite] = useState<GroupInvite | null>(null)
+  const [busy, setBusy] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!token) return
+    let cancelled = false
+    groupChatsApi
+      .createInvite(token, groupId)
+      .then((next) => !cancelled && setInvite(next))
+      .catch((err: unknown) => !cancelled && setError(errorMessage(err, 'Failed to load the invite link')))
+      .finally(() => !cancelled && setBusy(false))
+    return () => {
+      cancelled = true
+    }
+  }, [token, groupId])
+
+  const url = invite ? groupInviteUrl(invite.code) : ''
+
+  const copy = (): void => {
+    if (!url) return
+    void navigator.clipboard.writeText(url)
+    showToast('Invite link copied', { description: 'Anyone with the link can join until it expires.' })
+  }
+
+  const reset = async (): Promise<void> => {
+    if (!token) return
+    setBusy(true)
+    setError(null)
+    try {
+      await groupChatsApi.revokeInvite(token, groupId)
+      setInvite(await groupChatsApi.createInvite(token, groupId))
+      showToast('Invite link reset', { description: 'The old link no longer works.' })
+    } catch (err) {
+      setError(errorMessage(err, 'Failed to reset the invite link'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div>
+      <p className="text-sm font-semibold text-primary-text">Or, send an invite link</p>
+      <div className="mt-2 flex items-center gap-2 rounded-xl border border-border-card bg-secondary-bg py-1 pr-1 pl-3">
+        <input
+          readOnly
+          value={url}
+          placeholder={busy ? 'Making a link…' : ''}
+          aria-label="Invite link"
+          onFocus={(e) => e.currentTarget.select()}
+          className="min-w-0 flex-1 bg-transparent text-sm text-primary-text placeholder-secondary-text focus:outline-none"
+        />
+        <Button type="button" size="sm" className="shrink-0" onClick={copy} disabled={!url}>
+          Copy
+        </Button>
+      </div>
+      {error ? (
+        <p className="mt-1.5 text-xs text-form-error">{error}</p>
+      ) : (
+        invite && (
+          <p className="mt-1.5 text-xs text-tertiary-text">
+            Your invite link expires in {formatExpiry(invite.expires_in)}.{' '}
+            <button
+              type="button"
+              onClick={() => void reset()}
+              disabled={busy}
+              className="text-link hover:underline disabled:opacity-50"
+            >
+              Reset link
+            </button>
+          </p>
+        )
+      )}
+    </div>
+  )
+}
+
+function inviteErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof ApiRequestError) {
+    if (err.code === 'invite_not_found' || err.status === 404) return 'This invite link has expired or was reset.'
+    if (err.code === 'group_full') return 'This group is full.'
+    if (err.code === 'blocked') return "You can't join this group because you and one of its members have blocked each other."
+  }
+  return errorMessage(err, fallback)
+}
+
+interface GroupInviteDialogProps {
+  code: string | null
+  onClose: () => void
+  onJoined: (group: GroupChat) => void
+  onOpenGroup: (groupId: string) => void
+}
+
+export function GroupInviteDialog({ code, onClose, onJoined, onOpenGroup }: GroupInviteDialogProps): React.JSX.Element {
+  const { token } = useAuth()
+  const [preview, setPreview] = useState<GroupInvitePreview | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [joining, setJoining] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const profiles = useUserProfiles(preview?.member_ids ?? [])
+
+  useEffect(() => {
+    if (!code || !token) return
+    let cancelled = false
+    setPreview(null)
+    setError(null)
+    setLoading(true)
+    groupChatsApi
+      .previewInvite(token, code)
+      .then((next) => !cancelled && setPreview(next))
+      .catch((err: unknown) => !cancelled && setError(inviteErrorMessage(err, 'Failed to load this invite')))
+      .finally(() => !cancelled && setLoading(false))
+    return () => {
+      cancelled = true
+    }
+  }, [code, token])
+
+  const full = preview !== null && !preview.is_member && preview.member_count >= preview.max_members
+
+  const join = async (): Promise<void> => {
+    if (!token || !code || !preview) return
+    if (preview.is_member) {
+      onOpenGroup(preview.id)
+      onClose()
+      return
+    }
+    setJoining(true)
+    setError(null)
+    try {
+      onJoined(await groupChatsApi.joinInvite(token, code))
+      onClose()
+    } catch (err) {
+      setError(inviteErrorMessage(err, 'Failed to join the group'))
+    } finally {
+      setJoining(false)
+    }
+  }
+
+  return (
+    <Dialog open={code !== null} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>{preview ? (preview.is_member ? preview.name : `Join ${preview.name}?`) : 'Group invite'}</DialogTitle>
+        </DialogHeader>
+        <div className="px-5 py-4">
+          {preview ? (
+            <div className="flex items-center gap-3">
+              <GroupAvatar
+                groupId={preview.id}
+                memberIds={preview.member_ids}
+                fallbackIds={preview.member_ids}
+                profiles={profiles}
+                className="h-12 w-12"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-semibold text-primary-text">{preview.name}</p>
+                <p className="text-xs text-tertiary-text">
+                  {preview.member_count} of {preview.max_members} members
+                </p>
+                <p className="mt-0.5 truncate text-xs text-secondary-text">
+                  Owned by {displayName(preview.owner_id, profiles.get(preview.owner_id))}
+                </p>
+              </div>
+            </div>
+          ) : (
+            loading && (
+              <div className="flex items-center gap-3" aria-busy="true">
+                <div className="h-12 w-12 animate-pulse rounded-full bg-quaternary-bg" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3 w-1/2 animate-pulse rounded-full bg-quaternary-bg" />
+                  <div className="h-2.5 w-1/3 animate-pulse rounded-full bg-quaternary-bg" />
+                </div>
+              </div>
+            )
+          )}
+          {preview?.is_member && <p className="mt-3 text-sm text-secondary-text">You&apos;re already in this group.</p>}
+          {full && <p className="mt-3 text-xs text-form-error">This group is full.</p>}
+          {error && <p className="mt-3 text-xs text-form-error">{error}</p>}
+        </div>
+        <div className="flex shrink-0 justify-end gap-2 border-t border-border-primary p-5">
+          <Button type="button" variant="secondary" size="sm" onClick={onClose}>
+            {preview ? 'Cancel' : 'Close'}
+          </Button>
+          {preview && (
+            <Button type="button" size="sm" onClick={() => void join()} disabled={joining || full}>
+              {preview.is_member ? 'Open group' : joining ? 'Joining…' : 'Join group'}
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>

@@ -1,4 +1,11 @@
-import type { ConversationsResponse, ConversationPage, GroupChat, GroupChatsResponse } from '@shared/messages'
+import type {
+  ConversationsResponse,
+  ConversationPage,
+  GroupChat,
+  GroupChatsResponse,
+  GroupInvite,
+  GroupInvitePreview
+} from '@shared/messages'
 
 export type {
   MessageItem,
@@ -34,6 +41,16 @@ export function chatPath(target: ChatTarget): string {
 
 const API_BASE = 'https://api.jailbreakchangelogs.com'
 
+export class ApiRequestError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code: string | null
+  ) {
+    super(message)
+  }
+}
+
 async function request<T>(
   token: string,
   path: string,
@@ -50,12 +67,15 @@ async function request<T>(
 
   if (!res.ok) {
     let message = `Request failed (${res.status})`
+    let code: string | null = null
     try {
       const data = await res.json()
       if (typeof data?.message === 'string') message = data.message
+      const rawCode = data?.code ?? data?.error ?? data?.detail
+      if (typeof rawCode === 'string') code = rawCode
     } catch {
     }
-    throw new Error(message)
+    throw new ApiRequestError(message, res.status, code)
   }
 
   if (res.status === 204) return undefined as T
@@ -190,5 +210,17 @@ export const groupChatsApi = {
 
   // Pass your own id to leave.
   removeMember: (token: string, groupId: string, userId: string) =>
-    request<GroupChat>(token, `/v2/group-chats/${groupId}/members/${userId}`, { method: 'DELETE' })
+    request<GroupChat>(token, `/v2/group-chats/${groupId}/members/${userId}`, { method: 'DELETE' }),
+
+  createInvite: (token: string, groupId: string) =>
+    request<GroupInvite>(token, `/v2/group-chats/${groupId}/invite`, { method: 'POST' }),
+
+  revokeInvite: (token: string, groupId: string) =>
+    request<void>(token, `/v2/group-chats/${groupId}/invite`, { method: 'DELETE' }),
+
+  previewInvite: (token: string, code: string) =>
+    request<GroupInvitePreview>(token, `/v2/group-chats/invites/${encodeURIComponent(code)}`),
+
+  joinInvite: (token: string, code: string) =>
+    request<GroupChat>(token, `/v2/group-chats/invites/${encodeURIComponent(code)}`, { method: 'POST' })
 }

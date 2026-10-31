@@ -858,7 +858,14 @@ export function TabBar(): React.JSX.Element {
             open last time:{" "}
             {restorable?.map((tab) => TAB_INFO[tab.type].label).join(", ")}.
           </p>
-          <div className="mt-3 flex justify-end gap-2">
+          <div className="mt-3 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => settings.open("app")}
+              className="mr-auto text-xs font-medium text-secondary-text transition-colors hover:text-primary-text hover:underline"
+            >
+              Configure
+            </button>
             <Button
               type="button"
               size="sm"

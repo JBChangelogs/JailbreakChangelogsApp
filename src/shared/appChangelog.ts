@@ -61,6 +61,7 @@ export const APP_CHANGELOG: AppChangelogEntry[] = [
     date: '2026-10-30',
     added: [
       'App settings: choose the tab the app opens on, the tab Ctrl+T opens, and whether to restore your tabs always, never or ask each time',
+      'A Configure button on the restore tabs prompt opens these settings',
       'Group invite links: group owners can copy an invite link from Invite to Group, and reset it so the old link stops working',
       'Opening a group invite link shows the group with a Join button, and opens the group once you join',
       'Chats show when someone joins a group with an invite link',

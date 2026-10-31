@@ -57,6 +57,37 @@ export function notesSince(notes: string, currentVersion: string | undefined): s
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.8.6',
+    date: '2026-10-30',
+    added: [
+      'App settings: choose the tab the app opens on, the tab Ctrl+T opens, and whether to restore your tabs always, never or ask each time',
+      'Group invite links: group owners can copy an invite link from Invite to Group, and reset it so the old link stops working',
+      'Opening a group invite link shows the group with a Join button, and opens the group once you join',
+      'Chats show when someone joins a group with an invite link',
+      'Keyboard shortcuts for tabs: Ctrl+T opens a new tab, Ctrl+W closes the current tab and Ctrl+Shift+T reopens the last closed one (Cmd on macOS)',
+      'Reopen closed tab in the tab right-click menu',
+      '@mention and emoji suggestions while editing a message'
+    ],
+    changed: [
+      'The app uses the Geist font, matching the website',
+      'The Navigation setting moved from Display to the new App settings',
+      'Tab titles show the page followed by the item or user, like "Values | HyperShift"',
+      'Emoji suggestions tolerate typos and put the closest matches first',
+      'The tab bar scrolls sideways when there are more tabs than fit',
+      'Tabs can be dragged all the way to the end of the tab bar, which scrolls as you drag near its edges, and the + button hides while you drag'
+    ],
+    fixed: [
+      'Opening lots of tabs no longer breaks the tab bar',
+      'Tabs are easier to click',
+      'Tabs no longer look blank while you drag them',
+      'The rounded corner of the last tab is no longer cut off',
+      'The hover highlight on tabs lines up with the selected tab',
+      'The Friends button no longer moves when you open settings',
+      'Ctrl+P no longer opens the print window',
+      'Spacing at the top of the profile card in the Trade History sidebar'
+    ]
+  },
+  {
     version: '0.8.5',
     date: '2026-10-28',
     added: [

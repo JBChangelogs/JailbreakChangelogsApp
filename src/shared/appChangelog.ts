@@ -57,6 +57,11 @@ export function notesSince(notes: string, currentVersion: string | undefined): s
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.8.7',
+    date: '2026-11-04',
+    fixed: ['The trade scanner download no longer fails partway through on slower connections']
+  },
+  {
     version: '0.8.6',
     date: '2026-10-30',
     added: [

@@ -168,7 +168,7 @@ mod engine {
         if cfg!(debug_assertions) && local.is_file() {
             return fs::read(&local).map_err(|e| e.to_string());
         }
-        let mut res = crate::api_client().get(&pack.url).send().await.map_err(|e| e.to_string())?;
+        let mut res = crate::api_client().get(&pack.url).timeout(Duration::from_secs(30 * 60)).send().await.map_err(|e| e.to_string())?;
         if !res.status().is_success() {
             return Err(format!("download failed ({})", res.status()));
         }
@@ -236,6 +236,7 @@ mod engine {
             };
             if let Err(e) = result {
                 eprintln!("[scanner] install failed: {e}");
+                crate::analytics::track("scanner_install_failed", Some(json!({ "error": e.chars().take(300).collect::<String>() })));
                 return json!({ "available": false, "reason": "The scanner couldn't be downloaded. Please try again.", "installSize": pack_size() });
             }
         }

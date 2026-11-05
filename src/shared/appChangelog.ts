@@ -57,6 +57,14 @@ export function notesSince(notes: string, currentVersion: string | undefined): s
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.8.8',
+    date: '2026-11-05',
+    changed: [
+      'The app uses less memory and CPU while minimized on Windows',
+      'Times like "5m ago" update only when they change, so lists with many items use less CPU'
+    ]
+  },
+  {
     version: '0.8.7',
     date: '2026-11-04',
     fixed: ['The trade scanner download no longer fails partway through on slower connections']

@@ -101,6 +101,27 @@ fn focus_main(app: &AppHandle) {
     }
 }
 
+#[cfg(windows)]
+fn sync_memory_target(w: &WebviewWindow) {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use webview2_com::Microsoft::Web::WebView2::Win32::{
+        ICoreWebView2_19, COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW, COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_NORMAL,
+    };
+    use windows_core::Interface;
+    static LOW: AtomicBool = AtomicBool::new(false);
+    let low = w.is_minimized().unwrap_or(false);
+    if LOW.swap(low, Ordering::Relaxed) == low {
+        return;
+    }
+    let level = if low { COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW } else { COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_NORMAL };
+    let _ = w.with_webview(move |wv| unsafe {
+        let _ = wv.controller().SetIsVisible(!low);
+        if let Ok(core) = wv.controller().CoreWebView2().and_then(|c| c.cast::<ICoreWebView2_19>()) {
+            let _ = core.SetMemoryUsageTargetLevel(level);
+        }
+    });
+}
+
 fn is_allowed_external_url(url: &str) -> bool {
     let lower = url.to_ascii_lowercase();
     if lower.starts_with("http://") || lower.starts_with("https://") {
@@ -585,6 +606,12 @@ pub fn run() {
         RunEvent::Reopen { .. } => focus_main(app),
         RunEvent::WindowEvent { label, event: WindowEvent::Focused(false), .. } if label == "main" => {
             tauri::async_runtime::spawn(analytics::flush());
+        }
+        #[cfg(windows)]
+        RunEvent::WindowEvent { label, event: WindowEvent::Resized(_), .. } if label == "main" => {
+            if let Some(w) = main_window(app) {
+                sync_memory_target(&w);
+            }
         }
         RunEvent::ExitRequested { .. } => before_quit(),
         _ => {

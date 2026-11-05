@@ -2463,6 +2463,8 @@ dependencies = [
  "tokio",
  "uuid 1.28.0",
  "webkit2gtk",
+ "webview2-com",
+ "windows-core 0.62.2",
  "windows-sys 0.61.2",
  "windows-version",
  "xcap 0.4.1",

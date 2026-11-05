@@ -12,13 +12,27 @@ function formatRelative(unixSeconds: number): string {
   return `${days}d ago`
 }
 
+function msUntilLabelChanges(unixSeconds: number): number {
+  const diff = Math.max(0, Math.floor(Date.now() / 1000) - unixSeconds)
+  if (diff < 60) return 1000
+  const unit = diff < 3600 ? 60 : diff < 86400 ? 3600 : 86400
+  return (unit - (diff % unit)) * 1000
+}
+
 export function useRelativeTime(unixSeconds: number | null | undefined): string | null {
   const [, forceTick] = useState(0)
 
   useEffect(() => {
     if (unixSeconds == null) return undefined
-    const interval = setInterval(() => forceTick((n) => n + 1), 1000)
-    return () => clearInterval(interval)
+    let timeout: ReturnType<typeof setTimeout>
+    const schedule = (): void => {
+      timeout = setTimeout(() => {
+        forceTick((n) => n + 1)
+        schedule()
+      }, msUntilLabelChanges(unixSeconds))
+    }
+    schedule()
+    return () => clearTimeout(timeout)
   }, [unixSeconds])
 
   if (unixSeconds == null) return null

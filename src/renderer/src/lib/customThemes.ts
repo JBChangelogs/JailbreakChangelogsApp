@@ -182,6 +182,85 @@ export async function fetchSharedTheme(code: string): Promise<CustomTheme> {
   return theme
 }
 
+export interface MarketplaceTheme extends CustomTheme {
+  description: string | null
+  author: string
+}
+
+export interface MarketplacePage {
+  items: MarketplaceTheme[]
+  page: number
+  total: number
+  total_pages: number
+}
+
+export interface MarketplaceOption {
+  value: string
+  label: string
+}
+
+export interface MarketplaceFilterGroup {
+  group: string
+  filters: MarketplaceOption[]
+}
+
+export const DEFAULT_MARKETPLACE_SORTS: MarketplaceOption[] = [
+  { value: 'newest', label: 'Newest' },
+  { value: 'oldest', label: 'Oldest' }
+]
+
+export async function fetchMarketplaceSorts(): Promise<MarketplaceOption[]> {
+  const res = await fetch(`${API_BASE}/v2/themes/marketplace/sorts`)
+  if (!res.ok) throw new Error(`Request failed (${res.status})`)
+  const groups = (await res.json()) as { sorts?: MarketplaceOption[] }[]
+  const sorts = groups.flatMap((g) => g.sorts ?? [])
+  if (!sorts.length) throw new Error('No sorts')
+  return sorts
+}
+
+export async function fetchMarketplaceFilters(): Promise<MarketplaceFilterGroup[]> {
+  const res = await fetch(`${API_BASE}/v2/themes/marketplace/filters`)
+  if (!res.ok) throw new Error(`Request failed (${res.status})`)
+  const groups = (await res.json()) as MarketplaceFilterGroup[]
+  return Array.isArray(groups) ? groups.filter((g) => Array.isArray(g.filters) && g.filters.length) : []
+}
+
+export async function fetchMarketplaceThemes(
+  page: number,
+  sort: string,
+  query: string,
+  filters: string[],
+  creator: string | null,
+  signal?: AbortSignal
+): Promise<MarketplacePage> {
+  const params = new URLSearchParams({ page: String(page), sort })
+  if (query) params.set('query', query)
+  if (filters.length) params.set('filter', filters.join(','))
+  if (creator) params.set('creator', creator)
+  const res = await fetch(`${API_BASE}/v2/themes/marketplace${query ? '/search' : ''}?${params}`, { signal })
+  if (res.status === 429) throw new Error('Too many lookups. Try again in a minute.')
+  if (!res.ok) throw new Error(`Request failed (${res.status})`)
+  const data = (await res.json()) as {
+    items?: (Record<string, unknown> & { description?: unknown; user?: { username?: string; global_name?: string } | null })[]
+    page?: number
+    total?: number
+    total_pages?: number
+  }
+  const items = (data.items ?? []).flatMap((raw) => {
+    const theme = sanitizeCustomTheme(raw)
+    if (!theme) return []
+    const globalName = raw.user?.global_name && raw.user.global_name !== 'None' ? raw.user.global_name : undefined
+    return [
+      {
+        ...theme,
+        description: typeof raw.description === 'string' ? raw.description : null,
+        author: globalName ?? raw.user?.username ?? 'Unknown author'
+      }
+    ]
+  })
+  return { items, page: data.page ?? page, total: data.total ?? items.length, total_pages: data.total_pages ?? 1 }
+}
+
 export async function fetchMyThemes(token: string): Promise<CustomTheme[]> {
   const res = await fetch(`${API_BASE}/v2/users/me/themes`, { headers: { Authorization: token } })
   if (!res.ok) throw new Error(`Request failed (${res.status})`)

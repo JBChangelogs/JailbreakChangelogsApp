@@ -71,7 +71,13 @@ export function useUserSearch(query: string): {
   return { results, searchLoading, searchError, clearResults: () => setResults([]) }
 }
 
-export function UserSearch({ onSelect }: { onSelect: (user: UserProfile) => void }): React.JSX.Element {
+export function UserSearch({
+  onSelect,
+  placeholder = 'Find a Conversation'
+}: {
+  onSelect: (user: UserProfile) => void
+  placeholder?: string
+}): React.JSX.Element {
   const [query, setQuery] = useState('')
   const { results, searchLoading, searchError, clearResults } = useUserSearch(query)
   const [open, setOpen] = useState(false)
@@ -106,7 +112,7 @@ export function UserSearch({ onSelect }: { onSelect: (user: UserProfile) => void
             setOpen(true)
           }}
           onFocus={() => setOpen(true)}
-          placeholder="Find a Conversation"
+          placeholder={placeholder}
           className="h-10 w-full rounded-xl border border-border-card bg-secondary-bg py-2 pr-8 pl-9 text-sm text-primary-text placeholder-secondary-text transition-colors focus:border-button-info focus:outline-none"
         />
         {query && (
@@ -139,8 +145,11 @@ export function UserSearch({ onSelect }: { onSelect: (user: UserProfile) => void
                   className="flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-quaternary-bg"
                 >
                   <UserAvatar id={user.id} profile={user} className="h-8 w-8" />
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-primary-text">
-                    {user.username || user.name}
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium text-primary-text">
+                      {(user.global_name && user.global_name !== 'None' ? user.global_name : user.name) || user.username}
+                    </span>
+                    {user.username && <span className="block truncate text-xs text-secondary-text">@{user.username}</span>}
                   </span>
                 </button>
               ))

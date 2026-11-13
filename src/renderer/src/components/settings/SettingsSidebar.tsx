@@ -210,9 +210,18 @@ export function GiftIcon({ className }: { className?: string }): React.JSX.Eleme
   )
 }
 
+function StoreIcon({ className }: { className?: string }): React.JSX.Element {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 9 4.5 4h15L21 9M3 9h18M3 9a3 3 0 0 0 6 0m0 0a3 3 0 0 0 6 0m0 0a3 3 0 0 0 6 0M5 12v8h14v-8M10 20v-5h4v5" />
+    </svg>
+  )
+}
+
 const SECTIONS: { id: SettingsSectionId; label: string; icon: (props: { className?: string }) => React.JSX.Element }[] = [
   { id: 'account', label: 'Profile', icon: UserIcon },
   { id: 'display', label: 'Display', icon: PaletteIcon },
+  { id: 'themes', label: 'Theme Marketplace', icon: StoreIcon },
   { id: 'app', label: 'App', icon: AppWindowIcon },
   { id: 'privacy', label: 'Privacy', icon: ShieldIcon },
   { id: 'notifications', label: 'Notifications', icon: BellIcon },

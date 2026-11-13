@@ -27,6 +27,7 @@ import {
   parseShareCode,
   type CustomTheme
 } from '@renderer/lib/customThemes'
+import { useSettingsPage } from '@renderer/contexts/SettingsPageContext'
 
 // Laid out like the website's Settings → Themes, minus the editor: making and editing themes
 // stays on the website, so those actions link there.
@@ -37,7 +38,7 @@ const shareUrl = (code: string): string => `https://jailbreakchangelogs.com/?the
  * The theme's colors: dots for its main colors on its page background, each named in a
  * tooltip. Hidden from screen readers; the label names the theme.
  */
-function ThemePreview({ theme }: { theme: SiteTheme }): React.JSX.Element {
+export function ThemePreview({ theme }: { theme: SiteTheme }): React.JSX.Element {
   const page = themeColor(theme, '--color-primary-bg')
   const text = themeColor(theme, '--color-primary-text')
   const dots = [
@@ -193,7 +194,7 @@ function CustomThemeMenu({
  * A pasted theme, tried on the whole app before using it, like the website's shared-theme sheet.
  * Unmounting (Cancel, or leaving the page) puts the theme in use back.
  */
-function SharedThemePreview({
+export function SharedThemePreview({
   theme,
   inUse,
   onUse,
@@ -359,6 +360,7 @@ export function DisplaySettingsSection(): React.JSX.Element {
   const [error, setError] = useState<string | null>(null)
   const [previewing, setPreviewing] = useState<CustomTheme | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
+  const { setSection } = useSettingsPage()
 
   useEffect(() => {
     if (!token) return
@@ -448,6 +450,15 @@ export function DisplaySettingsSection(): React.JSX.Element {
             action={
               <Button type="button" variant="secondary" onClick={() => void window.api.openExternal(SITE_THEMES_URL)}>
                 Create on website
+              </Button>
+            }
+          />
+          <SettingRow
+            title="Theme marketplace"
+            description="Browse themes the community has published."
+            action={
+              <Button type="button" variant="secondary" onClick={() => setSection('themes')}>
+                Browse themes
               </Button>
             }
           />

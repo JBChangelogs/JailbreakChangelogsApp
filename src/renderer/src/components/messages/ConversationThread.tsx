@@ -49,6 +49,12 @@ import {
 import { Emoji, EmojiText } from "@renderer/components/messages/Emoji";
 import { useMessageDraft } from "@renderer/lib/messageDrafts";
 import {
+  AttachmentTray,
+  copyMessageImage,
+  MessageImageGrid,
+  useImageAttachments,
+} from "@renderer/components/messages/MessageImages";
+import {
   GroupAvatar,
   UserAvatar,
   UserAvatarWithPresence,
@@ -1064,6 +1070,15 @@ function MessageRow({
   }, [editDraft]);
 
   const [isContextMenuOpen, setIsContextMenuOpen] = useState(false);
+  const [contextImage, setContextImage] = useState<string | null>(null);
+  const messageImages =
+    message.metadata?.type === "images" && Array.isArray(message.metadata.images)
+      ? message.metadata.images.filter(
+          (url): url is string => typeof url === "string",
+        )
+      : [];
+  const copyImageUrl =
+    contextImage ?? (messageImages.length === 1 ? messageImages[0] : null);
   const isPending = message.status === "sending";
   const isRead = isMine && showReadReceipt && message.read_at != null;
 
@@ -1092,7 +1107,7 @@ function MessageRow({
   }, [isRead, message.id]);
   const isFailed = message.status === "failed";
 
-  if (message.metadata) {
+  if (message.metadata && message.metadata.type !== "images") {
     const metadata = message.metadata;
     const metaType = metadata.type;
 
@@ -1379,7 +1394,10 @@ function MessageRow({
                 >
                   {mentionsToText(parentMessage.content, (id) =>
                     profileLabel(profileOf(id)),
-                  ) || "(a message)"}
+                  ) ||
+                    (parentMessage.metadata?.type === "images"
+                      ? "Image"
+                      : "(a message)")}
                 </button>
               </>
             ) : (
@@ -1576,6 +1594,7 @@ function MessageRow({
             </div>
           ) : (
             <>
+              {(message.content || message.metadata?.type !== "images") && (
               <p
                 className={`text-base leading-[1.375rem] whitespace-pre-wrap break-words ${
                   isFailed
@@ -1593,6 +1612,14 @@ function MessageRow({
                     </span>
                   )}
               </p>
+              )}
+              {messageImages.length > 0 && (
+                <MessageImageGrid
+                  urls={messageImages}
+                  createdAt={message.created_at}
+                  onImageContextMenu={setContextImage}
+                />
+              )}
               {message.reactions &&
                 Object.keys(message.reactions).length > 0 && (
                   <div className="mt-1 flex flex-wrap gap-1">
@@ -1761,7 +1788,12 @@ function MessageRow({
 
   return (
     <>
-      <ContextMenu onOpenChange={setIsContextMenuOpen}>
+      <ContextMenu
+        onOpenChange={(open) => {
+          setIsContextMenuOpen(open);
+          if (!open) setContextImage(null);
+        }}
+      >
         <ContextMenuTrigger asChild>{rowContent}</ContextMenuTrigger>
         <ContextMenuContent
           className="w-52"
@@ -1808,12 +1840,22 @@ function MessageRow({
               Edit
             </ContextMenuItem>
           )}
-          <ContextMenuItem
-            onClick={() => void navigator.clipboard.writeText(displayText())}
-          >
-            <CopyIcon className="h-4 w-4" />
-            Copy Text
-          </ContextMenuItem>
+          {message.content && (
+            <ContextMenuItem
+              onClick={() => void navigator.clipboard.writeText(displayText())}
+            >
+              <CopyIcon className="h-4 w-4" />
+              Copy Text
+            </ContextMenuItem>
+          )}
+          {copyImageUrl && (
+            <ContextMenuItem
+              onClick={() => void copyMessageImage(copyImageUrl).catch(() => {})}
+            >
+              <CopyIcon className="h-4 w-4" />
+              Copy Image
+            </ContextMenuItem>
+          )}
           <ContextMenuSeparator />
           {canDelete && (
             <ContextMenuItem destructive onClick={handleDelete}>
@@ -1990,6 +2032,10 @@ export function ConversationThread({
   );
 
   const [draft, setDraft] = useMessageDraft(recipientId);
+  const images = useImageAttachments(token);
+  const clearImages = images.clear;
+  useEffect(() => clearImages(), [recipientId, clearImages]);
+  const [dragging, setDragging] = useState(false);
   const [composerQuery, setComposerQuery] = useState<ComposerQuery | null>(
     null,
   );
@@ -2032,8 +2078,7 @@ export function ConversationThread({
         el.disabled ||
         !el.offsetParent ||
         e.defaultPrevented ||
-        e.ctrlKey ||
-        e.metaKey ||
+        ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() !== "v") ||
         e.altKey ||
         e.key.length !== 1 ||
         (e.key === " " && active !== document.body) ||
@@ -2148,6 +2193,10 @@ export function ConversationThread({
               };
             });
   const outgoing = toMentionIds(draft.trim());
+  const canSend =
+    outgoing.length <= MAX_LENGTH &&
+    !images.uploading &&
+    (Boolean(outgoing) || images.urls.length > 0);
 
   const [isScrolledUp, setIsScrolledUp] = useState(false);
   const isScrolledUpRef = useRef(false);
@@ -2284,13 +2333,19 @@ export function ConversationThread({
   };
 
   const handleSend = (): void => {
-    if (!outgoing || outgoing.length > MAX_LENGTH) return;
+    if (!canSend) return;
 
     const parentId = replyTo?.id ?? null;
+    const imageUrls = images.urls;
     setDraft("");
     setComposerQuery(null);
     setReplyTo(null);
-    void sendMessage(outgoing, parentId);
+    images.clear();
+    void sendMessage(
+      outgoing,
+      parentId,
+      imageUrls.length ? { type: "images", images: imageUrls } : undefined,
+    );
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
@@ -2473,7 +2528,32 @@ export function ConversationThread({
             </div>
           )}
           <div ref={setChatRow} className="relative flex min-h-0 flex-1">
-            <div className="flex min-w-0 flex-1 flex-col">
+            <div
+              className="relative flex min-w-0 flex-1 flex-col"
+              onDragOver={(e) => {
+                if (!e.dataTransfer.types.includes("Files")) return;
+                e.preventDefault();
+                setDragging(true);
+              }}
+              onDragLeave={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget as Node | null))
+                  setDragging(false);
+              }}
+              onDrop={(e) => {
+                if (!e.dataTransfer.types.includes("Files")) return;
+                e.preventDefault();
+                setDragging(false);
+                images.add(e.dataTransfer.files);
+                textareaRef.current?.focus();
+              }}
+            >
+              {dragging && (
+                <div className="pointer-events-none absolute inset-3 z-40 flex items-center justify-center rounded-2xl border-2 border-dashed border-button-info bg-primary-bg/85">
+                  <p className="text-lg font-semibold text-primary-text">
+                    Drop images to send to {recipientLabel}
+                  </p>
+                </div>
+              )}
               <div className="relative min-h-0 flex-1">
                 <div
                   ref={setScrollRef}
@@ -2533,8 +2613,10 @@ export function ConversationThread({
                       const showSenderInfo =
                         newDay ||
                         prev.sender_id !== message.sender_id ||
-                        Boolean(prev.metadata) ||
-                        Boolean(message.metadata) ||
+                        (Boolean(prev.metadata) &&
+                          prev.metadata?.type !== "images") ||
+                        (Boolean(message.metadata) &&
+                          message.metadata?.type !== "images") ||
                         normalizeToMs(message.created_at) -
                           normalizeToMs(prev.created_at) >
                           AVATAR_GROUP_GAP_MS;
@@ -2734,14 +2816,29 @@ export function ConversationThread({
                   )}
 
                   <div
-                    className={`flex w-full min-h-[64px] items-center gap-2 rounded-xl border border-border-card bg-tertiary-bg px-1 py-2 text-primary-text transition-[border-radius] duration-200 ease-out ${
+                    className={`w-full rounded-xl border border-border-card bg-tertiary-bg text-primary-text transition-[border-radius] duration-200 ease-out ${
                       pendingReplyTo ? "rounded-t-none" : ""
                     }`}
                   >
+                    {images.notice && (
+                      <p className="px-4 pt-2 text-xs text-status-warning">
+                        {images.notice}
+                      </p>
+                    )}
+                    {images.attachments.length > 0 && (
+                      <div className="pt-2">
+                        <AttachmentTray
+                          attachments={images.attachments}
+                          onRemove={images.remove}
+                        />
+                      </div>
+                    )}
+                    <div className="flex min-h-[64px] items-center gap-2 px-1 py-2">
                     {recipientId && (
                       <ComposerActionsMenu
                         recipientId={isGroup ? null : recipientId}
                         onSendMessage={sendMessage}
+                        onAttachImages={images.add}
                       />
                     )}
                     <div className="relative min-w-0 flex-1 flex">
@@ -2770,6 +2867,11 @@ export function ConversationThread({
                         value={draft}
                         onChange={handleChange}
                         onKeyDown={handleKeyDown}
+                        onPaste={(e) => {
+                          if (e.clipboardData.files.length === 0) return;
+                          e.preventDefault();
+                          images.add(e.clipboardData.files);
+                        }}
                         onScroll={(e) => {
                           if (draftMirrorRef.current)
                             draftMirrorRef.current.scrollTop =
@@ -2788,9 +2890,7 @@ export function ConversationThread({
                               type="button"
                               aria-label="Send message"
                               onClick={handleSend}
-                              disabled={
-                                !outgoing || outgoing.length > MAX_LENGTH
-                              }
+                              disabled={!canSend}
                               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-primary-text transition-colors hover:bg-secondary-bg disabled:cursor-not-allowed disabled:opacity-40"
                             >
                               <SendIcon className="h-4 w-4" />
@@ -2799,6 +2899,7 @@ export function ConversationThread({
                           <TooltipContent>Send message</TooltipContent>
                         </Tooltip>
                       </div>
+                    </div>
                     </div>
                   </div>
                 </div>

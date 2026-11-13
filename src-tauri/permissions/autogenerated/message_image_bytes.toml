@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-message-image-bytes"
+description = "Enables the message_image_bytes command without any pre-configured scope."
+commands.allow = ["message_image_bytes"]
+
+[[permission]]
+identifier = "deny-message-image-bytes"
+description = "Denies the message_image_bytes command without any pre-configured scope."
+commands.deny = ["message_image_bytes"]

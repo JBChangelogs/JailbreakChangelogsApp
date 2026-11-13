@@ -348,6 +348,48 @@ fn open_external(app: AppHandle, url: String) {
     }
 }
 
+const MESSAGE_IMAGE_PREFIX: &str = "https://uploads.jailbreakchangelogs.com/message-images/";
+
+async fn fetch_message_image(url: &str) -> Result<Vec<u8>, String> {
+    if !url.starts_with(MESSAGE_IMAGE_PREFIX) {
+        return Err("Not a message image".into());
+    }
+    let res = api_client().get(url).send().await.map_err(|e| e.to_string())?;
+    if !res.status().is_success() {
+        return Err(format!("Image unavailable ({})", res.status()));
+    }
+    res.bytes().await.map(|b| b.to_vec()).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn message_image_bytes(url: String) -> Result<tauri::ipc::Response, String> {
+    Ok(tauri::ipc::Response::new(fetch_message_image(&url).await?))
+}
+
+#[tauri::command]
+async fn message_image_save(app: AppHandle, url: String) -> Result<String, String> {
+    let bytes = fetch_message_image(&url).await?;
+    let dir = app.path().download_dir().map_err(|e| e.to_string())?;
+    let name = url.rsplit('/').next().unwrap_or_default();
+    let stem: String = name
+        .split('.')
+        .next()
+        .unwrap_or_default()
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_')
+        .take(32)
+        .collect();
+    let stem = if stem.is_empty() { "image".to_string() } else { format!("jbcl-{stem}") };
+    let mut path = dir.join(format!("{stem}.webp"));
+    let mut n = 1;
+    while path.exists() {
+        path = dir.join(format!("{stem} ({n}).webp"));
+        n += 1;
+    }
+    std::fs::write(&path, bytes).map_err(|e| e.to_string())?;
+    Ok(path.to_string_lossy().into_owned())
+}
+
 #[tauri::command]
 fn protocol_take_pending() -> Vec<String> {
     std::mem::take(&mut *PENDING_PROTOCOL_URLS.lock().unwrap())
@@ -510,10 +552,12 @@ pub fn run() {
             }
         }))
         .plugin(tauri_plugin_deep_link::init())
-        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_opener::Builder::new().open_js_links_on_click(false).build())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             open_external,
+            message_image_bytes,
+            message_image_save,
             protocol_take_pending,
             auth_login,
             auth_get_token,

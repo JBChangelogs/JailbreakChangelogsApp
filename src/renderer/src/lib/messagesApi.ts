@@ -104,6 +104,41 @@ interface MessageEnvelope {
 export type OutgoingMessageMetadata =
   | { type: 'game_invite'; place_id: string; job_id: string | null }
   | { type: 'vip_server_invite'; server_id: number }
+  | { type: 'images'; images: string[] }
+
+export const MAX_MESSAGE_IMAGES = 4
+export const MESSAGE_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
+export const MESSAGE_IMAGE_LIFETIME_MS = 30 * 24 * 60 * 60 * 1000
+
+export async function uploadMessageImage(token: string, file: File): Promise<string> {
+  const body = new FormData()
+  body.append('image', file)
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(`${API_BASE}/v2/conversations/images`, {
+      method: 'POST',
+      headers: { Authorization: token },
+      body
+    })
+    if (res.ok) return ((await res.json()) as { url: string }).url
+    const data = (await res.json().catch(() => null)) as { message?: string; code?: string; error?: string; detail?: string } | null
+    const code = data?.code ?? data?.error ?? (typeof data?.detail === 'string' ? data.detail : null)
+    if (res.status === 503 && attempt < 2) {
+      await new Promise((resolve) => setTimeout(resolve, 2000 * (attempt + 1)))
+      continue
+    }
+    const message =
+      code === 'image_rejected'
+        ? "This image isn't allowed"
+        : code === 'upload_failed'
+          ? (data?.message ?? 'Images must be PNG, JPG, WEBP or GIF and under 10 MB')
+          : res.status === 429
+            ? 'Too many uploads, try again in a minute'
+            : res.status === 503
+              ? "Images can't be checked right now, try again soon"
+              : (data?.message ?? `Upload failed (${res.status})`)
+    throw new ApiRequestError(message, res.status, code)
+  }
+}
 
 export const messagesApi = {
   listConversations: (token: string) => request<ConversationsResponse>(token, '/v2/conversations'),

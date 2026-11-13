@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '@renderer/contexts/AuthContext'
 import { useOwnRobloxActivity } from '@renderer/hooks/useOwnRobloxActivity'
 import { serversApi } from '@renderer/lib/serversApi'
@@ -6,7 +6,8 @@ import { giftsApi } from '@renderer/lib/giftsApi'
 import { supporterBadgeUrl } from '@renderer/lib/badgeAssets'
 import { KNOWN_ROBLOX_GAMES } from '@shared/robloxGames'
 import { JAILBREAK_PLACE_ID } from '@renderer/lib/robberyUtils'
-import type { OutgoingMessageMetadata } from '@renderer/lib/messagesApi'
+import { MESSAGE_IMAGE_TYPES, type OutgoingMessageMetadata } from '@renderer/lib/messagesApi'
+import { ImageIcon } from '@renderer/components/messages/MessageImages'
 import type { VipServer } from '@shared/servers'
 import type { SupporterGift } from '@shared/gifts'
 import { Popover, PopoverContent, PopoverTrigger } from '@renderer/components/ui/popover'
@@ -218,9 +219,15 @@ interface ComposerActionsMenuProps {
   // null in group chats, where gifts aren't offered.
   recipientId: string | null
   onSendMessage: (content: string, parentId: string | null, metadata?: OutgoingMessageMetadata) => Promise<void>
+  onAttachImages: (files: Iterable<File>) => void
 }
 
-export function ComposerActionsMenu({ recipientId, onSendMessage }: ComposerActionsMenuProps): React.JSX.Element {
+export function ComposerActionsMenu({
+  recipientId,
+  onSendMessage,
+  onAttachImages
+}: ComposerActionsMenuProps): React.JSX.Element {
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const { token } = useAuth()
   const ownActivity = useOwnRobloxActivity()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -296,7 +303,29 @@ export function ComposerActionsMenu({ recipientId, onSendMessage }: ComposerActi
         </TooltipTrigger>
         <TooltipContent side="top">More options</TooltipContent>
       </Tooltip>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept={MESSAGE_IMAGE_TYPES.join(',')}
+        multiple
+        hidden
+        onChange={(e) => {
+          if (e.target.files) onAttachImages(e.target.files)
+          e.target.value = ''
+        }}
+      />
       <PopoverContent align="start" side="top" className="w-64 p-1">
+        <button
+          type="button"
+          onClick={() => {
+            setMenuOpen(false)
+            fileInputRef.current?.click()
+          }}
+          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm text-primary-text transition-colors hover:bg-quaternary-bg"
+        >
+          <ImageIcon className="h-4.5 w-4.5 shrink-0 text-tertiary-text" />
+          Upload Images
+        </button>
         <Tooltip>
           <TooltipTrigger asChild>
             <button

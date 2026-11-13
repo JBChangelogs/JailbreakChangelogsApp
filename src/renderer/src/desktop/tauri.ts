@@ -56,6 +56,10 @@ const api: DesktopApi = {
     onStatus: (callback) => subscribe('updater:status', callback)
   },
   robloxGameIcons: () => invoke<Record<string, string>>('roblox_game_icons'),
+  messageImages: {
+    bytes: (url) => invoke<ArrayBuffer>('message_image_bytes', { url }),
+    save: (url) => invoke<string>('message_image_save', { url })
+  },
   notifications: {
     show: (options) => invoke('notifications_show', { options }),
     onClick: (callback) => subscribe('notifications:clicked', callback)

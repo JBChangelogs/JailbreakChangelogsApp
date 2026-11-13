@@ -57,6 +57,29 @@ export function notesSince(notes: string, currentVersion: string | undefined): s
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.9.0',
+    date: '2026-11-13',
+    added: [
+      'A New Tab page: the + button opens it, with a search for items, users, seasons, changelogs, settings, servers and themes, and a grid of every tool',
+      'The New Tab page has the Theme Marketplace, Settings and your account in the top right',
+      'Hyperchrome Pity Calculator: save your level and pity for each HyperChrome color, or use Quick calc for one-off numbers',
+      'OG Finder: look up someone and see who has the items they originally owned',
+      'Private Servers: browse, search and join private servers, and add, edit, delete or report them',
+      'Theme Marketplace in Settings: browse community themes, filter by dark, light or features, sort by newest, oldest or most used, find themes by creator, and try one on before you use it'
+    ],
+    changed: [
+      'The app starts on the New Tab page. You can pick a different starting tab in App settings',
+      'Closing your only tab opens a New Tab instead',
+      'New Tab pages aren\'t restored when the app reopens, and restoring your tabs replaces the New Tab you started on',
+      'User search shows display names with the username underneath'
+    ],
+    fixed: [
+      'The trade scanner keeps working after sitting unused for a couple of minutes, instead of failing until the app restarts',
+      'The message box shows Twemoji when Twemoji is turned on',
+      'Dragging the window no longer shows the current tab\'s tooltip'
+    ]
+  },
+  {
     version: '0.8.8',
     date: '2026-11-05',
     changed: [

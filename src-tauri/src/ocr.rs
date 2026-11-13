@@ -1,8 +1,10 @@
 use std::path::Path;
+use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
 #[cfg(target_os = "macos")]
 use ort::ep;
+use ort::environment::Environment;
 use ort::session::Session;
 use ort::value::Tensor;
 use serde::Serialize;
@@ -118,7 +120,7 @@ impl Ocr {
             .filter(|l| !l.is_empty())
             .map(str::to_owned)
             .collect();
-        let env = ort::init_from(runtime).map_err(|e| e.to_string())?.with_name("trade-scanner").build().map_err(|e| e.to_string())?;
+        let env = environment(runtime)?;
         let mut last_error = String::from("no execution provider");
         for &provider in providers() {
             let session = |path: &Path| -> ort::Result<Session> {
@@ -259,6 +261,15 @@ impl Ocr {
             .collect();
         Ok((detections, det, rec))
     }
+}
+
+fn environment(runtime: &Path) -> Result<Environment, String> {
+    static ENV: OnceLock<Environment> = OnceLock::new();
+    if let Some(env) = ENV.get() {
+        return Ok(env.clone());
+    }
+    let env = ort::init_from(runtime).map_err(|e| e.to_string())?.with_name("trade-scanner").build().map_err(|e| e.to_string())?;
+    Ok(ENV.get_or_init(|| env).clone())
 }
 
 fn cpu_threads() -> usize {

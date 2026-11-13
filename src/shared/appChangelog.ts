@@ -57,6 +57,21 @@ export function notesSince(notes: string, currentVersion: string | undefined): s
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.9.1',
+    date: '2026-11-13',
+    added: [
+      'A new emoji picker in messages: search, categories, skin tones, frequently used emoji and shortcodes, with every emoji available',
+      'Start typing anywhere in a conversation to jump straight into the message box'
+    ],
+    changed: [
+      'Reactions use the new emoji picker, from both the message toolbar and the right-click menu',
+      'Message drafts are saved for each conversation and stay when you switch tabs, chats or restart the app'
+    ],
+    fixed: [
+      'Some emoji, like ❤️‍🔥 and 😶‍🌫️, showed as broken images'
+    ]
+  },
+  {
     version: '0.9.0',
     date: '2026-11-13',
     added: [

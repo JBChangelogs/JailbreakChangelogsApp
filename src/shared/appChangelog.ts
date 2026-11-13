@@ -57,6 +57,22 @@ export function notesSince(notes: string, currentVersion: string | undefined): s
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.9.2',
+    date: '2026-11-13',
+    added: [
+      'Send images in DMs and group chats: up to 4 at a time from the + menu, by pasting, or by dragging them in',
+      'Click an image to view it full size, then copy it, save it to Downloads or open the original',
+      'Right-click a message with an image to copy the image'
+    ],
+    changed: [
+      'Images you are about to send show in the message box, and you can click them to preview before sending',
+      'Images are kept for 30 days, and older ones show as expired'
+    ],
+    fixed: [
+      "Links that open in your browser, like Roblox profile links, didn't open"
+    ]
+  },
+  {
     version: '0.9.1',
     date: '2026-11-13',
     added: [

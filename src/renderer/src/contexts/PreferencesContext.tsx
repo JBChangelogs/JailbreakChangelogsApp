@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 
 export const RICH_PRESENCE_PREFERENCE_KEYS = [
   'rich_presence_enabled',
@@ -37,6 +37,10 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
   const [twemojiEnabled, setTwemojiEnabled] = useState(false)
   const [tabStyle, setTabStyle] = useState<TabStyle>('underline')
   const [richPresence, setRichPresenceState] = useState(DEFAULT_RICH_PRESENCE)
+
+  useEffect(() => {
+    document.documentElement.toggleAttribute('data-twemoji', twemojiEnabled)
+  }, [twemojiEnabled])
 
   const setRichPresence = useCallback((key: RichPresencePreferenceKey, value: boolean) => {
     setRichPresenceState((prev) => (prev[key] === value ? prev : { ...prev, [key]: value }))

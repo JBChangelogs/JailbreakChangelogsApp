@@ -535,6 +535,18 @@ html:not(.keyboard-nav) :focus-visible {
   scrollbar-color: var(--color-border-primary) transparent;
 }
 
+@font-face {
+  font-family: 'Twemoji';
+  src: url('https://cdn.jsdelivr.net/npm/twemoji-colr-font@15.0.3/twemoji.woff2') format('woff2');
+  font-display: swap;
+  unicode-range: U+00A9, U+00AE, U+200D, U+203C-3299, U+FE0F, U+1F000-1FAFF, U+E0020-E007F;
+}
+
+:root[data-twemoji] textarea,
+:root[data-twemoji] .twemoji-text {
+  font-family: 'Twemoji', var(--font-sans);
+}
+
 img.twemoji {
   display: inline !important;
   height: 1.1em !important;

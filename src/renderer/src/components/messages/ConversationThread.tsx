@@ -2736,7 +2736,7 @@ export function ConversationThread({
                       <div
                         ref={draftMirrorRef}
                         aria-hidden
-                        className="pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words py-2 pl-3 pr-20 text-base leading-6 text-primary-text"
+                        className="twemoji-text pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words py-2 pl-3 pr-20 text-base leading-6 text-primary-text"
                       >
                         {splitDraftMentions(draft, mentionCandidates).map(
                           (part, i) =>

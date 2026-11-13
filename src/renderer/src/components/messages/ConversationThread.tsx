@@ -43,9 +43,11 @@ import {
 } from "@renderer/lib/messageFormatting";
 import {
   EmojiIcon,
+  EmojiPanel,
   EmojiPicker,
 } from "@renderer/components/messages/EmojiPicker";
 import { Emoji, EmojiText } from "@renderer/components/messages/Emoji";
+import { useMessageDraft } from "@renderer/lib/messageDrafts";
 import {
   GroupAvatar,
   UserAvatar,
@@ -842,7 +844,6 @@ function ReactionPicker({
 }): React.JSX.Element {
   const [open, setOpen] = useState(false);
   const [tooltipOpen, setTooltipOpen] = useState(false);
-  const emojis = Object.values(useEmojis());
 
   return (
     <Popover
@@ -868,25 +869,16 @@ function ReactionPicker({
       </Tooltip>
       <PopoverContent
         align="end"
-        className="w-auto p-1.5"
+        className="w-auto overflow-hidden p-0"
         onCloseAutoFocus={(e) => e.preventDefault()}
       >
-        <div className="grid grid-cols-7 gap-1">
-          {emojis.map((emoji) => (
-            <button
-              key={emoji}
-              type="button"
-              onClick={() => {
-                setOpen(false);
-                setTooltipOpen(false);
-                onSelect(emoji);
-              }}
-              className="flex h-8 w-8 items-center justify-center rounded-md text-lg transition-colors hover:bg-quaternary-bg"
-            >
-              <Emoji emoji={emoji} />
-            </button>
-          ))}
-        </div>
+        <EmojiPanel
+          onSelect={(emoji) => {
+            setOpen(false);
+            setTooltipOpen(false);
+            onSelect(emoji);
+          }}
+        />
       </PopoverContent>
     </Popover>
   );
@@ -1002,7 +994,6 @@ function MessageRow({
   toMentionIds,
   currentUserId,
   frequentEmojis,
-  allEmojis,
   isMine,
   canDelete,
   parentMessage,
@@ -1033,7 +1024,6 @@ function MessageRow({
   toMentionIds: (text: string) => string;
   currentUserId: string | null;
   frequentEmojis: string[];
-  allEmojis: string[];
   isMine: boolean;
   canDelete: boolean;
   parentMessage?: MessageItem;
@@ -1796,19 +1786,15 @@ function MessageRow({
               <EmojiIcon className="h-4 w-4" />
               Add Reaction
             </ContextMenuSubTrigger>
-            <ContextMenuSubContent className="p-1.5">
-              <div className="grid grid-cols-7 gap-1">
-                {allEmojis.map((emoji) => (
-                  <ContextMenuItem
-                    key={emoji}
-                    aria-label={`React with ${emoji}`}
-                    onClick={() => react(emoji)}
-                    className="h-8 w-8 justify-center p-0 text-lg"
-                  >
-                    <Emoji emoji={emoji} />
-                  </ContextMenuItem>
-                ))}
-              </div>
+            <ContextMenuSubContent className="p-0">
+              <EmojiPanel
+                onSelect={(emoji) => {
+                  react(emoji);
+                  document.dispatchEvent(
+                    new KeyboardEvent("keydown", { key: "Escape" }),
+                  );
+                }}
+              />
             </ContextMenuSubContent>
           </ContextMenuSub>
           <ContextMenuSeparator />
@@ -1996,7 +1982,6 @@ export function ConversationThread({
     await block(recipientId).catch(() => {});
   };
   const emojis = useEmojis();
-  const allEmojis = Object.values(emojis);
   const frequentEmojis = useFrequentEmojis(4);
 
   const { transform, suggest } = useMemo(
@@ -2004,7 +1989,7 @@ export function ConversationThread({
     [emojis],
   );
 
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useMessageDraft(recipientId);
   const [composerQuery, setComposerQuery] = useState<ComposerQuery | null>(
     null,
   );
@@ -2037,6 +2022,35 @@ export function ConversationThread({
     const timer = setTimeout(() => textareaRef.current?.focus(), 0);
     return () => clearTimeout(timer);
   }, [replyTo]);
+  useEffect(() => {
+    if (!recipientId) return;
+    const onKeyDown = (e: KeyboardEvent): void => {
+      const el = textareaRef.current;
+      const active = document.activeElement;
+      if (
+        !el ||
+        el.disabled ||
+        !el.offsetParent ||
+        e.defaultPrevented ||
+        e.ctrlKey ||
+        e.metaKey ||
+        e.altKey ||
+        e.key.length !== 1 ||
+        (e.key === " " && active !== document.body) ||
+        active === el ||
+        (active instanceof HTMLElement &&
+          (active.isContentEditable ||
+            active.closest(
+              'input, textarea, select, [role="dialog"], [role="menu"], [role="listbox"]',
+            )))
+      )
+        return;
+      el.focus();
+      el.setSelectionRange(el.value.length, el.value.length);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [recipientId]);
   useLayoutEffect(() => {
     if (cursorRef.current !== null && textareaRef.current) {
       textareaRef.current.setSelectionRange(
@@ -2133,7 +2147,6 @@ export function ConversationThread({
                 ),
               };
             });
-  console.log(suggestions, emojis);
   const outgoing = toMentionIds(draft.trim());
 
   const [isScrolledUp, setIsScrolledUp] = useState(false);
@@ -2568,7 +2581,6 @@ export function ConversationThread({
                             mentionCandidates={mentionCandidates}
                             toMentionIds={toMentionIds}
                             frequentEmojis={frequentEmojis}
-                            allEmojis={allEmojis}
                             currentUserId={currentUser?.id ?? null}
                             parentMessage={parentMessage}
                             parentSenderProfile={parentSenderProfile}

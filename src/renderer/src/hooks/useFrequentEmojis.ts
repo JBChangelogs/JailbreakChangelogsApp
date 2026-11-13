@@ -1,7 +1,7 @@
 import { useMemo, useSyncExternalStore } from 'react'
-import { useEmojis } from '@renderer/hooks/useEmojis'
 
 const EMOJI_USAGE_KEY = 'jbcl:emoji-usage'
+const DEFAULTS = ['👍', '😂', '❤️', '💀', '😭', '🔥', '🙏', '😎', '👀', '🤔', '😡', '🎉', '💯', '✅', '👎', '😢', '🥺', '😮']
 
 const listeners = new Set<() => void>()
 let usage: Record<string, number> = readUsage()
@@ -31,12 +31,8 @@ function subscribe(listener: () => void): () => void {
 
 export function useFrequentEmojis(count: number): string[] {
   const counts = useSyncExternalStore(subscribe, () => usage)
-  const emojis = useEmojis()
-  return useMemo(
-    () =>
-      Object.values(emojis)
-        .sort((a, b) => (counts[b] ?? 0) - (counts[a] ?? 0))
-        .slice(0, count),
-    [emojis, counts, count]
-  )
+  return useMemo(() => {
+    const used = Object.keys(counts).sort((a, b) => counts[b] - counts[a])
+    return [...new Set([...used, ...DEFAULTS])].slice(0, count)
+  }, [counts, count])
 }

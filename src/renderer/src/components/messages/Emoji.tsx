@@ -1,11 +1,12 @@
 import { usePreferences } from '@renderer/contexts/PreferencesContext'
 
-const TWEMOJI_BASE = 'https://cdn.jsdelivr.net/gh/jdecked/twemoji@15.0.3/assets/svg/'
+const TWEMOJI_BASE = 'https://cdn.jsdelivr.net/gh/jdecked/twemoji@17.0.3/assets/svg/'
 
 function toCodePoints(emoji: string): string {
+  const zwj = emoji.includes(String.fromCodePoint(0x200d))
   return Array.from(emoji)
     .map((char) => char.codePointAt(0)?.toString(16))
-    .filter((hex): hex is string => Boolean(hex) && hex !== 'fe0f')
+    .filter((hex): hex is string => Boolean(hex) && (zwj || hex !== 'fe0f'))
     .join('-')
 }
 
@@ -19,6 +20,12 @@ export function Emoji({ emoji, className }: { emoji: string; className?: string 
       src={`${TWEMOJI_BASE}${toCodePoints(emoji)}.svg`}
       alt={emoji}
       draggable={false}
+      loading="lazy"
+      onError={(e) => {
+        const img = e.currentTarget
+        const fallback = img.src.replace(/-fe0f/g, '')
+        if (img.src !== fallback) img.src = fallback
+      }}
     />
   )
 }

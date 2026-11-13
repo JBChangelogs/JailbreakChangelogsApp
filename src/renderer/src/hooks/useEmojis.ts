@@ -1,32 +1,18 @@
 import { useEffect, useState } from 'react'
+import { emojiData, loadEmojiData, type EmojiData } from '@renderer/lib/emojiData'
 
-let cachedEmojis: Record<string, string> | null = null
-let inFlight: Promise<Record<string, string>> | null = null
-
-async function fetchEmojis(): Promise<Record<string, string>> {
-  if (cachedEmojis) return cachedEmojis
-  if (!inFlight) {
-    inFlight = fetch('https://api.jailbreakchangelogs.com/v2/emojis/string')
-      .then((res) => res.json())
-      .then((data: { emojis?: Record<string, string> }) => {
-        cachedEmojis = data.emojis ?? {}
-        return cachedEmojis
-      })
-      .catch(() => {
-        inFlight = null
-        return {}
-      })
-  }
-  return inFlight
-}
-
-export function useEmojis(): Record<string, string> {
-  const [emojis, setEmojis] = useState<Record<string, string>>(cachedEmojis ?? {})
+export function useEmojiData(): EmojiData | null {
+  const [data, setData] = useState(emojiData)
 
   useEffect(() => {
-    if (cachedEmojis) return
-    fetchEmojis().then(setEmojis)
-  }, [])
+    if (!data) loadEmojiData().then(setData, () => {})
+  }, [data])
 
-  return emojis
+  return data
+}
+
+const EMPTY: Record<string, string> = {}
+
+export function useEmojis(): Record<string, string> {
+  return useEmojiData()?.byName ?? EMPTY
 }

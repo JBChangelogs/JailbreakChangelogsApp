@@ -59,6 +59,7 @@ const activeTab = params.get('tab') ?? 'messages'
 const tabs = (params.get('tabs') ?? [...new Set(['messages', activeTab])].join(',')).split(',').map((type) => ({ id: `${type}-tab`, type }))
 localStorage.setItem('jbcl:tabs', JSON.stringify({ tabs, activeId: tabs.find((t) => t.type === activeTab)?.id ?? tabs[0].id }))
 localStorage.setItem('jbcl:navigation-mode', params.get('nav') === 'simple' ? 'simple' : 'tabs')
+localStorage.setItem('jbcl:restore-tabs', 'auto')
 localStorage.setItem('jbcl:tabs-notice', 'false')
 
 /* ---------- Example data ---------- */

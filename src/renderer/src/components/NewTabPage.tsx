@@ -402,6 +402,7 @@ export function NewTabPage(): React.JSX.Element {
               <button
                 key={type}
                 type="button"
+                data-tool={type}
                 onClick={() => go(type)}
                 className="group flex flex-col items-center gap-2.5 rounded-2xl p-4 text-center transition-colors hover:bg-secondary-bg focus-visible:bg-secondary-bg focus-visible:outline-none"
               >

@@ -160,16 +160,11 @@ async function goTab(id: string, label: string, g: number): Promise<void> {
   await moveTo(plus, g)
   showTip(plus, 'New tab')
   await click(plus, g); hideTip()
-  const item = await find(() => {
-    const found = [...doc().querySelectorAll<HTMLElement>('[data-radix-popper-content-wrapper] button')].find((b) =>
-      b.textContent?.trim().startsWith(label)
-    )
-    const r = found?.getBoundingClientRect()
-    return r && r.top > 0 && r.left > 0 && r.bottom < 800 && r.right < 1280 ? found : null
-  }, g)
+  const item = await find(`[data-tool="${id}"]`, g)
   await sleep(180, g)
   await moveTo(item, g)
-  await click(item, g)
+  showTip(item, label)
+  await click(item, g); hideTip()
   await find(tabSelector(id), g)
 }
 

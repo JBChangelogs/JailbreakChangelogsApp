@@ -74,7 +74,10 @@ export function originalOwnerId(
   );
 }
 
+export type FinderMode = "dupe" | "og";
+
 interface DupeFinderContextValue {
+  mode: FinderMode;
   state: SearchState;
   search: (input: string) => void;
   searchTerm: string;
@@ -102,10 +105,13 @@ interface DupeFinderContextValue {
 const DupeFinderContext = createContext<DupeFinderContextValue | null>(null);
 
 export function DupeFinderProvider({
+  mode = "dupe",
   children,
 }: {
+  mode?: FinderMode;
   children: React.ReactNode;
 }): React.JSX.Element {
+  const tabKey = mode === "og" ? "ogfinder" : "dupefinder";
   const { items: itemsData } = useItems();
   const [state, setState] = useState<SearchState>({ status: "idle" });
   const [searchTerm, setSearchTerm] = useState("");
@@ -113,11 +119,11 @@ export function DupeFinderProvider({
     new Set(),
   );
   const [sortOrder, setSortOrder] = useTabState<SortOrder>(
-    "dupefinder.sort",
+    `${tabKey}.sort`,
     "duplicates",
   );
   const [lastSearch, setLastSearch] = useTabState<string | null>(
-    "dupefinder.search",
+    `${tabKey}.search`,
     null,
   );
   const [ownerProfiles, setOwnerProfiles] = useState<
@@ -133,7 +139,7 @@ export function DupeFinderProvider({
     if (state.status === "idle" || state.status === "loading") return;
     const results = state.status === "success" ? state.items.length : 0;
     track("search", {
-      surface: "dupefinder",
+      surface: tabKey,
       query_len: searchedLength.current,
       results,
     });
@@ -233,7 +239,9 @@ export function DupeFinderProvider({
       .fetchUsersBatch([robloxId])
       .catch(() => ({}));
     try {
-      const dupeItems = await dupesApi.fetchUserDupes(robloxId);
+      const dupeItems = await (mode === "og"
+        ? dupesApi.fetchOgItems(robloxId)
+        : dupesApi.fetchUserDupes(robloxId));
       const user = (await searchedUserPromise)[robloxId] ?? null;
 
       if (dupeItems.length === 0) {
@@ -267,7 +275,9 @@ export function DupeFinderProvider({
         setState({
           status: "not-found",
           message:
-            "Server error while fetching dupe data. Please try again later.",
+            mode === "og"
+              ? "Server error while fetching OG data. Please try again later."
+              : "Server error while fetching dupe data. Please try again later.",
         });
       }
     }
@@ -282,7 +292,9 @@ export function DupeFinderProvider({
       ? state.user
       : null;
   const title = searchedUser?.name ?? lastSearch ?? undefined;
-  useTabTitle(title ? `Dupe Finder | ${title}` : undefined);
+  useTabTitle(
+    title ? `${mode === "og" ? "OG Finder" : "Dupe Finder"} | ${title}` : undefined,
+  );
 
   const mergedDupeData = useMemo(
     () =>
@@ -382,6 +394,7 @@ export function DupeFinderProvider({
   };
 
   const value: DupeFinderContextValue = {
+    mode,
     state,
     search,
     searchTerm,

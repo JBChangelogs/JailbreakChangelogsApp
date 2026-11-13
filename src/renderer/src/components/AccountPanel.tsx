@@ -4,6 +4,15 @@ import { useCurrentUser } from '@renderer/hooks/useCurrentUser'
 import { PresenceDot } from '@renderer/components/messages/PresenceDot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { useSettingsPage } from '@renderer/contexts/SettingsPageContext'
+import { PaletteIcon } from '@renderer/components/settings/SettingsSidebar'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '@renderer/components/ui/dropdown-menu'
 
 function LogoutIcon({ className }: { className?: string }): React.JSX.Element {
   return (
@@ -27,6 +36,87 @@ function SettingsGearIcon({ className }: { className?: string }): React.JSX.Elem
       />
       <circle cx="12" cy="12" r="3" />
     </svg>
+  )
+}
+
+export function HomeAccountBar(): React.JSX.Element | null {
+  const { token, logout } = useAuth()
+  const { user } = useCurrentUser()
+  const { open: openSettings } = useSettingsPage()
+  const [failedSrc, setFailedSrc] = useState<string | null>(null)
+  if (!token) return null
+  const displayName = user?.username || user?.name || 'Loading…'
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={() => openSettings('themes')}
+            aria-label="Theme Marketplace"
+            className="flex h-10 w-10 items-center justify-center rounded-full text-secondary-text transition-colors hover:bg-secondary-bg hover:text-primary-text"
+          >
+            <PaletteIcon className="h-5 w-5" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">Theme Marketplace</TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={() => openSettings()}
+            aria-label="Settings"
+            className="flex h-10 w-10 items-center justify-center rounded-full text-secondary-text transition-colors hover:bg-secondary-bg hover:text-primary-text"
+          >
+            <SettingsGearIcon className="h-5 w-5" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">Settings</TooltipContent>
+      </Tooltip>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            aria-label={`Account: ${displayName}`}
+            className="flex items-center gap-2 rounded-full py-1 pr-3 pl-1 transition-colors hover:bg-secondary-bg data-[state=open]:bg-secondary-bg"
+          >
+            <span className="relative shrink-0">
+            {user?.avatar && user.avatar !== failedSrc ? (
+              <img
+                src={user.avatar}
+                alt=""
+                draggable={false}
+                onError={() => setFailedSrc(user.avatar)}
+                className="h-8 w-8 rounded-full object-cover"
+              />
+            ) : (
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-quaternary-bg text-xs font-semibold text-secondary-text">
+                {displayName.slice(0, 2).toUpperCase()}
+              </span>
+            )}
+            <PresenceDot presence={user?.presence} className="absolute -right-0.5 -bottom-0.5 h-2.5 w-2.5" />
+            </span>
+            <span className="max-w-40 truncate text-sm font-medium text-primary-text">{displayName}</span>
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuLabel className="truncate">
+            {displayName}
+            {user?.name && user.name !== displayName && (
+              <span className="block truncate text-xs font-normal text-tertiary-text">{user.name}</span>
+            )}
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={logout} className="text-status-error">
+            Log out
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   )
 }
 

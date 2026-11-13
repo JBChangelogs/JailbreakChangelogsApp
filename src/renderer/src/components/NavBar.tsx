@@ -63,6 +63,42 @@ function CalculatorIcon(): React.JSX.Element {
     )
 }
 
+function OgFinderIcon(): React.JSX.Element {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4.5 w-4.5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="m12 3 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9L12 3Z" />
+        </svg>
+    )
+}
+
+function HomeIcon(): React.JSX.Element {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4.5 w-4.5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="m3 11 9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9Z" />
+        </svg>
+    )
+}
+
+function ServersIcon(): React.JSX.Element {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4.5 w-4.5">
+            <rect x="3" y="4" width="18" height="7" rx="2" />
+            <rect x="3" y="13" width="18" height="7" rx="2" />
+            <path strokeLinecap="round" d="M7 7.5h.01M7 16.5h.01" />
+        </svg>
+    )
+}
+
+function PityIcon(): React.JSX.Element {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4.5 w-4.5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 5 5 19" />
+            <circle cx="7" cy="7" r="2.5" />
+            <circle cx="17" cy="17" r="2.5" />
+        </svg>
+    )
+}
+
 function DupeFinderIcon(): React.JSX.Element {
     return (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4.5 w-4.5">
@@ -96,13 +132,17 @@ function MoreIcon(): React.JSX.Element {
 }
 
 export const TAB_INFO: Record<TabType, { label: string; title: string; Icon: () => React.JSX.Element }> = {
+    home: { label: 'New Tab', title: 'New Tab', Icon: HomeIcon },
     messages: { label: 'Messages', title: 'Messages', Icon: () => <MessagesIcon /> },
     trades: { label: 'Trades', title: 'Trades', Icon: TradesIcon },
     tracker: { label: 'Trackers', title: 'Robbery & Bounty Tracker', Icon: RobberyIcon },
     values: { label: 'Values', title: 'Values', Icon: GemIcon },
     calculator: { label: 'Calculator', title: 'Value Calculator', Icon: CalculatorIcon },
     dupefinder: { label: 'Dupe Finder', title: 'Dupe Finder', Icon: DupeFinderIcon },
-    tradehistory: { label: 'Trade History', title: 'Trade History', Icon: TradeHistoryIcon }
+    ogfinder: { label: 'OG Finder', title: 'OG Finder', Icon: OgFinderIcon },
+    tradehistory: { label: 'Trade History', title: 'Trade History', Icon: TradeHistoryIcon },
+    pity: { label: 'Pity Calculator', title: 'Hyperchrome Pity', Icon: PityIcon },
+    servers: { label: 'Private Servers', title: 'Private Servers', Icon: ServersIcon }
 }
 
 interface NavItemProps {
@@ -139,7 +179,7 @@ function NavItem({ active, label, badge, onClick, children }: NavItemProps): Rea
     )
 }
 
-const OVERFLOW_TABS: readonly TabType[] = ['dupefinder', 'tradehistory']
+const OVERFLOW_TABS: readonly TabType[] = ['dupefinder', 'ogfinder', 'tradehistory', 'servers', 'pity']
 
 export function NavBar({
     activeTab,
@@ -152,7 +192,7 @@ export function NavBar({
 }): React.JSX.Element {
     return (
         <div className="flex shrink-0 items-center justify-between border-b border-border-primary p-2">
-            {TAB_TYPES.filter((type) => !OVERFLOW_TABS.includes(type)).map((type) => {
+            {TAB_TYPES.filter((type) => type !== 'home' && !OVERFLOW_TABS.includes(type)).map((type) => {
                 const { title, Icon } = TAB_INFO[type]
                 return (
                     <NavItem

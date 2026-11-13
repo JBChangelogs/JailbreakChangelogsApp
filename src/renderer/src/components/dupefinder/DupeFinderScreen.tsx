@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { originalOwnerId, useDupeFinder } from '@renderer/contexts/DupeFinderContext'
+import { currentOwnerId, originalOwnerId, useDupeFinder, type FinderMode } from '@renderer/contexts/DupeFinderContext'
 import { DupeItemCard } from '@renderer/components/dupefinder/DupeItemCard'
 import { DupeCompareModal } from '@renderer/components/dupefinder/DupeCompareModal'
 import { userDisplay } from '@renderer/lib/dupeDisplay'
@@ -8,8 +8,40 @@ import type { Item } from '@shared/item'
 
 const PAGE_SIZE = 20
 
+const COPY: Record<FinderMode, {
+  heading: string
+  idleTitle: string
+  idleDescription: string
+  loadingTitle: string
+  loadingDescription: string
+  emptyTitle: string
+  empty: (who: string) => string
+  noun: string
+}> = {
+  dupe: {
+    heading: 'Dupe Finder',
+    idleTitle: 'Check an account for dupes',
+    idleDescription: 'Search a Roblox username or ID in the sidebar to see any duped items tied to that account.',
+    loadingTitle: 'Searching for dupes',
+    loadingDescription: 'Checking this account against the dupe records.',
+    emptyTitle: 'No duped items found',
+    empty: (who) => `No duplicated items have been recorded for ${who} yet.`,
+    noun: 'duped'
+  },
+  og: {
+    heading: 'OG Finder',
+    idleTitle: 'Find where your OG items went',
+    idleDescription: 'Search a Roblox username or ID in the sidebar to see items they originally owned and who has them now.',
+    loadingTitle: 'Searching for OG items',
+    loadingDescription: 'Looking up items this account originally owned.',
+    emptyTitle: 'No OG items found',
+    empty: (who) => `${who} hasn't been scanned by our bots yet, or no items they originally owned have been found.`,
+    noun: 'OG'
+  }
+}
+
 export function DupeFinderScreen(): React.JSX.Element {
-  const { state, sortedData, duplicateCounts, duplicateOrders, itemsMap, ownerProfiles, selectItem, openCompare } = useDupeFinder()
+  const { mode, state, sortedData, duplicateCounts, duplicateOrders, itemsMap, ownerProfiles, selectItem, openCompare } = useDupeFinder()
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const scrollRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
@@ -36,11 +68,12 @@ export function DupeFinderScreen(): React.JSX.Element {
 
   const visibleItems = sortedData.slice(0, visibleCount)
   const hasMore = visibleCount < sortedData.length
+  const copy = COPY[mode]
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
       <div className="flex h-[57px] shrink-0 items-center justify-between border-b border-border-primary px-5">
-        <h2 className="text-sm font-semibold text-primary-text">Dupe Finder</h2>
+        <h2 className="text-sm font-semibold text-primary-text">{copy.heading}</h2>
         {state.status === 'success' && (
           <span className="text-xs text-tertiary-text">
             {Math.min(visibleCount, sortedData.length)} of {sortedData.length} shown
@@ -54,8 +87,8 @@ export function DupeFinderScreen(): React.JSX.Element {
             status={{
               icon: 'search',
               tone: 'neutral',
-              title: 'Check an account for dupes',
-              description: 'Search a Roblox username or ID in the sidebar to see any duped items tied to that account.'
+              title: copy.idleTitle,
+              description: copy.idleDescription
             }}
           />
         )}
@@ -65,8 +98,8 @@ export function DupeFinderScreen(): React.JSX.Element {
             status={{
               icon: 'spinner',
               tone: 'neutral',
-              title: 'Searching for dupes',
-              description: 'Checking this account against the dupe records.'
+              title: copy.loadingTitle,
+              description: copy.loadingDescription
             }}
           />
         )}
@@ -80,8 +113,8 @@ export function DupeFinderScreen(): React.JSX.Element {
             status={{
               icon: 'shieldCheck',
               tone: 'neutral',
-              title: 'No duped items found',
-              description: `No duplicated items have been recorded for ${userDisplay(state.user, state.robloxId)} yet.`
+              title: copy.emptyTitle,
+              description: copy.empty(userDisplay(state.user, state.robloxId))
             }}
           />
         )}
@@ -93,7 +126,7 @@ export function DupeFinderScreen(): React.JSX.Element {
                 icon: 'funnel',
                 tone: 'neutral',
                 title: 'No items match your filters',
-                description: `${state.items.length} duped ${state.items.length === 1 ? 'item is' : 'items are'} hidden. Try changing the search or categories in the sidebar.`
+                description: `${state.items.length} ${copy.noun} ${state.items.length === 1 ? 'item is' : 'items are'} hidden. Try changing the search or categories in the sidebar.`
               }}
             />
           ) : (
@@ -103,7 +136,8 @@ export function DupeFinderScreen(): React.JSX.Element {
                   const itemData = itemsMap.get(item.item_id) as Item | undefined
                   const key = `${item.categoryTitle}-${item.title}`
                   const isDuplicate = (duplicateCounts.get(key) ?? 0) > 1
-                  const ownerId = originalOwnerId(item, state.robloxId)
+                  const ownerId =
+                    mode === 'og' ? currentOwnerId(item, state.robloxId) : originalOwnerId(item, state.robloxId)
                   return (
                     <DupeItemCard
                       key={item.id}
@@ -111,9 +145,10 @@ export function DupeFinderScreen(): React.JSX.Element {
                       itemData={itemData}
                       ownerId={ownerId}
                       ownerName={userDisplay(ownerProfiles[ownerId], ownerId)}
+                      ownerLabel={mode === 'og' ? 'Current Owner' : undefined}
                       duplicateNumber={isDuplicate ? duplicateOrders.get(item.id) : undefined}
                       onHistory={() => selectItem(item)}
-                      onCompare={() => openCompare(item.id)}
+                      onCompare={mode === 'og' ? undefined : () => openCompare(item.id)}
                     />
                   )
                 })}

@@ -34,6 +34,17 @@ import { CalculatorScreen } from '@renderer/components/calculator/CalculatorScre
 import { CalculatorSidebar } from '@renderer/components/calculator/CalculatorSidebar'
 import { DupeFinderScreen } from '@renderer/components/dupefinder/DupeFinderScreen'
 import { DupeFinderSidebar } from '@renderer/components/dupefinder/DupeFinderSidebar'
+import { NewTabPage } from '@renderer/components/NewTabPage'
+import {
+  PityCalculatorProvider,
+  PityCalculatorScreen,
+  PityCalculatorSidebar
+} from '@renderer/components/hyperchrome/PityCalculator'
+import {
+  PrivateServersProvider,
+  PrivateServersScreen,
+  PrivateServersSidebar
+} from '@renderer/components/servers/PrivateServers'
 import { TradeHistoryProvider } from '@renderer/contexts/TradeHistoryContext'
 import { TradeHistoryScreen } from '@renderer/components/tradehistory/TradeHistoryScreen'
 import { TradeHistorySidebar } from '@renderer/components/tradehistory/TradeHistorySidebar'
@@ -241,7 +252,11 @@ export function HomeScreen(): React.JSX.Element {
   return (
     <>
       <div className="flex h-full flex-1 min-w-0">
-        <div className="flex h-full w-64 shrink-0 flex-col border-r border-border-primary bg-secondary-bg">
+        <div
+          className={`flex h-full w-64 shrink-0 flex-col border-r border-border-primary bg-secondary-bg ${
+            activeType === 'home' && mode !== 'simple' ? 'hidden' : ''
+          }`}
+        >
           {mode === 'simple' && <NavBar activeTab={activeType} onSelect={(type) => open(type)} unreadCount={unread} />}
           <div ref={setSidebarSlot} className="relative flex min-h-0 flex-1 flex-col" />
           <div className="mx-2 mt-2 mb-[9px] flex min-h-[64px] shrink-0 flex-col overflow-hidden rounded-xl border border-border-primary">
@@ -371,6 +386,14 @@ const TabContent = memo(function TabContent({
       return <TradeHistoryProvider>{pane(<TradeHistorySidebar />, <TradeHistoryScreen />)}</TradeHistoryProvider>
     case 'dupefinder':
       return <DupeFinderProvider>{pane(<DupeFinderSidebar />, <DupeFinderScreen />)}</DupeFinderProvider>
+    case 'ogfinder':
+      return <DupeFinderProvider mode="og">{pane(<DupeFinderSidebar />, <DupeFinderScreen />)}</DupeFinderProvider>
+    case 'home':
+      return pane(null, <NewTabPage />)
+    case 'servers':
+      return <PrivateServersProvider>{pane(<PrivateServersSidebar />, <PrivateServersScreen />)}</PrivateServersProvider>
+    case 'pity':
+      return <PityCalculatorProvider>{pane(<PityCalculatorSidebar />, <PityCalculatorScreen />)}</PityCalculatorProvider>
     case 'trades':
       return (
         <TradesProvider>{pane(<TradesSidebar />, <TradesScreen onMessageUser={onMessageUser} />)}</TradesProvider>

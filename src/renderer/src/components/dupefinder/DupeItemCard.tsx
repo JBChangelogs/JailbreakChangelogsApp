@@ -186,6 +186,7 @@ export function DupeItemCard({
   itemData,
   ownerId,
   ownerName,
+  ownerLabel = 'Original Owner',
   duplicateNumber,
   onHistory,
   onCompare
@@ -195,9 +196,10 @@ export function DupeItemCard({
   /** The original owner, as the website's card shows. */
   ownerId: string
   ownerName: string
+  ownerLabel?: string
   duplicateNumber?: number
   onHistory: () => void
-  onCompare: () => void
+  onCompare?: () => void
 }): React.JSX.Element {
   const [checkOpen, setCheckOpen] = useState(false)
   const [checking, setChecking] = useState(false)
@@ -274,7 +276,7 @@ export function DupeItemCard({
         <div className="flex min-w-0 items-center gap-2">
           <RobloxAvatar userId={ownerId} label={ownerName} className="h-8 w-8 border border-border-card" />
           <div className="min-w-0 flex-1">
-            <p className="text-xs text-secondary-text uppercase">Original Owner</p>
+            <p className="text-xs text-secondary-text uppercase">{ownerLabel}</p>
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
@@ -290,12 +292,15 @@ export function DupeItemCard({
           </div>
         </div>
         <p className="text-xs text-secondary-text">Logged {formatDate(item.logged_at)}</p>
-        <div className="mt-auto grid grid-cols-3 gap-2">
-          {[
-            { label: checking ? 'Checking…' : 'Dupe check', onClick: () => void runCheck(), primary: true },
-            { label: 'Compare histories', onClick: onCompare, primary: false },
-            { label: 'History', onClick: onHistory, primary: false }
-          ].map((action) => (
+        <div className={`mt-auto grid gap-2 ${onCompare ? 'grid-cols-3' : 'grid-cols-1'}`}>
+          {(onCompare
+            ? [
+                { label: checking ? 'Checking…' : 'Dupe check', onClick: () => void runCheck(), primary: true },
+                { label: 'Compare histories', onClick: onCompare, primary: false },
+                { label: 'History', onClick: onHistory, primary: false }
+              ]
+            : [{ label: 'History', onClick: onHistory, primary: false }]
+          ).map((action) => (
             <Button
               key={action.label}
               type="button"
@@ -311,7 +316,7 @@ export function DupeItemCard({
         </div>
       </div>
 
-      <DupeCheckDialog
+      {onCompare && <DupeCheckDialog
         open={checkOpen}
         onOpenChange={setCheckOpen}
         title={item.title}
@@ -321,7 +326,7 @@ export function DupeItemCard({
         error={error}
         onRetry={() => void runCheck()}
         onCompare={onCompare}
-      />
+      />}
     </div>
   )
 }

@@ -16,21 +16,25 @@ import {
   type NavigationMode
 } from '@renderer/lib/localPreferences'
 
-export type TabType = 'messages' | 'trades' | 'tracker' | 'values' | 'calculator' | 'dupefinder' | 'tradehistory'
+export type TabType = 'messages' | 'trades' | 'tracker' | 'values' | 'calculator' | 'dupefinder' | 'tradehistory' | 'pity' | 'ogfinder' | 'servers' | 'home'
 
 export const TAB_TYPES: readonly TabType[] = [
+  'home',
   'messages',
   'trades',
   'tracker',
   'values',
   'calculator',
   'dupefinder',
-  'tradehistory'
+  'ogfinder',
+  'tradehistory',
+  'pity',
+  'servers'
 ]
 
 export const SINGLE_INSTANCE_TABS: ReadonlySet<TabType> = new Set(['messages', 'trades', 'tracker'])
 
-const USER_TABS: ReadonlySet<TabType> = new Set(['dupefinder', 'tradehistory'])
+const USER_TABS: ReadonlySet<TabType> = new Set(['home', 'dupefinder', 'ogfinder', 'tradehistory'])
 
 export interface Tab {
   id: string
@@ -59,6 +63,7 @@ interface TabActionsValue {
   open: (type: TabType, options?: { newTab?: boolean }) => void
   close: (id: string) => void
   closeTabs: (ids: string[], fallbackId: string) => void
+  replace: (id: string, type: TabType) => void
   restore: () => void
   dismissRestore: () => void
   move: (id: string, toIndex: number) => void
@@ -131,7 +136,7 @@ function loadSaved(): TabsState | null {
 }
 
 function freshState(): TabsState {
-  const first = createTab(readPreference(START_TAB_TYPE_KEY, TAB_TYPES, 'messages'))
+  const first = createTab(readPreference(START_TAB_TYPE_KEY, TAB_TYPES, 'home'))
   return { tabs: [first], activeId: first.id }
 }
 
@@ -156,12 +161,18 @@ function startup(): { state: TabsState; previous: TabsState | null } {
   const tabsMode = getNavigationMode() === 'tabs'
   const savedIds = new Set(saved?.tabs.map((tab) => tab.id))
   clearTabStates((id) => savedIds.has(id) && !(tabsMode && restoreMode === 'off'))
-  if (!saved || !tabsMode || restoreMode === 'auto') return { state: saved ?? freshState(), previous: null }
+  if (!saved || !tabsMode) return { state: saved ?? freshState(), previous: null }
+  const restorable = saved.tabs.filter((tab) => tab.type !== 'home')
+  if (restoreMode === 'auto') {
+    if (restorable.length === 0) return { state: freshState(), previous: null }
+    const activeId = restorable.some((tab) => tab.id === saved.activeId) ? saved.activeId : restorable[0].id
+    return { state: { tabs: restorable, activeId }, previous: null }
+  }
   const state = freshState()
   if (restoreMode === 'off') return { state, previous: null }
   const openTypes = new Set(state.tabs.map((tab) => tab.type))
-  const tabs = saved.tabs.filter((tab) => USER_TABS.has(tab.type) || !openTypes.has(tab.type))
-  if (tabs.length === 0) return { state: saved, previous: null }
+  const tabs = restorable.filter((tab) => USER_TABS.has(tab.type) || !openTypes.has(tab.type))
+  if (tabs.length === 0) return { state, previous: null }
   return { state, previous: { tabs, activeId: saved.activeId } }
 }
 
@@ -192,8 +203,8 @@ export function TabsProvider({ children }: { children: React.ReactNode }): React
   const [previous, setPrevious] = useState(initial.previous)
   const [meta, setMetaState] = useState<Record<string, TabMeta>>({})
   const [mode, setModeState] = useState<NavigationMode>(getNavigationMode)
-  const [newTabType, setNewTabType] = usePreference(NEW_TAB_TYPE_KEY, TAB_TYPES, 'values')
-  const [startTabType, setStartTabType] = usePreference(START_TAB_TYPE_KEY, TAB_TYPES, 'messages')
+  const [newTabType, setNewTabType] = usePreference(NEW_TAB_TYPE_KEY, TAB_TYPES, 'home')
+  const [startTabType, setStartTabType] = usePreference(START_TAB_TYPE_KEY, TAB_TYPES, 'home')
   const [restoreMode, setRestoreMode] = usePreference(RESTORE_TABS_KEY, RESTORE_TABS_MODES, 'ask')
   const activeTab = state.tabs.find((tab) => tab.id === state.activeId) ?? state.tabs[0]
 
@@ -231,7 +242,12 @@ export function TabsProvider({ children }: { children: React.ReactNode }): React
   const close = useCallback((id: string) => {
     setState((s) => {
       const index = s.tabs.findIndex((tab) => tab.id === id)
-      if (index === -1 || s.tabs.length <= 1) return s
+      if (index === -1) return s
+      if (s.tabs.length === 1) {
+        if (s.tabs[0].type === 'home') return s
+        const home = createTab('home')
+        return { tabs: [home], activeId: home.id }
+      }
       const tabs = s.tabs.filter((tab) => tab.id !== id)
       return { tabs, activeId: s.activeId === id ? tabs[Math.min(index, tabs.length - 1)].id : s.activeId }
     })
@@ -250,14 +266,32 @@ export function TabsProvider({ children }: { children: React.ReactNode }): React
     clearTabStates((id) => !closing.has(id))
   }, [])
 
+  const replace = useCallback((id: string, type: TabType) => {
+    setState((s) => {
+      const existing = SINGLE_INSTANCE_TABS.has(type) && s.tabs.find((tab) => tab.type === type)
+      if (existing) {
+        const tabs = s.tabs.filter((tab) => tab.id !== id)
+        return { tabs: tabs.length ? tabs : s.tabs, activeId: existing.id }
+      }
+      return { ...s, tabs: s.tabs.map((tab) => (tab.id === id ? { ...tab, type } : tab)) }
+    })
+  }, [])
+
   const restore = useCallback(() => {
     if (!previous) return
     setState((s) => {
       const tabs = previous.tabs.filter(
         (tab) => !SINGLE_INSTANCE_TABS.has(tab.type) || !s.tabs.some((open) => open.type === tab.type)
       )
-      const activeId = tabs.some((tab) => tab.id === previous.activeId) ? previous.activeId : s.activeId
-      return { tabs: [...s.tabs, ...tabs], activeId }
+      const kept = s.tabs.filter((tab) => tab.type !== 'home')
+      const next = [...kept, ...tabs]
+      if (next.length === 0) return s
+      const activeId = tabs.some((tab) => tab.id === previous.activeId)
+        ? previous.activeId
+        : next.some((tab) => tab.id === s.activeId)
+          ? s.activeId
+          : next[0].id
+      return { tabs: next, activeId }
     })
     setPrevious(null)
   }, [previous])
@@ -293,8 +327,8 @@ export function TabsProvider({ children }: { children: React.ReactNode }): React
     [state.tabs, activeTab, meta, restorable]
   )
   const actions = useMemo(
-    () => ({ activate, open, close, closeTabs, restore, dismissRestore, move, setMeta }),
-    [activate, open, close, closeTabs, restore, dismissRestore, move, setMeta]
+    () => ({ activate, open, close, closeTabs, replace, restore, dismissRestore, move, setMeta }),
+    [activate, open, close, closeTabs, replace, restore, dismissRestore, move, setMeta]
   )
   const modeValue = useMemo(() => ({ mode, setMode }), [mode, setMode])
   const preferences = useMemo(
@@ -339,6 +373,10 @@ const TabIdContext = createContext('global')
 
 export function TabScope({ id, children }: { id: string; children: React.ReactNode }): React.JSX.Element {
   return <TabIdContext.Provider value={id}>{children}</TabIdContext.Provider>
+}
+
+export function useTabId(): string {
+  return useContext(TabIdContext)
 }
 
 export function useTabState<T>(name: string, initial: T): [T, Dispatch<SetStateAction<T>>] {

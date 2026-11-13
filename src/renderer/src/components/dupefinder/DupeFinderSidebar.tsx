@@ -26,6 +26,7 @@ function HistoryIcon({ className }: { className?: string }): React.JSX.Element {
 
 export function DupeFinderSidebar(): React.JSX.Element {
   const {
+    mode,
     state,
     search,
     searchTerm,
@@ -59,9 +60,11 @@ export function DupeFinderSidebar(): React.JSX.Element {
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-2">
-          <Button type="button" className="mb-3 w-full text-sm!" onClick={() => openCompare(selectedItem.id)}>
-            Compare Variants
-          </Button>
+          {mode === 'dupe' && (
+            <Button type="button" className="mb-3 w-full text-sm!" onClick={() => openCompare(selectedItem.id)}>
+              Compare Variants
+            </Button>
+          )}
 
           <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-quaternary-text">
             <HistoryIcon className="h-3 w-3" />
@@ -80,7 +83,12 @@ export function DupeFinderSidebar(): React.JSX.Element {
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
       <SidebarHeader>
-        <DupeSearchBar onSearch={search} loading={state.status === 'loading'} />
+        <DupeSearchBar
+          onSearch={search}
+          loading={state.status === 'loading'}
+          placeholder={mode === 'og' ? 'Search OG Items' : undefined}
+          suggestDupeOwners={mode === 'dupe'}
+        />
       </SidebarHeader>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
@@ -112,13 +120,15 @@ export function DupeFinderSidebar(): React.JSX.Element {
             {state.status === 'success' && (
               <div className="mt-3 grid grid-cols-2 gap-2 border-t border-border-card pt-3">
                 <div className="min-w-0">
-                  <p className="text-[10px] text-secondary-text">Dupe Items</p>
+                  <p className="text-[10px] text-secondary-text">{mode === 'og' ? 'OG Items' : 'Dupe Items'}</p>
                   <p className="truncate text-base font-bold text-primary-text">{mergedDupeCount.toLocaleString()}</p>
                 </div>
-                <div className="min-w-0">
-                  <p className="text-[10px] text-secondary-text">Duped Value</p>
-                  <p className="truncate text-base font-bold text-primary-text">{formatUsdCompact(totalDupedValue)}</p>
-                </div>
+                {mode === 'dupe' && (
+                  <div className="min-w-0">
+                    <p className="text-[10px] text-secondary-text">Duped Value</p>
+                    <p className="truncate text-base font-bold text-primary-text">{formatUsdCompact(totalDupedValue)}</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -126,7 +136,11 @@ export function DupeFinderSidebar(): React.JSX.Element {
 
         {state.status === 'success' && (
           <div className="mt-3 space-y-2">
-            <SearchInput value={searchTerm} onChange={setSearchTerm} placeholder="Search duped items..." />
+            <SearchInput
+              value={searchTerm}
+              onChange={setSearchTerm}
+              placeholder={mode === 'og' ? 'Search OG items...' : 'Search duped items...'}
+            />
             <FilterMenu<SortOrder> label="Sort" value={sortOrder} options={SORT_OPTIONS} onChange={setSortOrder} />
             {categories.length > 1 && (
               <div className="flex flex-wrap gap-1.5">

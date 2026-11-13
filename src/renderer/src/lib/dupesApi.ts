@@ -2,6 +2,11 @@ import type { DupeFinderItem, DupeOwnerSearchResult, RobloxUserSummary } from '@
 
 const INVENTORY_API_URL = 'https://inventories.jailbreakchangelogs.com'
 
+const OG_HIDDEN_TIRE_STICKERS: Record<string, string> = {
+  '371668828': 'NoobFreak',
+  '159606072': 'HelloItsVG'
+}
+
 export class DupeUserNotFoundError extends Error {}
 export class NoDupesFoundError extends Error {}
 
@@ -60,6 +65,18 @@ export const dupesApi = {
     }
     const data = await res.json()
     return Array.isArray(data) ? data : []
+  },
+
+  fetchOgItems: async (robloxId: string): Promise<DupeFinderItem[]> => {
+    const res = await fetch(`${INVENTORY_API_URL}/search?username=${encodeURIComponent(robloxId)}`)
+    if (res.status === 404) throw new NoDupesFoundError('This user has not been scanned by our bots yet.')
+    if (!res.ok) throw new Error('Failed to fetch OG finder data')
+    const data = (await res.json()) as { results?: DupeFinderItem[] }
+    const items = Array.isArray(data?.results) ? data.results : []
+    const hiddenSticker = OG_HIDDEN_TIRE_STICKERS[robloxId]
+    return hiddenSticker
+      ? items.filter((item) => !(item.categoryTitle === 'Tire Sticker' && item.title === hiddenSticker))
+      : items
   },
 
   resolveUsername: async (username: string): Promise<RobloxUserSummary | null> => {

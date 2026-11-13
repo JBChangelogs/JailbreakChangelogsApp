@@ -11,7 +11,6 @@ import {
   Popover,
   PopoverAnchor,
   PopoverContent,
-  PopoverTrigger,
 } from "@renderer/components/ui/popover";
 import {
   Tooltip,
@@ -22,7 +21,6 @@ import { TAB_INFO } from "@renderer/components/NavBar";
 import { useSettingsPage } from "@renderer/contexts/SettingsPageContext";
 import {
   SINGLE_INSTANCE_TABS,
-  TAB_TYPES,
   useTabPreferences,
   useTabs,
   type TabType,
@@ -117,17 +115,9 @@ export function TabBar(): React.JSX.Element {
     setEntering(new Set([...entering, ...added]));
   }
   const [closing, setClosing] = useState<ReadonlySet<string>>(new Set());
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [menuHidden, setMenuHidden] = useState(false);
-  const openMenu = (open: boolean): void => {
-    setPickerOpen(open);
-    if (open) setMenuHidden(false);
-  };
-  const dismissMenu = (): void => {
-    setMenuHidden(true);
-    setPickerOpen(false);
-  };
-  const closable = tabs.length - closing.size > 1;
+  const closable =
+    tabs.length - closing.size > 1 ||
+    (tabs.length === 1 && closing.size === 0 && tabs[0].type !== "home");
   const tabRefs = useRef(new Map<string, HTMLDivElement>());
   const indicatorRef = useRef<HTMLDivElement>(null);
   const placedOnce = useRef(false);
@@ -306,7 +296,6 @@ export function TabBar(): React.JSX.Element {
           ? Math.max(0, end - scroller.getBoundingClientRect().right + 8)
           : 0,
       );
-      dismissMenu();
     }
     if (current.frame) return;
     const tick = (): void => {
@@ -395,7 +384,6 @@ export function TabBar(): React.JSX.Element {
 
   const pick = (type: TabType): void => {
     if (settings.isOpen) settings.close();
-    dismissMenu();
     open(type, { newTab: true });
   };
 
@@ -579,6 +567,10 @@ export function TabBar(): React.JSX.Element {
                           select(tab.id);
                           startDrag(e, tab.id);
                         }}
+                        onFocus={(e) => {
+                          if (!e.currentTarget.matches(":focus-visible"))
+                            e.preventDefault();
+                        }}
                         onAuxClick={(e) => e.button === 1 && startClose(tab.id)}
                         onKeyDown={(e) => {
                           if (e.key !== "Enter" && e.key !== " ") return;
@@ -739,63 +731,24 @@ export function TabBar(): React.JSX.Element {
             "opacity-0",
         )}
       />
-      <Popover open={pickerOpen} onOpenChange={openMenu}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                aria-label="New tab"
-                ref={plusRef}
-                data-tauri-drag-region="false"
-                className={cn(
-                  "mb-[5px] ml-1 flex h-6 w-6 shrink-0 items-center justify-center self-end rounded-full transition-[color,background-color,transform,opacity] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-quaternary-bg hover:text-primary-text motion-reduce:transition-none",
-                  draggingTabs && "pointer-events-none opacity-0",
-                  pickerOpen
-                    ? "bg-quaternary-bg text-primary-text"
-                    : "text-secondary-text",
-                )}
-              >
-                <PlusIcon
-                  className={cn(
-                    "h-4 w-4 transition-transform duration-200",
-                    pickerOpen && "rotate-45",
-                  )}
-                />
-              </button>
-            </PopoverTrigger>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">New tab</TooltipContent>
-        </Tooltip>
-        <PopoverContent
-          align="start"
-          className={cn("w-60 p-1.5", menuHidden && "invisible")}
-          onCloseAutoFocus={(e) => e.preventDefault()}
-        >
-          {TAB_TYPES.map((type) => {
-            const { Icon, title } = TAB_INFO[type];
-            const alreadyOpen =
-              SINGLE_INSTANCE_TABS.has(type) &&
-              tabs.some((tab) => tab.type === type);
-            return (
-              <button
-                key={type}
-                type="button"
-                onClick={() => pick(type)}
-                className="flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-left text-sm text-primary-text transition-colors hover:bg-quaternary-bg"
-              >
-                <span className="flex shrink-0 text-secondary-text [&_svg]:h-4 [&_svg]:w-4">
-                  <Icon />
-                </span>
-                <span className="min-w-0 flex-1 truncate">{title}</span>
-                {alreadyOpen && (
-                  <span className="text-xs text-tertiary-text">Open</span>
-                )}
-              </button>
-            );
-          })}
-        </PopoverContent>
-      </Popover>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            aria-label="New tab"
+            ref={plusRef}
+            onClick={() => pick("home")}
+            data-tauri-drag-region="false"
+            className={cn(
+              "mb-[5px] ml-1 flex h-6 w-6 shrink-0 items-center justify-center self-end rounded-full text-secondary-text transition-[color,background-color,opacity] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-quaternary-bg hover:text-primary-text motion-reduce:transition-none",
+              draggingTabs && "pointer-events-none opacity-0",
+            )}
+          >
+            <PlusIcon className="h-4 w-4" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">New tab</TooltipContent>
+      </Tooltip>
       <Popover
         open={noticeOpen && !restorable && !updating}
         onOpenChange={(next) => !next && dismissNotice()}

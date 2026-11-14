@@ -139,7 +139,7 @@ export function TitleBar({
           </>
         )}
 
-        {!isMac && (
+        {!isMac && window.api.platform !== 'web' && (
           <>
             <button
               onClick={() => window.api.window.minimize()}

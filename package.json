@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "tauri:vite": "vite -c tauri.vite.config.ts",
     "tauri:vite:build": "vite build -c tauri.vite.config.ts",
+    "web:build": "vite build -c tauri.vite.config.ts --outDir ../../out/web",
     "preview:snapshot": "node preview/snapshot.mjs",
     "preview:dev": "vite -c preview/vite.config.ts",
     "preview:build": "vite build -c preview/vite.config.ts"

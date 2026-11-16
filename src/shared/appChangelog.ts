@@ -57,6 +57,26 @@ export function notesSince(notes: string, currentVersion: string | undefined): s
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.9.3',
+    date: '2026-11-15',
+    added: [
+      'Links to jailbreakchangelogs.com are clickable in messages, comments, profile bios and trade notes. Links to app.jailbreakchangelogs.com open inside the app',
+      'Messages with a jailbreakchangelogs.com link show a preview of the page, with its image and buttons like on Discord',
+      'Click an image in a link preview to view it full size',
+      'Hold Shift when clicking Delete to delete a message without confirming'
+    ],
+    changed: [
+      'The delete message dialog shows a preview of the message you are deleting',
+      'Links in the message box are coloured as you type'
+    ],
+    fixed: [
+      "Conversations didn't stay scrolled to the bottom when link previews loaded"
+    ],
+    removed: [
+      'Profile bios no longer make links to other websites clickable'
+    ]
+  },
+  {
     version: '0.9.2',
     date: '2026-11-13',
     added: [

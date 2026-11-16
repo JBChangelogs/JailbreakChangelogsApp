@@ -95,6 +95,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@renderer/components/ui/dialog";
@@ -112,7 +113,11 @@ import type {
 } from "@renderer/lib/messagesApi";
 import { useAuth } from "@renderer/contexts/AuthContext";
 import { LinkifiedText } from "@renderer/components/ui/linkified-text";
-import { LinkEmbeds } from "@renderer/components/messages/LinkEmbeds";
+import { splitSiteLinks } from "@renderer/lib/siteLinks";
+import {
+  ExternalLinkIcon,
+  LinkEmbeds,
+} from "@renderer/components/messages/LinkEmbeds";
 import { tradesApi } from "@renderer/lib/tradesApi";
 import { ItemSide } from "@renderer/components/trading/TradeAdDetailScreen";
 import type { TradeOffer } from "@shared/trading";
@@ -394,27 +399,6 @@ function EyeIcon({ className }: { className?: string }): React.JSX.Element {
   );
 }
 
-function ExternalLinkIcon({
-  className,
-}: {
-  className?: string;
-}): React.JSX.Element {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.5}
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
-      />
-    </svg>
-  );
-}
 
 function GiftIcon({ className }: { className?: string }): React.JSX.Element {
   return (
@@ -806,6 +790,22 @@ function profileLabel(profile?: UserProfile): string | undefined {
   return profileDisplayName(profile);
 }
 
+function DraftLinks({ text }: { text: string }): React.JSX.Element {
+  return (
+    <>
+      {splitSiteLinks(text).map((part, i) =>
+        typeof part === "string" ? (
+          part
+        ) : (
+          <span key={i} className="text-link">
+            {part.text}
+          </span>
+        ),
+      )}
+    </>
+  );
+}
+
 function MessageText({
   text,
   profileOf,
@@ -911,7 +911,7 @@ function MessageActionsMenu({
   canDelete: boolean;
   onReply: () => void;
   onEdit: () => void;
-  onDelete: () => void;
+  onDelete: (e: { shiftKey: boolean }) => void;
   onReport: () => void;
 }): React.JSX.Element {
   const [open, setOpen] = useState(false);
@@ -926,15 +926,15 @@ function MessageActionsMenu({
     key: string,
     icon: React.ReactNode,
     label: string,
-    onClick: () => void,
+    onClick: (e: React.MouseEvent) => void,
     destructive = false,
   ): React.JSX.Element => (
     <button
       key={key}
       type="button"
-      onClick={() => {
+      onClick={(e) => {
         close();
-        onClick();
+        onClick(e);
       }}
       className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-sm transition-colors ${
         destructive
@@ -1322,7 +1322,10 @@ function MessageRow({
   };
 
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const handleDelete = (): void => setDeleteOpen(true);
+  const handleDelete = (e: { shiftKey: boolean }): void => {
+    if (e.shiftKey) void onDelete(message.id);
+    else setDeleteOpen(true);
+  };
 
   const [reportOpen, setReportOpen] = useState(false);
   const [reportReason, setReportReason] = useState("");
@@ -1509,7 +1512,7 @@ function MessageRow({
                           {part}
                         </span>
                       ) : (
-                        part
+                        <DraftLinks key={i} text={part} />
                       ),
                   )}
                   {"\u200b"}
@@ -1723,18 +1726,51 @@ function MessageRow({
 
   const deleteDialog = (
     <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle>Delete message?</DialogTitle>
-        </DialogHeader>
-        <div className="px-5 py-4 text-sm text-secondary-text">
-          This cannot be undone.
+      <DialogContent className="max-w-md gap-4 p-5">
+        <div className="pr-8">
+          <DialogTitle className="text-xl font-bold">Delete Message</DialogTitle>
+          <DialogDescription className="mt-1 text-base text-secondary-text">
+            Are you sure you want to delete this message?
+          </DialogDescription>
         </div>
-        <div className="flex shrink-0 justify-end gap-2 border-t border-border-primary p-5">
+        <div className="flex min-h-0 shrink gap-3 overflow-y-auto rounded-lg border border-border-card bg-secondary-bg p-3">
+          <UserAvatar
+            id={senderId}
+            profile={senderProfile}
+            className="h-10 w-10 shrink-0"
+          />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-baseline gap-2">
+              <span className="truncate font-medium text-message-header">
+                {label}
+              </span>
+              <span className="shrink-0 text-xs text-message-muted">
+                {formatMessageTimestamp(message.created_at)}
+              </span>
+            </div>
+            <p className="text-sm break-words whitespace-pre-wrap text-message-text">
+              {message.content ? (
+                <MessageText text={message.content} profileOf={profileOf} />
+              ) : (
+                <span className="text-message-muted">Image</span>
+              )}
+            </p>
+            {message.content && <LinkEmbeds text={message.content} />}
+          </div>
+        </div>
+        <p className="text-sm text-secondary-text">
+          <span className="block font-semibold text-status-success">
+            Protip:
+          </span>
+          You can hold down shift when clicking{" "}
+          <span className="font-semibold text-primary-text">delete</span> to
+          bypass this confirmation entirely.
+        </p>
+        <div className="flex gap-2">
           <Button
             type="button"
             variant="secondary"
-            size="sm"
+            className="flex-1"
             onClick={() => setDeleteOpen(false)}
           >
             Cancel
@@ -1742,7 +1778,8 @@ function MessageRow({
           <Button
             type="button"
             variant="destructive"
-            size="sm"
+            className="flex-1"
+            autoFocus
             onClick={() => {
               setDeleteOpen(false);
               void onDelete(message.id);
@@ -2067,6 +2104,7 @@ export function ConversationThread({
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
   const [scrollNode, setScrollNode] = useState<HTMLDivElement | null>(null);
   const setScrollRef = useCallback((node: HTMLDivElement | null) => {
     scrollRef.current = node;
@@ -2237,6 +2275,7 @@ export function ConversationThread({
         scrollNode.scrollTop = scrollNode.scrollHeight;
     });
     observer.observe(scrollNode);
+    if (contentRef.current) observer.observe(contentRef.current);
     return () => observer.disconnect();
   }, [scrollNode]);
 
@@ -2571,6 +2610,7 @@ export function ConversationThread({
                   ref={setScrollRef}
                   className={`absolute inset-0 overflow-y-auto pt-1 transition-[padding-bottom] duration-200 ease-out ${replyTo ? "pb-16" : "pb-8"}`}
                 >
+                  <div ref={contentRef}>
                   {hasMore && (
                     <div className="flex justify-center">
                       <Button
@@ -2705,6 +2745,7 @@ export function ConversationThread({
                       );
                     });
                   })()}
+                  </div>
                 </div>
 
                 <div
@@ -2869,7 +2910,7 @@ export function ConversationThread({
                                 {part}
                               </span>
                             ) : (
-                              part
+                              <DraftLinks key={i} text={part} />
                             ),
                         )}
                         {"\u200b"}

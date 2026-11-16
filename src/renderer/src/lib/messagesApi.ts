@@ -267,6 +267,25 @@ export interface LinkEmbed {
   site_name: string | null
   image: string | null
   theme_color: string | null
+  component?: EmbedComponent | null
+}
+
+export interface EmbedComponent {
+  type: number
+  components?: EmbedComponent[]
+  accessory?: EmbedComponent
+  content?: string
+  media?: { url?: string }
+  items?: { media?: { url?: string }; description?: string; spoiler?: boolean }[]
+  description?: string
+  accent_color?: number | null
+  style?: number
+  label?: string
+  url?: string
+  emoji?: { name?: string; id?: string; animated?: boolean }
+  disabled?: boolean
+  divider?: boolean
+  spacing?: number
 }
 
 const linkEmbeds = new Map<string, Promise<LinkEmbed | null>>()

@@ -185,11 +185,13 @@ const VIEWER_ACTION =
 export function ImageViewer({
   src,
   file,
-  onClose
+  onClose,
+  canSave = true
 }: {
   src: string | null
   file?: File
   onClose: () => void
+  canSave?: boolean
 }): React.JSX.Element {
   const [status, setStatus] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -212,9 +214,10 @@ export function ImageViewer({
     <Dialog open={src !== null} onOpenChange={(next) => !next && onClose()}>
       <DialogContent className="max-h-[90vh] w-auto max-w-[90vw] items-center border-none bg-transparent shadow-none">
         <DialogTitle className="sr-only">Image</DialogTitle>
-        {src && <img src={src} alt="Image" className="max-h-[80vh] max-w-[90vw] rounded-lg object-contain" />}
+        {src && <img src={src} alt="Image" referrerPolicy="no-referrer" className="max-h-[80vh] max-w-[90vw] rounded-lg object-contain" />}
         {src && (
           <div className="mt-2 flex items-center gap-1">
+            {canSave && (
             <button
               type="button"
               disabled={busy}
@@ -228,8 +231,10 @@ export function ImageViewer({
             >
               Copy image
             </button>
+            )}
             {remote && (
               <>
+                {canSave && (
                 <button
                   type="button"
                   disabled={busy}
@@ -243,6 +248,7 @@ export function ImageViewer({
                 >
                   Save image
                 </button>
+                )}
                 <a href={src} target="_blank" rel="noreferrer" className={VIEWER_ACTION}>
                   Open original
                 </a>

@@ -10,6 +10,7 @@ import {
   type SetStateAction
 } from 'react'
 import { track } from '@renderer/lib/analytics'
+import { refreshItems } from '@renderer/hooks/useItems'
 import {
   getNavigationMode,
   setNavigationMode,
@@ -41,6 +42,13 @@ export interface Tab {
   type: TabType
 }
 
+export interface TabBookmark {
+  id: string
+  type: TabType
+  title: string
+  state: Record<string, string>
+}
+
 export interface TabMeta {
   title?: string
   badge?: number
@@ -56,6 +64,7 @@ interface TabsStateValue {
   activeTab: Tab
   meta: Record<string, TabMeta>
   restorable: Tab[] | null
+  bookmarks: TabBookmark[]
 }
 
 interface TabActionsValue {
@@ -68,6 +77,9 @@ interface TabActionsValue {
   dismissRestore: () => void
   move: (id: string, toIndex: number) => void
   setMeta: (id: string, meta: TabMeta) => void
+  addBookmark: (tab: Tab, title: string) => void
+  removeBookmark: (id: string) => void
+  openBookmark: (bookmark: TabBookmark, replaceId: string) => void
 }
 
 interface NavigationModeValue {
@@ -93,6 +105,46 @@ const TAB_STATE_PREFIX = 'jbcl:tab:'
 const NEW_TAB_TYPE_KEY = 'jbcl:new-tab-type'
 const START_TAB_TYPE_KEY = 'jbcl:start-tab-type'
 const RESTORE_TABS_KEY = 'jbcl:restore-tabs'
+const TAB_USAGE_KEY = 'jbcl:tab-usage'
+const BOOKMARKS_KEY = 'jbcl:tab-bookmarks'
+
+function readJson<T>(key: string, fallback: T): T {
+  try {
+    return (JSON.parse(localStorage.getItem(key) ?? 'null') as T | null) ?? fallback
+  } catch {
+    return fallback
+  }
+}
+
+export function getTabUsage(): Partial<Record<TabType, number>> {
+  return readJson(TAB_USAGE_KEY, {})
+}
+
+function snapshotTabState(id: string): Record<string, string> {
+  const prefix = `${TAB_STATE_PREFIX}${id}:`
+  const state: Record<string, string> = {}
+  try {
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith(prefix)) state[key.slice(prefix.length)] = localStorage.getItem(key) ?? ''
+    }
+  } catch {
+  }
+  return state
+}
+
+function writeTabState(id: string, state: Record<string, string>): void {
+  try {
+    for (const [name, value] of Object.entries(state)) localStorage.setItem(`${TAB_STATE_PREFIX}${id}:${name}`, value)
+  } catch {
+  }
+}
+
+function recordTabUse(type: TabType): void {
+  if (type === 'home') return
+  const usage = getTabUsage()
+  usage[type] = (usage[type] ?? 0) + 1
+  writePreference(TAB_USAGE_KEY, JSON.stringify(usage))
+}
 
 function readPreference<T extends string>(key: string, valid: readonly T[], fallback: T): T {
   try {
@@ -217,7 +269,10 @@ export function TabsProvider({ children }: { children: React.ReactNode }): React
 
   const prevType = useRef(activeTab.type)
   useEffect(() => {
-    if (prevType.current !== activeTab.type) track('tab_view', { tab: activeTab.type, prev_tab: prevType.current })
+    if (prevType.current !== activeTab.type) {
+      track('tab_view', { tab: activeTab.type, prev_tab: prevType.current })
+      recordTabUse(activeTab.type)
+    }
     prevType.current = activeTab.type
   }, [activeTab.type])
 
@@ -321,14 +376,38 @@ export function TabsProvider({ children }: { children: React.ReactNode }): React
     })
   }, [])
 
+  const [bookmarks, setBookmarks] = useState<TabBookmark[]>(() =>
+    readJson<TabBookmark[]>(BOOKMARKS_KEY, []).filter((b) => typeof b?.id === 'string' && TAB_TYPES.includes(b.type))
+  )
+  useEffect(() => writePreference(BOOKMARKS_KEY, JSON.stringify(bookmarks)), [bookmarks])
+
+  const addBookmark = useCallback((tab: Tab, title: string) => {
+    const bookmark = { id: crypto.randomUUID(), type: tab.type, title, state: snapshotTabState(tab.id) }
+    setBookmarks((prev) => [...prev, bookmark])
+  }, [])
+
+  const removeBookmark = useCallback((id: string) => {
+    setBookmarks((prev) => prev.filter((bookmark) => bookmark.id !== id))
+  }, [])
+
+  const openBookmark = useCallback(
+    (bookmark: TabBookmark, replaceId: string) => {
+      clearTabState(replaceId)
+      writeTabState(replaceId, bookmark.state)
+      if (bookmark.type === 'values' || bookmark.type === 'calculator') void refreshItems()
+      replace(replaceId, bookmark.type)
+    },
+    [replace]
+  )
+
   const restorable = previous?.tabs ?? null
   const stateValue = useMemo(
-    () => ({ tabs: state.tabs, activeTab, meta, restorable }),
-    [state.tabs, activeTab, meta, restorable]
+    () => ({ tabs: state.tabs, activeTab, meta, restorable, bookmarks }),
+    [state.tabs, activeTab, meta, restorable, bookmarks]
   )
   const actions = useMemo(
-    () => ({ activate, open, close, closeTabs, replace, restore, dismissRestore, move, setMeta }),
-    [activate, open, close, closeTabs, replace, restore, dismissRestore, move, setMeta]
+    () => ({ activate, open, close, closeTabs, replace, restore, dismissRestore, move, setMeta, addBookmark, removeBookmark, openBookmark }),
+    [activate, open, close, closeTabs, replace, restore, dismissRestore, move, setMeta, addBookmark, removeBookmark, openBookmark]
   )
   const modeValue = useMemo(() => ({ mode, setMode }), [mode, setMode])
   const preferences = useMemo(

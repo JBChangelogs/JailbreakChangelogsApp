@@ -5,7 +5,7 @@ import { ThemeIcon } from '@renderer/components/ui/theme-icon'
 import { useAuth } from '@renderer/contexts/AuthContext'
 import { useTheme } from '@renderer/contexts/ThemeContext'
 import { useSettingsPage } from '@renderer/contexts/SettingsPageContext'
-import { SINGLE_INSTANCE_TABS, TAB_TYPES, useTabs, useTabId, type TabType } from '@renderer/contexts/TabsContext'
+import { getTabUsage, SINGLE_INSTANCE_TABS, TAB_TYPES, useTabs, useTabId, type TabType } from '@renderer/contexts/TabsContext'
 import { getItemImagePath, handleImageError } from '@renderer/lib/itemValueUtils'
 import { resolveAvatarUrl } from '@renderer/lib/usersApi'
 import { fetchSharedTheme } from '@renderer/lib/customThemes'
@@ -17,6 +17,17 @@ const SITE = 'https://jailbreakchangelogs.com'
 const ASSETS = 'https://assets.jailbreakchangelogs.com'
 const BANNER_URL = `${ASSETS}/assets/logos/JBCL_Long_Transparent.webp`
 const SEARCH_DEBOUNCE_MS = 250
+const GRID = 'mx-auto grid w-full grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))] gap-3'
+const MAX_COLUMNS = 6
+
+function gridWidth(count: number): string {
+  const columns = Math.ceil(count / Math.ceil(count / MAX_COLUMNS))
+  return `${columns * 8.5 + (columns - 1) * 0.75}rem`
+}
+const TILE =
+  'flex flex-col items-center gap-2.5 rounded-2xl p-4 text-center transition-colors hover:bg-secondary-bg focus-visible:bg-secondary-bg focus-visible:outline-none short:gap-1.5 short:p-2'
+const TILE_ICON =
+  'flex h-12 w-12 items-center justify-center rounded-full bg-tertiary-bg text-secondary-text transition-colors group-hover:text-button-info short:h-10 short:w-10 [&_svg]:h-5 [&_svg]:w-5'
 const RESULTS_PER_GROUP = 5
 
 interface Shortcut {
@@ -54,7 +65,9 @@ const settingName = (name: string): string =>
 
 export function NewTabPage(): React.JSX.Element {
   const { token } = useAuth()
-  const { tabs, replace } = useTabs()
+  const { tabs, replace, bookmarks, openBookmark, removeBookmark } = useTabs()
+  const [usage] = useState(getTabUsage)
+  const quickTools = [...TOOLS].sort((a, b) => (usage[b] ?? 0) - (usage[a] ?? 0))
   const tabId = useTabId()
   const { setTheme, setCustomTheme, rememberSharedTheme } = useTheme()
   const settings = useSettingsPage()
@@ -277,14 +290,15 @@ export function NewTabPage(): React.JSX.Element {
 
   let rowIndex = -1
   return (
-    <div className="relative flex h-full min-h-0 flex-1 flex-col items-center overflow-y-auto px-6 pt-[14vh] pb-10">
+    <div className="relative flex h-full min-h-0 flex-1 flex-col items-center overflow-y-auto px-6 py-14 short:py-12">
       <div className="absolute top-3 right-4">
         <HomeAccountBar />
       </div>
-      <h1 className="mb-8 w-full max-w-md">
+      <div className="my-auto flex w-full flex-col items-center">
+      <h1 className="mb-8 w-full max-w-md short:mb-5 short:max-w-72">
         <img src={BANNER_URL} alt="Jailbreak Changelogs" className="w-full" draggable={false} />
       </h1>
-      <div className="relative z-20 mb-8 w-full max-w-2xl">
+      <div className="relative z-20 mb-8 w-full max-w-2xl short:mb-3">
       <form
         onSubmit={(e) => {
           e.preventDefault()
@@ -394,8 +408,8 @@ export function NewTabPage(): React.JSX.Element {
       )}
       </div>
 
-      <div className="grid w-full max-w-3xl grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))] gap-3">
-          {TOOLS.map((type) => {
+      <div className={GRID} style={{ maxWidth: gridWidth(quickTools.length) }}>
+          {quickTools.map((type) => {
             const { label, Icon } = TAB_INFO[type]
             const open = SINGLE_INSTANCE_TABS.has(type) && tabs.some((tab) => tab.type === type)
             return (
@@ -404,9 +418,9 @@ export function NewTabPage(): React.JSX.Element {
                 type="button"
                 data-tool={type}
                 onClick={() => go(type)}
-                className="group flex flex-col items-center gap-2.5 rounded-2xl p-4 text-center transition-colors hover:bg-secondary-bg focus-visible:bg-secondary-bg focus-visible:outline-none"
+                className={`group ${TILE}`}
               >
-                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-tertiary-bg text-secondary-text transition-colors group-hover:text-button-info [&_svg]:h-5 [&_svg]:w-5">
+                <span className={TILE_ICON}>
                   <Icon />
                 </span>
                 <span className="text-sm text-primary-text">{label}</span>
@@ -416,6 +430,47 @@ export function NewTabPage(): React.JSX.Element {
           })}
       </div>
 
+      {bookmarks.length > 0 && (
+        <section className="mt-4 w-full short:mt-2" style={{ maxWidth: gridWidth(quickTools.length) }}>
+          <h2 className="mb-1 flex items-center gap-3 px-4 text-xs font-medium text-tertiary-text">
+            Bookmarks
+            <span className="h-px flex-1 bg-border-primary" />
+          </h2>
+          <div className={GRID} style={{ maxWidth: gridWidth(quickTools.length) }}>
+            {bookmarks.map((bookmark) => {
+              const { label, Icon } = TAB_INFO[bookmark.type]
+              const title = bookmark.title.startsWith(`${label} | `) ? bookmark.title.slice(label.length + 3) : bookmark.title
+              return (
+                <div key={bookmark.id} className="group relative">
+                  <button
+                    type="button"
+                    onClick={() => openBookmark(bookmark, tabId)}
+                    className={`w-full ${TILE}`}
+                  >
+                    <span className={TILE_ICON}>
+                      <Icon />
+                    </span>
+                    <span className="w-full truncate text-sm text-primary-text" title={bookmark.title}>
+                      {title}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Remove ${bookmark.title} bookmark`}
+                    onClick={() => removeBookmark(bookmark.id)}
+                    className="absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded-full text-tertiary-text opacity-0 transition-opacity group-hover:opacity-100 hover:bg-quaternary-bg hover:text-primary-text focus-visible:opacity-100"
+                  >
+                    <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
+      </div>
     </div>
   )
 }

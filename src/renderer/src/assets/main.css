@@ -1,5 +1,6 @@
 @layer theme, base, mui, components, utilities;
 @import "tailwindcss";
+@custom-variant short (@media (max-height: 760px));
 @import "tw-animate-css";
 @import "@fontsource-variable/geist";
 

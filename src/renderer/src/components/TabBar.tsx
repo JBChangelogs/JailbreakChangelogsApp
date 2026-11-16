@@ -18,6 +18,7 @@ import {
   TooltipTrigger,
 } from "@renderer/components/ui/tooltip";
 import { TAB_INFO } from "@renderer/components/NavBar";
+import { showToast } from "@renderer/lib/toast";
 import { useSettingsPage } from "@renderer/contexts/SettingsPageContext";
 import {
   SINGLE_INSTANCE_TABS,
@@ -83,6 +84,7 @@ export function TabBar(): React.JSX.Element {
     restorable,
     restore,
     dismissRestore,
+    addBookmark,
   } = useTabs();
   const [dragOrder, setDragOrder] = useState<string[] | null>(null);
   const orderedTabs = useMemo(() => {
@@ -680,6 +682,16 @@ export function TabBar(): React.JSX.Element {
                   >
                     Reopen closed tab
                   </ContextMenuItem>
+                  {tab.type !== "home" && (
+                    <ContextMenuItem
+                      onSelect={() => {
+                        addBookmark(tab, label);
+                        showToast(`Bookmarked ${label}`);
+                      }}
+                    >
+                      Bookmark tab
+                    </ContextMenuItem>
+                  )}
                   <ContextMenuSeparator />
                   <ContextMenuItem
                     disabled={orderedTabs.length < 2}

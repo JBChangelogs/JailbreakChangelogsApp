@@ -176,3 +176,13 @@ export function acknowledgeRead(messageId: string): void {
   } catch {
   }
 }
+
+const WEB_APP_BANNER_KEY = 'jbcl:web-app-banner'
+
+export function getWebAppBannerShown(): boolean {
+  return getFlag(WEB_APP_BANNER_KEY)
+}
+
+export function setWebAppBannerShown(shown: boolean): void {
+  setFlag(WEB_APP_BANNER_KEY, shown)
+}

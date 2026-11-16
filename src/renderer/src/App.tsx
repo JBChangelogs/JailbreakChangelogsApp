@@ -6,6 +6,7 @@ import { LoginGate } from '@renderer/components/LoginGate'
 import { AppAccessGate, useAppAccess } from '@renderer/components/AppAccessGate'
 import { TransitionSplash } from '@renderer/components/TransitionSplash'
 import { UpdateBanner } from '@renderer/components/UpdateBanner'
+import { WebAppBanner } from '@renderer/components/WebAppBanner'
 import { UpdateScreen } from '@renderer/components/UpdateScreen'
 import { HomeScreen } from '@renderer/components/HomeScreen'
 import { ToastViewport } from '@renderer/components/notifications/ToastViewport'
@@ -77,6 +78,7 @@ function App(): React.JSX.Element {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-primary-bg text-primary-text">
       <UpdateBanner />
+      <WebAppBanner />
       <ThemeCursor />
       <TitleBar
         canOpenSettings={hasAccess}

@@ -259,3 +259,26 @@ export const groupChatsApi = {
   joinInvite: (token: string, code: string) =>
     request<GroupChat>(token, `/v2/group-chats/invites/${encodeURIComponent(code)}`, { method: 'POST' })
 }
+
+export interface LinkEmbed {
+  url: string
+  title: string | null
+  description: string | null
+  site_name: string | null
+  image: string | null
+  theme_color: string | null
+}
+
+const linkEmbeds = new Map<string, Promise<LinkEmbed | null>>()
+
+export function fetchLinkEmbed(token: string, url: string): Promise<LinkEmbed | null> {
+  let pending = linkEmbeds.get(url)
+  if (!pending) {
+    pending = request<LinkEmbed>(token, `/v2/embeds?url=${encodeURIComponent(url)}`).catch(() => {
+      linkEmbeds.delete(url)
+      return null
+    })
+    linkEmbeds.set(url, pending)
+  }
+  return pending
+}

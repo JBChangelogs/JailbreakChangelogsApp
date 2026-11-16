@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { LinkifiedText } from '@renderer/components/ui/linkified-text'
 import { useCurrentUser } from '@renderer/hooks/useCurrentUser'
 import { useRelativeTime } from '@renderer/hooks/useRelativeTime'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
@@ -365,7 +366,7 @@ export function TradeAdCard({
             <p
               className={`text-sm break-words whitespace-pre-wrap text-primary-text ${noteIsLong && !noteExpanded ? 'line-clamp-3' : ''}`}
             >
-              {note}
+              <LinkifiedText text={note} />
             </p>
             {noteIsLong && (
               <button

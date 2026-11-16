@@ -111,6 +111,8 @@ import type {
   MessageItem,
 } from "@renderer/lib/messagesApi";
 import { useAuth } from "@renderer/contexts/AuthContext";
+import { LinkifiedText } from "@renderer/components/ui/linkified-text";
+import { LinkEmbeds } from "@renderer/components/messages/LinkEmbeds";
 import { tradesApi } from "@renderer/lib/tradesApi";
 import { ItemSide } from "@renderer/components/trading/TradeAdDetailScreen";
 import type { TradeOffer } from "@shared/trading";
@@ -815,7 +817,14 @@ function MessageText({
   return (
     <>
       {parts.map((part, i) => {
-        if (i % 2 === 0) return part ? <EmojiText key={i} text={part} /> : null;
+        if (i % 2 === 0)
+          return part ? (
+            <LinkifiedText
+              key={i}
+              text={part}
+              renderText={(t, k) => <EmojiText key={k} text={t} />}
+            />
+          ) : null;
         const profile = profileOf(part);
         const label = profileLabel(profile);
         if (!label) {
@@ -1612,6 +1621,9 @@ function MessageRow({
                     </span>
                   )}
               </p>
+              )}
+              {!isPending && !isFailed && message.content && (
+                <LinkEmbeds text={message.content} />
               )}
               {messageImages.length > 0 && (
                 <MessageImageGrid

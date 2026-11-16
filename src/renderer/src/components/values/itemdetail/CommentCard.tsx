@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { LinkifiedText } from '@renderer/components/ui/linkified-text'
 import { useAuth } from '@renderer/contexts/AuthContext'
 import { useCurrentUser } from '@renderer/hooks/useCurrentUser'
 import { useRelativeTime } from '@renderer/hooks/useRelativeTime'
@@ -176,7 +177,7 @@ export function CommentCard({
                 </div>
               </div>
             ) : (
-              <p className="mt-0.5 whitespace-pre-wrap text-sm text-primary-text">{comment.content}</p>
+              <p className="mt-0.5 whitespace-pre-wrap text-sm text-primary-text"><LinkifiedText text={comment.content} /></p>
             )}
           </div>
 

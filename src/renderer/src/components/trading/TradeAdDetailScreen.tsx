@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { LinkifiedText } from '@renderer/components/ui/linkified-text'
 import { useAuth } from '@renderer/contexts/AuthContext'
 import { useCurrentUser } from '@renderer/hooks/useCurrentUser'
 import { useTrades } from '@renderer/contexts/TradesContext'
@@ -102,7 +103,7 @@ function OfferRow({
         </span>
       </div>
 
-      {offer.note && <p className="mb-2 text-xs text-secondary-text">{offer.note}</p>}
+      {offer.note && <p className="mb-2 text-xs text-secondary-text"><LinkifiedText text={offer.note} /></p>}
 
       <div className="grid grid-cols-2 gap-3">
         <ItemSide items={offer.offering ?? ad.requesting} label="Offering" />
@@ -257,7 +258,7 @@ export function TradeAdDetailScreen({
                   )}
                 </div>
               </div>
-              {ad.note && <p className="mt-3 text-sm text-primary-text">{ad.note}</p>}
+              {ad.note && <p className="mt-3 text-sm text-primary-text"><LinkifiedText text={ad.note} /></p>}
             </div>
 
             <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">

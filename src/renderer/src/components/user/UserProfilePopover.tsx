@@ -9,6 +9,7 @@ import { usersApi } from '@renderer/lib/usersApi'
 import { FriendButton } from '@renderer/components/user/FriendButton'
 import { accentCardTheme } from '@renderer/lib/accentColor'
 import { cn } from '@renderer/lib/utils'
+import { LinkifiedText } from '@renderer/components/ui/linkified-text'
 import {
   avatarShapeClass,
   hidesPresence,
@@ -74,29 +75,11 @@ function loadFullProfile(token: string, userId: string): Promise<FullProfile> {
   return pending
 }
 
-// Plain text like the website: combining marks stripped (they stack into "zalgo"), links clickable.
-const URL_PATTERN = /(https?:\/\/[^\s]+)/g
-
+// Plain text like the website: combining marks stripped (they stack into "zalgo"), jailbreakchangelogs.com links clickable.
 function Description({ text }: { text: string }): React.JSX.Element {
   return (
     <p className="mt-3 line-clamp-5 text-sm break-words whitespace-pre-wrap text-primary-text/90">
-      {text
-        .replace(/\p{M}+/gu, '')
-        .split(URL_PATTERN)
-        .map((part, i) =>
-          i % 2 === 1 ? (
-            <button
-              key={i}
-              type="button"
-              onClick={() => void window.api.openExternal(part)}
-              className="text-link hover:text-link-hover hover:underline"
-            >
-              {part}
-            </button>
-          ) : (
-            part
-          )
-        )}
+      <LinkifiedText text={text.replace(/\p{M}+/gu, '')} />
     </p>
   )
 }

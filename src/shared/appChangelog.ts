@@ -57,6 +57,17 @@ export function notesSince(notes: string, currentVersion: string | undefined): s
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.9.4',
+    date: '2026-11-15',
+    added: [
+      'Bookmark a tab by right-clicking it and choosing Bookmark tab. Bookmarks show on the New Tab page and open the tab as you left it, with up-to-date values',
+      'The tools on the New Tab page are ordered by how often you use them'
+    ],
+    changed: [
+      'The New Tab page fits better in small windows, with its content centred and the tools in even rows'
+    ]
+  },
+  {
     version: '0.9.3',
     date: '2026-11-15',
     added: [

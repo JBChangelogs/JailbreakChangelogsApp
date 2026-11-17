@@ -599,6 +599,7 @@ pub fn run() {
             #[cfg(windows)]
             {
                 notify::register_windows_toast_identity(APP_USER_MODEL_ID, &resources.join("icon.png"));
+                #[cfg(not(debug_assertions))]
                 if let Err(e) = app.deep_link().register(PROTOCOL) {
                     eprintln!("[protocol] failed to register: {e}");
                 }

@@ -32,9 +32,10 @@ fn installed_by_other_package_manager() -> bool {
 }
 
 pub async fn check(app: AppHandle, source: &'static str) {
-    if !crate::is_packaged() || installed_by_other_package_manager() {
+    if !crate::is_packaged() {
         return;
     }
+    let manual = installed_by_other_package_manager();
     if let Some((update, bytes)) = PENDING.lock().unwrap().as_ref() {
         let status = json!({ "state": "downloaded", "source": source, "version": update.version, "size": bytes.len(), "notes": update.body });
         return send(&app, status);
@@ -53,6 +54,9 @@ pub async fn check(app: AppHandle, source: &'static str) {
             return send(&app, json!({ "state": "not-available", "source": source }));
         }
     };
+    if manual {
+        return send(&app, json!({ "state": "available", "source": source, "version": update.version, "notes": update.body, "manual": true }));
+    }
     send(&app, json!({ "state": "available", "source": source, "version": update.version, "notes": update.body }));
     if source == "startup" {
         download_update(app, update, source).await;

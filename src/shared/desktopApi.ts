@@ -5,7 +5,7 @@ export type UpdateSource = 'startup' | 'poll'
 
 export type UpdaterStatus =
   | { state: 'checking'; source?: UpdateSource }
-  | { state: 'available'; source?: UpdateSource; version?: string; size?: number; notes?: string }
+  | { state: 'available'; source?: UpdateSource; version?: string; size?: number; notes?: string; manual?: boolean }
   | {
       state: 'downloading'
       source?: UpdateSource

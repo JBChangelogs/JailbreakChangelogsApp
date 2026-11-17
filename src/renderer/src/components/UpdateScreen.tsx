@@ -30,7 +30,8 @@ export function UpdateScreen(): React.JSX.Element | null {
   const active =
     status !== null &&
     (status.state === 'available' || status.state === 'downloading' || status.state === 'downloaded') &&
-    status.source === 'startup'
+    status.source === 'startup' &&
+    !(status.state === 'available' && status.manual)
   const installing = active && status.state === 'downloaded'
 
   useEffect(() => {

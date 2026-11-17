@@ -57,6 +57,13 @@ export function notesSince(notes: string, currentVersion: string | undefined): s
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.9.5',
+    date: '2026-11-16',
+    fixed: [
+      "On Arch Linux and other installs that update through a package manager, the app never said when a new version was out. It now shows a banner with a link to the latest release"
+    ]
+  },
+  {
     version: '0.9.4',
     date: '2026-11-15',
     added: [

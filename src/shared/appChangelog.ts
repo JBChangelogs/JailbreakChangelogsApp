@@ -57,6 +57,29 @@ export function notesSince(notes: string, currentVersion: string | undefined): s
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.9.6',
+    date: '2026-11-17',
+    added: [
+      'Move between all the images in a message from the image viewer, with the arrows, the arrow keys or the thumbnails along the bottom',
+      'Group chats in your conversation list show a green dot when someone in the group is online'
+    ],
+    changed: [
+      'The image viewer fills the window, with copy, save, open original and close in the top-right corner instead of over the image',
+      'Messages are easier to read, with softer highlights on messages that mention you and lighter message text',
+      'Buttons on profile cards with a custom color match the card',
+      'Avatars on profile cards with a background image have a border',
+      'The Friends sheet loads faster'
+    ],
+    fixed: [
+      'Your own messages show your display name instead of your username',
+      'The Friends sheet and user search show the avatar each person has chosen, instead of an old custom avatar or their Discord avatar',
+      'Online status for group chat members stays up to date, including after you come back to Messages'
+    ],
+    removed: [
+      'The Use Twemoji setting. Emoji always use Twemoji now'
+    ]
+  },
+  {
     version: '0.9.5',
     date: '2026-11-16',
     fixed: [

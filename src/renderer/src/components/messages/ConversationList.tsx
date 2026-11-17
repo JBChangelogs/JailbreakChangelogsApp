@@ -12,12 +12,14 @@ import {
 import { normalizeToMs } from '@renderer/lib/messageFormatting'
 import { useUserProfiles } from '@renderer/hooks/useUserProfiles'
 import { GroupAvatar, UserAvatarWithPresence } from '@renderer/components/messages/UserAvatar'
+import { PresenceDot } from '@renderer/components/messages/PresenceDot'
 import { UserNameSkeleton } from '@renderer/components/messages/UserNameSkeleton'
 import { UserSearch } from '@renderer/components/messages/UserSearch'
 import {
   LeaveGroupDialog,
   MAX_GROUP_MEMBERS,
   UserPickerDialog,
+  isOffline,
   profileDisplayName
 } from '@renderer/components/messages/GroupChatDialogs'
 import { UserProfilePopover } from '@renderer/components/user/UserProfilePopover'
@@ -195,6 +197,7 @@ export function ConversationList({
             const isSelected = selectedId === key
             const others = group.member_ids.filter((id) => id !== currentUserId)
             const typerIds = others.filter((id) => typingUserIds.has(groupTypingKey(group.id, id)))
+            const anyoneOnline = others.some((id) => !isOffline(profiles.get(id)))
             return (
               <div
                 key={key}
@@ -212,13 +215,21 @@ export function ConversationList({
                   : 'hover:bg-quaternary-bg'
                   }`}
               >
-                <GroupAvatar
-                  groupId={group.id}
-                  memberIds={group.member_ids}
-                  fallbackIds={others.slice(0, 4)}
-                  profiles={profiles}
-                  className="h-8 w-8"
-                />
+                <div className="relative shrink-0">
+                  <GroupAvatar
+                    groupId={group.id}
+                    memberIds={group.member_ids}
+                    fallbackIds={others.slice(0, 4)}
+                    profiles={profiles}
+                    className="h-8 w-8"
+                  />
+                  {anyoneOnline && (
+                    <PresenceDot
+                      presence={{ status: 'online', last_updated: 0 }}
+                      className="absolute right-0 bottom-0 h-2.5 w-2.5"
+                    />
+                  )}
+                </div>
                 <div className="min-w-0 flex-1">
                   <span className={`block truncate text-base font-medium ${isSelected ? 'text-primary-text' : 'text-message-name group-hover:text-message-text'}`}>{group.name}</span>
                   {typerIds.length > 0 ? (

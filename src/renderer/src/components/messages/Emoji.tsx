@@ -1,5 +1,3 @@
-import { usePreferences } from '@renderer/contexts/PreferencesContext'
-
 const TWEMOJI_BASE = 'https://cdn.jsdelivr.net/gh/jdecked/twemoji@17.0.3/assets/svg/'
 
 function toCodePoints(emoji: string): string {
@@ -11,9 +9,6 @@ function toCodePoints(emoji: string): string {
 }
 
 export function Emoji({ emoji, className }: { emoji: string; className?: string }): React.JSX.Element {
-  const { twemojiEnabled } = usePreferences()
-  if (!twemojiEnabled) return <>{emoji}</>
-
   return (
     <img
       className={`twemoji ${className ?? ''}`}
@@ -48,9 +43,6 @@ function splitEmoji(text: string): Array<{ emoji: boolean; value: string }> {
 }
 
 export function EmojiText({ text }: { text: string }): React.JSX.Element {
-  const { twemojiEnabled } = usePreferences()
-  if (!twemojiEnabled) return <>{text}</>
-
   return (
     <>
       {splitEmoji(text).map((segment, index) =>

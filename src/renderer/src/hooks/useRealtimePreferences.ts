@@ -31,11 +31,10 @@ function isRichPresenceKey(key: unknown): key is RichPresencePreferenceKey {
 export function useRealtimePreferences(): void {
   const { token } = useAuth()
   const { theme, setSyncedTheme: setTheme, customTheme, setCustomTheme, recentThemes, setRecentThemes } = useTheme()
-  const { twemojiEnabled, setTwemojiEnabled, tabStyle, setTabStyle, richPresence, setRichPresence } = usePreferences()
+  const { tabStyle, setTabStyle, richPresence, setRichPresence } = usePreferences()
   const { send, subscribe } = useRealtime()
 
   const lastServerThemeRef = useRef<Theme | null>(null)
-  const lastServerTwemojiRef = useRef<boolean | null>(null)
   const lastServerTabStyleRef = useRef<TabStyle | null>(null)
   const lastServerRichPresenceRef = useRef<Partial<Record<RichPresencePreferenceKey, boolean>>>({})
 
@@ -90,10 +89,6 @@ export function useRealtimePreferences(): void {
           lastServerThemeRef.current = data.theme
           setTheme(data.theme)
         }
-        if (typeof data?.twemoji_enabled === 'boolean') {
-          lastServerTwemojiRef.current = data.twemoji_enabled
-          setTwemojiEnabled(data.twemoji_enabled)
-        }
         if (isTabStyle(data?.tab_style)) {
           lastServerTabStyleRef.current = data.tab_style
           setTabStyle(data.tab_style)
@@ -115,10 +110,6 @@ export function useRealtimePreferences(): void {
           lastServerThemeRef.current = update.value
           setTheme(update.value)
         }
-        if (update?.key === 'twemoji_enabled' && typeof update.value === 'boolean') {
-          lastServerTwemojiRef.current = update.value
-          setTwemojiEnabled(update.value)
-        }
         if (update?.key === 'tab_style' && isTabStyle(update.value)) {
           lastServerTabStyleRef.current = update.value
           setTabStyle(update.value)
@@ -130,7 +121,7 @@ export function useRealtimePreferences(): void {
         }
       }
     })
-  }, [subscribe, setTheme, setTwemojiEnabled, setTabStyle, setRichPresence, applyServerCustomTheme, applyServerRecentThemes])
+  }, [subscribe, setTheme, setTabStyle, setRichPresence, applyServerCustomTheme, applyServerRecentThemes])
 
   useEffect(() => {
     const code = customTheme?.share_code ?? null
@@ -160,13 +151,6 @@ export function useRealtimePreferences(): void {
     lastServerThemeRef.current = theme
     send({ type: 'set_preference', key: 'theme', value: theme })
   }, [theme, token, send])
-
-  useEffect(() => {
-    if (!token) return
-    if (lastServerTwemojiRef.current === twemojiEnabled) return
-    lastServerTwemojiRef.current = twemojiEnabled
-    send({ type: 'set_preference', key: 'twemoji_enabled', value: twemojiEnabled })
-  }, [twemojiEnabled, token, send])
 
   useEffect(() => {
     if (!token || !syncedRef.current) return

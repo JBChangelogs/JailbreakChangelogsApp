@@ -52,6 +52,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }): R
   const listenersRef = useRef<Set<RealtimeListener>>(new Set())
   const locationRef = useRef<string | null>(null)
   const [location, setLocationState] = useState<string | null>(null)
+  const lastPageRef = useRef<string | null>(null)
   const lastLocationSentAtRef = useRef(0)
   const pendingLocationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -263,6 +264,11 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }): R
 
   const setLocation = useCallback(
     (next: string | null) => {
+      if (next === 'messages' && lastPageRef.current !== null && lastPageRef.current !== 'messages') {
+        setPresenceOverrides(new Map())
+        setConnectionEpoch((epoch) => epoch + 1)
+      }
+      if (next !== null) lastPageRef.current = next
       locationRef.current = next
       setLocationState(next)
       reportLocation(next)

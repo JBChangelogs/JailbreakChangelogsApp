@@ -351,7 +351,7 @@ export function DisplaySettingsSection(): React.JSX.Element {
     shortcutHidden,
     setShortcutHidden
   } = useTheme()
-  const { twemojiEnabled, setTwemojiEnabled, tabStyle, setTabStyle } = usePreferences()
+  const { tabStyle, setTabStyle } = usePreferences()
 
   const [mine, setMine] = useState<CustomTheme[]>([])
   const [shared, setShared] = useState<Map<string, CustomTheme>>(new Map())
@@ -479,12 +479,6 @@ export function DisplaySettingsSection(): React.JSX.Element {
 
       <SettingsCard title="Display" icon={MonitorIcon}>
         <div className={SETTINGS_LIST}>
-          <SettingRow
-            highlight
-            title="Use Twemoji"
-            description="Render emoji with Twitter's emoji set instead of your system's."
-            action={<Switch checked={twemojiEnabled} onCheckedChange={setTwemojiEnabled} />}
-          />
           <ChoiceSetting
             id="tab-style"
             title="Tab style"

@@ -543,8 +543,8 @@ html:not(.keyboard-nav) :focus-visible {
   unicode-range: U+00A9, U+00AE, U+200D, U+203C-3299, U+FE0F, U+1F000-1FAFF, U+E0020-E007F;
 }
 
-:root[data-twemoji] textarea,
-:root[data-twemoji] .twemoji-text {
+textarea,
+.twemoji-text {
   font-family: 'Twemoji', var(--font-sans);
 }
 
@@ -588,6 +588,9 @@ img.twemoji {
   --color-border-card: var(--accent-card-border);
   --color-border-primary: var(--accent-card-border);
   --color-secondary-text: var(--accent-card-text-secondary);
+  --color-button-secondary: var(--accent-card-tertiary);
+  --color-button-secondary-hover: var(--accent-card-quaternary);
+  --color-button-secondary-active: var(--accent-card-quaternary);
 }
 
 [data-accent-cards="solid"].bg-secondary-bg,
@@ -613,7 +616,7 @@ img.twemoji {
 
 @theme inline {
   --color-message-header: color-mix(in srgb, var(--color-primary-text) 96%, var(--color-primary-bg));
-  --color-message-text: color-mix(in srgb, var(--color-primary-text) 88%, var(--color-primary-bg));
+  --color-message-text: color-mix(in srgb, var(--color-primary-text) 82%, var(--color-primary-bg));
   --color-message-name: color-mix(in srgb, var(--color-primary-text) 72%, var(--color-primary-bg));
   --color-message-muted: color-mix(in srgb, var(--color-primary-text) 60%, var(--color-primary-bg));
 }

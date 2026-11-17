@@ -1362,7 +1362,7 @@ function MessageRow({
           : isReplyTarget
             ? "bg-button-info/10 shadow-[inset_2px_0_0_var(--color-button-info)] hover:bg-button-info/10!"
             : isForMe
-              ? "bg-status-warning/10 shadow-[inset_2px_0_0_var(--color-status-warning)] hover:bg-status-warning/15!"
+              ? "bg-status-warning/[0.05] shadow-[inset_2px_0_0_var(--color-status-warning)] hover:bg-status-warning/[0.08]!"
               : isContextMenuOpen
                 ? "bg-tertiary-bg"
                 : ""
@@ -1442,7 +1442,7 @@ function MessageRow({
               <UserProfilePopover userId={senderId} profile={senderProfile}>
                 <button
                   type="button"
-                  className="min-w-0 truncate text-left text-base font-medium text-message-header hover:underline"
+                  className="min-w-0 truncate text-left text-[15px] font-medium text-message-header hover:underline"
                 >
                   {label}
                 </button>
@@ -1608,7 +1608,7 @@ function MessageRow({
             <>
               {(message.content || message.metadata?.type !== "images") && (
               <p
-                className={`text-base leading-[1.375rem] whitespace-pre-wrap break-words ${
+                className={`text-[15px] leading-[1.375rem] font-normal whitespace-pre-wrap break-words ${
                   isFailed
                     ? "text-status-error"
                     : isPending

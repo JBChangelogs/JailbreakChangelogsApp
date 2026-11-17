@@ -45,7 +45,7 @@ export function HomeAccountBar(): React.JSX.Element | null {
   const { open: openSettings } = useSettingsPage()
   const [failedSrc, setFailedSrc] = useState<string | null>(null)
   if (!token) return null
-  const displayName = user?.username || user?.name || 'Loading…'
+  const displayName = user?.name || user?.username || 'Loading…'
 
   return (
     <div className="flex items-center gap-1.5">
@@ -106,8 +106,8 @@ export function HomeAccountBar(): React.JSX.Element | null {
         <DropdownMenuContent align="end" className="w-56">
           <DropdownMenuLabel className="truncate">
             {displayName}
-            {user?.name && user.name !== displayName && (
-              <span className="block truncate text-xs font-normal text-tertiary-text">{user.name}</span>
+            {user?.username && user.username !== displayName && (
+              <span className="block truncate text-xs font-normal text-tertiary-text">{user.username}</span>
             )}
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
@@ -126,8 +126,8 @@ export function AccountPanel(): React.JSX.Element | null {
   const { open: openSettings } = useSettingsPage()
   const [failedSrc, setFailedSrc] = useState<string | null>(null)
   if (!token) return null
-  const displayName = user?.username || user?.name || 'Loading…'
-  const subtitle = user?.name && user.name !== displayName ? user.name : undefined
+  const displayName = user?.name || user?.username || 'Loading…'
+  const subtitle = user?.username && user.username !== displayName ? user.username : undefined
   const initials = displayName.slice(0, 2).toUpperCase()
 
   return (

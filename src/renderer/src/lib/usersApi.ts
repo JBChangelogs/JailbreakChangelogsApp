@@ -17,20 +17,23 @@ export function resolveAvatarUrl(userId: string, avatar: string | null | undefin
   return `https://cdn.discordapp.com/avatars/${userId}/${avatar}.${ext}`
 }
 
-function normalize(user: UserProfile): UserProfile {
+export function normalizeUser(user: UserProfile): UserProfile {
   return {
     ...user,
-    avatar: resolveAvatarUrl(user.id, user.avatar),
+    avatar: user.avatar_url ?? resolveAvatarUrl(user.id, user.avatar),
     // /users/me names the supporter tier `supporter`; every other user endpoint says `premiumtype`.
     premiumtype: user.premiumtype ?? user.supporter
   }
 }
 
 export const usersApi = {
-  me: (token: string) => request<UserProfile>(token, '/v2/users/me').then(normalize),
+  me: (token: string) =>
+    request<UserProfile>(token, '/v2/users/me').then((user) =>
+      normalizeUser({ ...user, username: user.name, name: user.username, global_name: user.username })
+    ),
 
   get: (token: string, id: string) =>
-    request<UserProfile>(token, `/v2/users/${encodeURIComponent(id)}`).then(normalize),
+    request<UserProfile>(token, `/v2/users/${encodeURIComponent(id)}`).then(normalizeUser),
 
   /** Plain text; the API answers "No description provided" when there's none. */
   description: (token: string, id: string) =>
@@ -45,7 +48,7 @@ export const usersApi = {
       `/v2/users/batch?ids=${query}`
     )
     const users = Array.isArray(res) ? res : Object.values(res)
-    return users.map(normalize)
+    return users.map(normalizeUser)
   },
 
   search: async (token: string, username: string, limit = 10): Promise<UserProfile[]> => {
@@ -56,6 +59,6 @@ export const usersApi = {
       `/v2/users/search?${params.toString()}`
     )
     const users = Array.isArray(res) ? res : Object.values(res)
-    return users.map(normalize)
+    return users.map(normalizeUser)
   }
 }

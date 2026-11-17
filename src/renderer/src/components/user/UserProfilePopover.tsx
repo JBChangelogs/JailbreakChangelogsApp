@@ -176,7 +176,7 @@ export function UserProfilePopover({ userId, profile, side = 'right', children }
             <div className="relative px-4">
               {/* Overlaps the banner with a ring cut out in the card's color, like Discord. */}
               <div className="relative -mt-11 w-fit">
-                <div className={`p-1 ${cardColor} ${avatarShapeClass(displayProfile, true)}`}>
+                <div className={`p-1 ${cardColor || 'bg-secondary-bg/60 backdrop-blur-md'} ${avatarShapeClass(displayProfile, true)}`}>
                   <UserAvatar id={userId} profile={displayProfile} className="h-20 w-20" />
                 </div>
                 {showPresence && (

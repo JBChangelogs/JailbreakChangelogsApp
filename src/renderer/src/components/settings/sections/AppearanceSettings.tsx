@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@renderer/contexts/AuthContext'
 import { useCurrentUser } from '@renderer/hooks/useCurrentUser'
 import { accountApi } from '@renderer/lib/accountApi'
-import { usersApi } from '@renderer/lib/usersApi'
+import { refreshCurrentUser } from '@renderer/lib/currentUser'
 import {
   ACCENT_STYLES,
   accentCardTheme,
@@ -42,7 +42,7 @@ function useAccentColor(): {
   const { token } = useAuth()
   const { user } = useCurrentUser()
   const [customAccent, setCustomAccent] = useState<Accent | null>(null)
-  const [discordColor, setDiscordColor] = useState<string | null>(null)
+  const discordColor = accentColorToHex(user?.accent_color)
   const [draft, setDraft] = useState<Accent | null>(null)
   const saveQueue = useRef(Promise.resolve())
   const pending = useRef(0)
@@ -62,12 +62,6 @@ function useAccentColor(): {
       .accentColor(token)
       .then(setCustomAccent)
       .catch(() => {})
-    usersApi
-      .get(token, user.id)
-      .then((profile) =>
-        setDiscordColor(accentColorToHex((profile as { accent_color?: number | string | null }).accent_color))
-      )
-      .catch(() => {})
   }, [token, user?.id])
 
   useEffect(() => {
@@ -78,7 +72,10 @@ function useAccentColor(): {
       enqueue(() =>
         accountApi
           .saveAccentColor(token, value)
-          .then(() => setCustomAccent(value))
+          .then(() => {
+            setCustomAccent(value)
+            void refreshCurrentUser(token).catch(() => {})
+          })
           .catch((err: unknown) => {
             showToast("Couldn't save accent color", { description: errorMessage(err) })
           })
@@ -95,6 +92,7 @@ function useAccentColor(): {
         await accountApi.saveAccentColor(token, null)
         setDraft(null)
         setCustomAccent(null)
+        void refreshCurrentUser(token).catch(() => {})
         showToast('Accent color reset to your Discord color')
       } catch (err) {
         showToast("Couldn't reset accent color", { description: errorMessage(err) })

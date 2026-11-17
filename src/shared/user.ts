@@ -34,6 +34,7 @@ export interface UserProfile {
   roblox_id?: string | number | null
   roblox_username?: string | null
   avatar: string | null
+  avatar_url?: string | null
   banner: string | null
   /** Uploaded banner; shown instead of `banner` when settings turn it on and the user is Supporter 2+. */
   custom_banner?: string | null

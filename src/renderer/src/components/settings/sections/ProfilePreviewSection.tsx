@@ -120,7 +120,7 @@ export function ProfilePreviewSection(): React.JSX.Element {
               onChange={(e) => readFile(e.currentTarget, avatar.selectFile)}
             />
             <div className="min-w-0 flex-1 pb-1">
-              <p className="truncate text-sm font-semibold text-primary-text">{user?.username ?? 'Your profile'}</p>
+              <p className="truncate text-sm font-semibold text-primary-text">{user?.name ?? 'Your profile'}</p>
               <p className="text-xs text-tertiary-text">
                 {hasAccess ? 'Click your avatar or banner to change them' : 'Requires Supporter Tier 2 or higher'}
               </p>

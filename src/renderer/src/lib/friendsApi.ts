@@ -1,3 +1,6 @@
+import { normalizeUser } from '@renderer/lib/usersApi'
+import type { UserProfile } from '@shared/user'
+
 const API_BASE = 'https://api.jailbreakchangelogs.com'
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -14,16 +17,19 @@ const ERROR_MESSAGES: Record<string, string> = {
 
 export class FriendError extends Error {}
 
-export interface FriendUser {
-  id: string
-  username: string
-  global_name: string | null
-  premiumtype: number
-  avatar: string | null
-  custom_avatar: string | null
+export type FriendUser = UserProfile & { friends_since?: number; requested_at?: number }
+
+interface FriendRow {
+  user: UserProfile
   friends_since?: number
   created_at?: number
 }
+
+const flatten = ({ user, friends_since, created_at }: FriendRow): FriendUser => ({
+  ...normalizeUser(user),
+  friends_since,
+  requested_at: created_at
+})
 
 async function request<T>(token: string, path: string, method = 'GET'): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, { method, headers: { Authorization: token } })
@@ -40,14 +46,16 @@ export const friendsApi = {
   friends: async (token: string): Promise<FriendUser[]> => {
     const all: FriendUser[] = []
     for (let page = 1; ; page++) {
-      const res = await request<{ items: FriendUser[]; total_pages: number }>(token, `/v2/users/me/friends?page=${page}`)
-      all.push(...res.items)
+      const res = await request<{ items: FriendRow[]; total_pages: number }>(token, `/v2/users/me/friends?page=${page}`)
+      all.push(...res.items.map(flatten))
       if (page >= res.total_pages) return all
     }
   },
 
-  requests: (token: string) =>
-    request<{ incoming: FriendUser[]; outgoing: FriendUser[] }>(token, '/v2/users/me/friend-requests'),
+  requests: async (token: string): Promise<{ incoming: FriendUser[]; outgoing: FriendUser[] }> => {
+    const res = await request<{ incoming: FriendRow[]; outgoing: FriendRow[] }>(token, '/v2/users/me/friend-requests')
+    return { incoming: res.incoming.map(flatten), outgoing: res.outgoing.map(flatten) }
+  },
 
   sendRequest: (token: string, id: string) =>
     request<{ status: 'pending' | 'accepted' }>(token, `/v2/users/me/friend-requests/${encodeURIComponent(id)}`, 'PUT'),

@@ -5,9 +5,7 @@ import { UserAvatar } from '@renderer/components/messages/UserAvatar'
 import { FriendButton } from '@renderer/components/user/FriendButton'
 import { UserProfilePopover } from '@renderer/components/user/UserProfilePopover'
 import { useFriends } from '@renderer/hooks/useFriends'
-import { resolveAvatarUrl } from '@renderer/lib/usersApi'
 import type { FriendUser } from '@renderer/lib/friendsApi'
-import type { UserProfile } from '@shared/user'
 
 type SheetTab = 'friends' | 'pending'
 
@@ -19,30 +17,18 @@ function XIcon({ className }: { className?: string }): React.JSX.Element {
   )
 }
 
-function asProfile(user: FriendUser): UserProfile {
-  return {
-    id: user.id,
-    username: user.username,
-    name: user.global_name || user.username,
-    global_name: user.global_name ?? undefined,
-    avatar: user.custom_avatar || resolveAvatarUrl(user.id, user.avatar),
-    premiumtype: user.premiumtype
-  } as UserProfile
-}
-
 function formatDate(seconds: number): string {
   return new Date(seconds * 1000).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
 function FriendRow({ user, detail }: { user: FriendUser; detail: string | null }): React.JSX.Element {
-  const profile = asProfile(user)
   return (
     <div className="flex items-center gap-2.5 rounded-xl px-2 py-1.5 hover:bg-quaternary-bg/50">
-      <UserProfilePopover userId={user.id} profile={profile}>
+      <UserProfilePopover userId={user.id} profile={user}>
         <button type="button" className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
-          <UserAvatar id={user.id} profile={profile} className="h-9 w-9" />
+          <UserAvatar id={user.id} profile={user} className="h-9 w-9" />
           <span className="min-w-0">
-            <span className="block truncate text-sm font-medium text-primary-text">{profile.name}</span>
+            <span className="block truncate text-sm font-medium text-primary-text">{user.global_name || user.username}</span>
             <span className="block truncate text-xs text-tertiary-text">{detail ?? `@${user.username}`}</span>
           </span>
         </button>
@@ -52,7 +38,15 @@ function FriendRow({ user, detail }: { user: FriendUser; detail: string | null }
   )
 }
 
-function Section({ label, users, detail }: { label: string; users: FriendUser[]; detail: (u: FriendUser) => string | null }): React.JSX.Element | null {
+function Section({
+  label,
+  users,
+  detail
+}: {
+  label: string
+  users: FriendUser[]
+  detail: (u: FriendUser) => string | null
+}): React.JSX.Element | null {
   if (users.length === 0) return null
   return (
     <div>
@@ -128,8 +122,8 @@ export function FriendsSheet({ onClose }: { onClose: () => void }): React.JSX.El
           <p className="py-8 text-center text-xs text-quaternary-text">No pending friend requests.</p>
         ) : (
           <>
-            <Section label="Received" users={incoming} detail={(u) => (u.created_at ? `Sent ${formatDate(u.created_at)}` : null)} />
-            <Section label="Sent" users={outgoing} detail={(u) => (u.created_at ? `Sent ${formatDate(u.created_at)}` : null)} />
+            <Section label="Received" users={incoming} detail={(u) => (u.requested_at ? `Sent ${formatDate(u.requested_at)}` : null)} />
+            <Section label="Sent" users={outgoing} detail={(u) => (u.requested_at ? `Sent ${formatDate(u.requested_at)}` : null)} />
           </>
         )}
       </div>

@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
-import { onUnauthorized } from '@renderer/lib/authEvents'
+import { onUnauthorized, setInventoryToken } from '@renderer/lib/authEvents'
 
 type AuthStatus = 'checking' | 'idle' | 'waiting' | 'authenticated' | 'error'
 
@@ -19,6 +19,7 @@ const LOGIN_TIMEOUT_MS = 3 * 60 * 1000
 export function AuthProvider({ children }: { children: React.ReactNode }): React.JSX.Element {
   const [status, setStatus] = useState<AuthStatus>('checking')
   const [token, setToken] = useState<string | null>(null)
+  setInventoryToken(token)
   const [error, setError] = useState<string | null>(null)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 

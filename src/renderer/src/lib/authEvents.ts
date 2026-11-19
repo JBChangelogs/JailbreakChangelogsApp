@@ -1,4 +1,11 @@
-const API_HOSTS = ['api.jailbreakchangelogs.com', 'inventories.jailbreakchangelogs.com']
+const INVENTORY_HOST = 'inventories.jailbreakchangelogs.com'
+const API_HOSTS = ['api.jailbreakchangelogs.com', INVENTORY_HOST]
+
+let inventoryToken: string | null = null
+
+export function setInventoryToken(token: string | null): void {
+  inventoryToken = token
+}
 
 type Listener = () => void
 const listeners = new Set<Listener>()
@@ -28,6 +35,11 @@ if (!window.__authEventsPatched) {
   window.__authEventsPatched = true
   const originalFetch = window.fetch.bind(window)
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    if (inventoryToken && requestUrl(input).includes(INVENTORY_HOST)) {
+      const headers = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined))
+      if (!headers.has('Authorization')) headers.set('Authorization', inventoryToken)
+      init = { ...init, headers }
+    }
     const response = await originalFetch(input, init)
     if (response.status === 401 && API_HOSTS.some((host) => requestUrl(input).includes(host))) {
       reportUnauthorized()

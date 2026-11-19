@@ -57,6 +57,13 @@ export function notesSince(notes: string, currentVersion: string | undefined): s
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.9.7',
+    date: '2026-11-18',
+    fixed: [
+      "Looking up lots of inventories, dupes or Roblox users in a short time no longer risks being blocked, since lookups now count as signed in"
+    ]
+  },
+  {
     version: '0.9.6',
     date: '2026-11-17',
     added: [

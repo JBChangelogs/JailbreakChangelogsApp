@@ -57,6 +57,17 @@ export function notesSince(notes: string, currentVersion: string | undefined): s
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.10.1',
+    date: '2026-11-26',
+    changed: [
+      'Overlay value cards show full values, like 10,000,000 instead of 10m',
+      'Click an overlay value card to see its duped value, demand, duped demand and trend'
+    ],
+    fixed: [
+      "Overlay value cards no longer cut off item names, values or demand"
+    ]
+  },
+  {
     version: '0.10.0',
     date: '2026-11-26',
     added: [

@@ -57,6 +57,25 @@ export function notesSince(notes: string, currentVersion: string | undefined): s
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.10.0',
+    date: '2026-11-26',
+    added: [
+      "An in-game overlay on Windows. Press Alt+` while you play (or your own shortcut, set in App settings) to see the value of every item in your open trade, and open values, the calculator, trade ads, messages, the dupe finder and more in windows you can move and resize without leaving Roblox",
+      'Open on startup and Start minimized options in App settings',
+      'A Close to taskbar option in App settings, so the close button minimizes the app instead of quitting'
+    ],
+    changed: [
+      'Section labels use sentence case instead of all capitals',
+      'The calculator, values list and trackers fit better in small windows',
+      'Dupe Finder, OG Finder and Trade History each show their own icon before you search'
+    ],
+    fixed: [
+      "Signing in from the Linux AppImage is more reliable. The app now sets itself up to receive the login link even when a system tool is missing, which stopped the browser handing the login back to the app on some desktops, like Bazzite",
+      'The trade scanner reads more items correctly, including names it saw in mixed case, items that share a name with another type (like the Volt vehicle and texture), and Volt 4x4',
+      'The trade scanner keeps reading your trade during the final countdown after both sides accept'
+    ]
+  },
+  {
     version: '0.9.7',
     date: '2026-11-18',
     fixed: [

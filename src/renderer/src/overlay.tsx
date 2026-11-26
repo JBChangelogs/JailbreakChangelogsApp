@@ -38,7 +38,7 @@ import type { TrackerView } from './components/tracker/TrackerViewSwitcher'
 import { PityCalculatorProvider, PityCalculatorScreen, PityCalculatorSidebar } from './components/hyperchrome/PityCalculator'
 import { PrivateServersProvider, PrivateServersScreen, PrivateServersSidebar } from './components/servers/PrivateServers'
 import { useItems } from './hooks/useItems'
-import { getDemandColor, getItemImagePath, handleImageError, parseCashValue } from './lib/itemValueUtils'
+import { formatFullValue, getDemandColor, getItemImagePath, getTrendColor, handleImageError, parseCashValue } from './lib/itemValueUtils'
 import { prettyShortcut } from './lib/utils'
 import { parseChatKey } from './lib/messagesApi'
 import { useConversations } from './hooks/useConversations'
@@ -60,7 +60,8 @@ type Bounds = { x: number; y: number; w: number; h: number }
 type OpenWindow = Bounds & { type: Feature; z: number; chat?: string; ready?: boolean }
 type Chat = { selected: string | null; select: (id: string | null) => void }
 
-const CARD_H = 84
+const CARD_H = 76
+const EXPANDED_H = 188
 const MAX_CARD_W = 184
 const GAP = 10
 const MARGIN = 16
@@ -185,30 +186,93 @@ function useClock(): { time: string; date: string } {
   }
 }
 
-function ItemCard({ item, scanned }: { item?: Item; scanned: ScannedItem }): React.JSX.Element {
+function DetailRow({ label, children }: { label: string; children: React.ReactNode }): React.JSX.Element {
   return (
-    <div className={`flex h-full items-center gap-2.5 rounded-2xl p-2.5 ${PANEL}`}>
-      <img
-        src={getItemImagePath(scanned.type, scanned.name)}
-        onError={handleImageError}
-        alt=""
-        className="size-12 shrink-0 rounded-xl bg-tertiary-bg object-cover"
-      />
-      <div className="min-w-0 flex-1 leading-tight">
-        <div className="truncate text-[13px] font-semibold text-primary-text">{scanned.name}</div>
-        <div className="mt-0.5 truncate text-base font-bold tabular-nums text-primary-text">{item?.cash_value ?? 'N/A'}</div>
-        <div className="mt-0.5 flex items-center gap-1.5 text-[11px] tabular-nums text-secondary-text">
-          <span className="truncate">Duped {item?.duped_value ?? 'N/A'}</span>
-          {item?.demand && <span className={`shrink-0 rounded-full px-1.5 ${getDemandColor(item.demand)}`}>{item.demand}</span>}
+    <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
+      <span className="text-[11px] text-secondary-text">{label}</span>
+      {children}
+    </div>
+  )
+}
+
+function Badge({ value, color }: { value: string | null | undefined; color: (v: string) => string }): React.JSX.Element {
+  const shown = value && value !== 'N/A' ? value : 'Unknown'
+  return <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap ${color(shown)}`}>{shown}</span>
+}
+
+function ItemCard({
+  item,
+  scanned,
+  expanded,
+  onToggle
+}: {
+  item?: Item
+  scanned: ScannedItem
+  expanded: boolean
+  onToggle: () => void
+}): React.JSX.Element {
+  return (
+    <button
+      type="button"
+      aria-expanded={expanded}
+      onClick={onToggle}
+      className={`@container flex h-full w-full flex-col rounded-2xl p-2.5 text-left transition-colors hover:border-secondary-text/40 ${PANEL}`}
+    >
+      <div className="flex h-14 shrink-0 items-center gap-2.5">
+        <img
+          src={getItemImagePath(scanned.type, scanned.name)}
+          onError={handleImageError}
+          alt=""
+          className="hidden size-11 shrink-0 rounded-xl bg-tertiary-bg object-cover @[10rem]:block"
+        />
+        <div className="min-w-0 flex-1 leading-tight">
+          <div className="flex items-start justify-between gap-1">
+            <span className="min-w-0 text-[13px] font-semibold [overflow-wrap:break-word] text-primary-text">{scanned.name}</span>
+            <svg
+              className={`size-4 shrink-0 text-secondary-text transition-transform ${expanded ? 'rotate-180' : ''}`}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
+            </svg>
+          </div>
+          <div className="mt-0.5 text-[15px] font-bold whitespace-nowrap tabular-nums text-primary-text">
+            {formatFullValue(item?.cash_value ?? null)}
+          </div>
         </div>
       </div>
-    </div>
+      {expanded && (
+        <div className="mt-2.5 space-y-2 border-t border-border-primary pt-2.5">
+          <DetailRow label="Duped value">
+            <span className="text-xs font-semibold whitespace-nowrap tabular-nums text-primary-text">{formatFullValue(item?.duped_value ?? null)}</span>
+          </DetailRow>
+          <DetailRow label="Demand">
+            <Badge value={item?.demand} color={getDemandColor} />
+          </DetailRow>
+          <DetailRow label="Duped demand">
+            <Badge value={item?.duped_demand} color={getDemandColor} />
+          </DetailRow>
+          <DetailRow label="Trend">
+            <Badge value={item?.trend} color={getTrendColor} />
+          </DetailRow>
+        </div>
+      )}
+    </button>
   )
 }
 
 function TradeLayer({ byId, trade }: { byId: Map<number, Item>; trade: Trade | null }): React.JSX.Element | null {
   const win = useWindowOrigin()
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set())
   if (!trade) return null
+  const toggle = (key: string): void =>
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      if (!next.delete(key)) next.add(key)
+      return next
+    })
 
   const dpr = window.devicePixelRatio || 1
   const toCss = (x: number, y: number): { x: number; y: number } => ({
@@ -228,12 +292,22 @@ function TradeLayer({ byId, trade }: { byId: Map<number, Item>; trade: Trade | n
       side === 'offering'
         ? Math.max(TOP_BAR + GAP, frameTop - GAP - CARD_H)
         : Math.min(window.innerHeight - DOCK - GAP - CARD_H, frameBottom + GAP)
-    return list.map((p, i) => ({
-      ...p,
-      key: `${side}-${i}-${p.s.id}`,
-      card: { left: xs[i], top },
-      from: { x: xs[i] + cardW / 2, y: side === 'offering' ? top + CARD_H : top }
-    }))
+    return list.map((p, i) => {
+      const key = `${side}-${i}-${p.s.id}`
+      const open = expanded.has(key)
+      const height = open ? EXPANDED_H : CARD_H
+      const cardTop =
+        side === 'offering'
+          ? Math.max(TOP_BAR + GAP, top + CARD_H - height)
+          : Math.max(TOP_BAR + GAP, Math.min(top, window.innerHeight - DOCK - GAP - height))
+      return {
+        ...p,
+        key,
+        open,
+        card: { left: xs[i], top: cardTop, height },
+        from: { x: xs[i] + cardW / 2, y: side === 'offering' ? cardTop + height : cardTop }
+      }
+    })
   })
 
   return (
@@ -257,8 +331,8 @@ function TradeLayer({ byId, trade }: { byId: Map<number, Item>; trade: Trade | n
         ))}
       </svg>
       {placed.map((p) => (
-        <div key={p.key} className="absolute" style={{ ...p.card, width: cardW, height: CARD_H }}>
-          <ItemCard item={byId.get(p.s.id)} scanned={p.s} />
+        <div key={p.key} className={`absolute ${p.open ? 'z-10' : ''}`} style={{ ...p.card, width: cardW }}>
+          <ItemCard item={byId.get(p.s.id)} scanned={p.s} expanded={p.open} onToggle={() => toggle(p.key)} />
         </div>
       ))}
     </>

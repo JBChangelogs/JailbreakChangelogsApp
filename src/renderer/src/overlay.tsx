@@ -57,7 +57,7 @@ type Side = 'offering' | 'requesting'
 type Trade = { origin: [number, number]; width: number; height: number; offering: ScannedItem[]; requesting: ScannedItem[] }
 type Feature = Exclude<TabType, 'home'>
 type Bounds = { x: number; y: number; w: number; h: number }
-type OpenWindow = Bounds & { type: Feature; z: number; chat?: string }
+type OpenWindow = Bounds & { type: Feature; z: number; chat?: string; ready?: boolean }
 type Chat = { selected: string | null; select: (id: string | null) => void }
 
 const CARD_H = 84
@@ -484,7 +484,7 @@ function FloatingWindow({
           </svg>
         </button>
       </div>
-      <div className="flex min-h-0 flex-1 overflow-hidden rounded-b-2xl">{children}</div>
+      <div className="relative flex min-h-0 flex-1 overflow-hidden rounded-b-2xl">{children}</div>
       {RESIZE_HANDLES.map(([edges, className]) => (
         <div key={edges} onPointerDown={startResize(edges)} className={`absolute ${className}`} />
       ))}
@@ -504,7 +504,7 @@ function Dock({ open, unread, onOpen }: { open: Feature[]; unread: number; onOpe
             <TooltipTrigger asChild>
               <button
                 type="button"
-                aria-label={label}
+                aria-label={active ? `Close ${label}` : label}
                 onClick={() => onOpen(type)}
                 className={`relative flex size-12 items-center justify-center rounded-2xl transition-[background-color,color,transform] hover:-translate-y-0.5 [&_svg]:size-6 ${active ? 'bg-quaternary-bg text-primary-text' : 'text-secondary-text hover:bg-tertiary-bg hover:text-primary-text'}`}
               >
@@ -518,7 +518,7 @@ function Dock({ open, unread, onOpen }: { open: Feature[]; unread: number; onOpe
               </button>
             </TooltipTrigger>
             <TooltipContent side="top" sideOffset={12}>
-              {label}
+              {active ? `Close ${label}` : label}
             </TooltipContent>
           </Tooltip>
         )
@@ -574,9 +574,16 @@ function Overlay(): React.JSX.Element {
     setWindows((ws) => [...ws, { type, x: (window.innerWidth - w) / 2 + offset, y: TOP_BAR + 16 + offset, w, h, z: topZ + 1 }])
   }
 
+  const toggleFeature = (type: Feature): void => {
+    if (windows.some((w) => w.type === type)) setWindows((ws) => ws.filter((w) => w.type !== type))
+    else openFeature(type)
+  }
+
   const messageUser = (userId: string): void => {
     if (!windows.some((w) => w.type === 'messages')) openFeature('messages')
-    setWindows((ws) => ws.map((w) => (w.type === 'messages' ? { ...w, chat: userId, z: topZ + 1 } : w)))
+    setWindows((ws) =>
+      ws.map((w) => (w.type === 'messages' ? { ...w, chat: userId, ready: w.chat === userId && w.ready, z: topZ + 1 } : w))
+    )
   }
 
   useEffect(() => {
@@ -585,6 +592,8 @@ function Overlay(): React.JSX.Element {
       const data = e.data as { kind?: string; feature?: Feature; userId?: string }
       if (data.kind === 'overlay:focus' && data.feature) focus(data.feature)
       if (data.kind === 'overlay:message-user' && data.userId) messageUser(data.userId)
+      if (data.kind === 'overlay:ready' && data.feature)
+        setWindows((ws) => ws.map((w) => (w.type === data.feature ? { ...w, ready: true } : w)))
     }
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)
@@ -641,15 +650,18 @@ function Overlay(): React.JSX.Element {
               onChange={(bounds) => setWindows((ws) => ws.map((o) => (o.type === w.type ? { ...o, ...bounds } : o)))}
               onClose={() => setWindows((ws) => ws.filter((o) => o.type !== w.type))}
             >
+              {!w.ready && (
+                <span className="absolute top-1/2 left-1/2 size-6 -translate-1/2 animate-spin rounded-full border-2 border-border-primary border-t-button-info" />
+              )}
               <iframe
                 key={w.chat ?? ''}
                 title={TAB_INFO[w.type].title}
                 src={`overlay.html?feature=${w.type}${w.chat ? `&chat=${encodeURIComponent(w.chat)}` : ''}`}
-                className="size-full border-0 bg-primary-bg"
+                className={`size-full border-0 transition-opacity duration-150 ${w.ready ? '' : 'opacity-0'}`}
               />
             </FloatingWindow>
           ))}
-          <Dock open={windows.map((w) => w.type)} unread={unread} onOpen={openFeature} />
+          <Dock open={windows.map((w) => w.type)} unread={unread} onOpen={toggleFeature} />
         </>
       ) : (
         authStatus !== 'checking' &&
@@ -681,6 +693,12 @@ function FrameApp({ type, initialChat }: { type: Feature; initialChat: string | 
     const raise = (): void => window.parent.postMessage({ kind: 'overlay:focus', feature: type }, location.origin)
     window.addEventListener('pointerdown', raise, true)
     return () => window.removeEventListener('pointerdown', raise, true)
+  }, [type])
+  useEffect(() => {
+    const frame = requestAnimationFrame(() =>
+      window.parent.postMessage({ kind: 'overlay:ready', feature: type }, location.origin)
+    )
+    return () => cancelAnimationFrame(frame)
   }, [type])
   const messageUser = (userId: string): void =>
     window.parent.postMessage({ kind: 'overlay:message-user', userId }, location.origin)

@@ -13,7 +13,7 @@ jobs:
         include:
           - os: windows-latest
             ort: win32-x64
-            args: --bundles nsis
+            args: --bundles nsis --features tray
             bundle: src-tauri/target/release/bundle
           - os: ubuntu-22.04
             ort: linux-x64

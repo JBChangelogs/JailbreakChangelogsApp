@@ -8,11 +8,14 @@ publish = false
 name = "jbcl_lib"
 crate-type = ["rlib"]
 
+[features]
+tray = ["tauri/tray-icon"]
+
 [build-dependencies]
 tauri-build = { version = "2.7", features = [] }
 
 [dependencies]
-tauri = { version = "2.12", features = ["devtools", "macos-private-api", "tray-icon"] }
+tauri = { version = "2.12", features = ["devtools", "macos-private-api"] }
 tauri-plugin-single-instance = { version = "2.5", features = ["deep-link"] }
 tauri-plugin-deep-link = "2.6"
 tauri-plugin-updater = "2.14"

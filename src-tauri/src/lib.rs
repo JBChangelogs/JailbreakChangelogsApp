@@ -547,10 +547,10 @@ fn start_minimized() -> bool {
 }
 
 fn close_to_tray() -> bool {
-    cfg!(windows) && window_settings()["closeToTray"] == true
+    cfg!(all(windows, feature = "tray")) && window_settings()["closeToTray"] == true
 }
 
-#[cfg(windows)]
+#[cfg(all(windows, feature = "tray"))]
 fn sync_tray(app: &AppHandle) -> tauri::Result<()> {
     use tauri::menu::{Menu, MenuItem};
     use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
@@ -586,7 +586,7 @@ fn sync_tray(app: &AppHandle) -> tauri::Result<()> {
     Ok(())
 }
 
-#[cfg(not(windows))]
+#[cfg(not(all(windows, feature = "tray")))]
 fn sync_tray(_: &AppHandle) -> tauri::Result<()> {
     Ok(())
 }

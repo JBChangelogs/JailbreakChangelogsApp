@@ -440,6 +440,10 @@ export function useTabActions(): TabActionsValue {
   return useRequired(TabActionsContext)
 }
 
+export function useOptionalTabActions(): TabActionsValue | null {
+  return useContext(TabActionsContext)
+}
+
 export function useNavigationMode(): NavigationModeValue {
   return useRequired(NavigationModeContext)
 }
@@ -490,6 +494,6 @@ export function useTabSet<T extends string>(name: string): [Set<T>, (value: T) =
 
 export function useTabTitle(title: string | undefined): void {
   const id = useContext(TabIdContext)
-  const { setMeta } = useTabActions()
-  useEffect(() => setMeta(id, { title }), [id, title, setMeta])
+  const setMeta = useOptionalTabActions()?.setMeta
+  useEffect(() => setMeta?.(id, { title }), [id, title, setMeta])
 }

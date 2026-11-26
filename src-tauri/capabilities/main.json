@@ -2,7 +2,8 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main",
   "windows": [
-    "main"
+    "main",
+    "overlay"
   ],
   "permissions": [
     "core:event:allow-listen",
@@ -30,6 +31,10 @@
     "allow-scanner-snip",
     "allow-scanner-get-auto",
     "allow-scanner-set-auto-enabled",
+    "allow-overlay-get-shortcut",
+    "allow-overlay-set-shortcut",
+    "allow-autostart-get",
+    "allow-autostart-set",
     "allow-analytics-track",
     "allow-analytics-get-enabled",
     "allow-analytics-set-enabled",

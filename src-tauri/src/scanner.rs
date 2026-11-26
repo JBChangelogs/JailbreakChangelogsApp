@@ -15,7 +15,7 @@ const MAX_HEIGHT: u32 = 3000;
 const TRADING_PLACE_ID: &str = "9780994092";
 #[cfg(windows)]
 const ROBLOX_WINDOW_TITLE: &str = "Roblox";
-const TRADE_MENU_WORDS: [&str; 2] = ["exit", "ready"];
+const TRADE_MENU_WORDS: [&str; 3] = ["exit", "ready", "decline"];
 const TRADE_WINDOW_LEFT_SPANS: f64 = 4.0;
 const TRADE_WINDOW_TOP_SPANS: f64 = 2.9;
 
@@ -47,6 +47,7 @@ static APP: OnceLock<AppHandle> = OnceLock::new();
 static SETTINGS: Mutex<Option<AutoScanSettings>> = Mutex::new(None);
 static PLACE_ID: Mutex<Option<String>> = Mutex::new(None);
 static AUTO_RUNNING: AtomicBool = AtomicBool::new(false);
+static OVERLAY_OPEN: AtomicBool = AtomicBool::new(false);
 static AUTO_GENERATION: AtomicU64 = AtomicU64::new(0);
 static PICKING: AtomicBool = AtomicBool::new(false);
 static PICK_RESULT: Mutex<Option<oneshot::Sender<Option<(f64, f64, f64, f64)>>>> = Mutex::new(None);
@@ -519,36 +520,56 @@ fn same_frame(a: &[u8], b: &[u8]) -> bool {
     }
 }
 
+type Origin = (i32, i32);
+
 #[cfg(windows)]
-fn capture_roblox() -> Option<xcap::image::RgbaImage> {
-    let window = xcap::Window::all().ok()?.into_iter().find(|w| w.title().is_ok_and(|t| t == ROBLOX_WINDOW_TITLE))?;
+fn roblox_window() -> Option<xcap::Window> {
+    xcap::Window::all().ok()?.into_iter().find(|w| w.title().is_ok_and(|t| t == ROBLOX_WINDOW_TITLE))
+}
+
+#[cfg(windows)]
+pub fn roblox_point() -> Option<(f64, f64)> {
+    let w = roblox_window().filter(|w| !w.is_minimized().unwrap_or(true))?;
+    Some(((w.x().ok()? + w.width().ok()? as i32 / 2) as f64, (w.y().ok()? + w.height().ok()? as i32 / 2) as f64))
+}
+
+#[cfg(not(windows))]
+pub fn roblox_point() -> Option<(f64, f64)> {
+    None
+}
+
+#[cfg(windows)]
+fn capture_roblox() -> Option<(xcap::image::RgbaImage, Origin)> {
+    let window = roblox_window()?;
     if window.is_minimized().unwrap_or(true) {
         return None;
     }
-    if window.is_focused().unwrap_or(false) {
-        if let Some(image) = capture_window_region(&window) {
-            return Some(image);
+    let overlay = OVERLAY_OPEN.load(Ordering::SeqCst);
+    if !overlay && window.is_focused().unwrap_or(false) {
+        if let Some(captured) = capture_window_region(&window) {
+            return Some(captured);
         }
     }
     let image = window.capture_image().ok()?;
-    if !fingerprint(&image).iter().all(|&p| p < 4) {
-        return Some(image);
+    if overlay || !fingerprint(&image).iter().all(|&p| p < 4) {
+        return Some((image, (window.x().ok()?, window.y().ok()?)));
     }
     capture_window_region(&window)
 }
 
 #[cfg(windows)]
-fn capture_window_region(window: &xcap::Window) -> Option<xcap::image::RgbaImage> {
+fn capture_window_region(window: &xcap::Window) -> Option<(xcap::image::RgbaImage, Origin)> {
     let monitor = window.current_monitor().ok()?;
-    let x = (window.x().ok()? - monitor.x().ok()?).max(0) as u32;
-    let y = (window.y().ok()? - monitor.y().ok()?).max(0) as u32;
+    let (mx, my) = (monitor.x().ok()?, monitor.y().ok()?);
+    let x = (window.x().ok()? - mx).max(0) as u32;
+    let y = (window.y().ok()? - my).max(0) as u32;
     let w = window.width().ok()?.min(monitor.width().ok()?.saturating_sub(x));
     let h = window.height().ok()?.min(monitor.height().ok()?.saturating_sub(y));
-    monitor.capture_region(x, y, w, h).ok()
+    Some((monitor.capture_region(x, y, w, h).ok()?, (mx + x as i32, my + y as i32)))
 }
 
 #[cfg(not(windows))]
-fn capture_roblox() -> Option<xcap::image::RgbaImage> {
+fn capture_roblox() -> Option<(xcap::image::RgbaImage, Origin)> {
     None
 }
 
@@ -570,6 +591,13 @@ fn trade_menu_extent(result: &Value) -> Option<Extent> {
     let min = |key: &str| buttons.iter().filter_map(|d| d[key].as_f64()).fold(f64::INFINITY, f64::min);
     let button_height = buttons.iter().filter_map(|d| Some(d["y1"].as_f64()? - d["y0"].as_f64()?)).fold(0.0, f64::max);
     let span = max("x1") - min("x0");
+    let paired = buttons.iter().any(|d| {
+        let text = d["text"].as_str().unwrap_or_default().to_lowercase();
+        text.starts_with("exit") || text.starts_with("ready")
+    });
+    if !paired {
+        return Some((0.0, 0.0, 1.0, (max("y1") + button_height).min(height) / height));
+    }
     let (left, top) = if span > button_height * 3.0 {
         (min("x0") - span * TRADE_WINDOW_LEFT_SPANS, min("y0") - span * TRADE_WINDOW_TOP_SPANS)
     } else {
@@ -580,16 +608,27 @@ fn trade_menu_extent(result: &Value) -> Option<Extent> {
     Some((left.max(0.0) / width, top.max(0.0) / height, right / width, bottom / height))
 }
 
-fn crop_extent(image: &xcap::image::RgbaImage, (fx0, fy0, fx1, fy1): Extent) -> Option<xcap::image::RgbaImage> {
+fn crop_extent(
+    (image, (ox, oy)): &(xcap::image::RgbaImage, Origin),
+    (fx0, fy0, fx1, fy1): Extent,
+) -> Option<(xcap::image::RgbaImage, Origin)> {
     let (iw, ih) = (image.width() as f64, image.height() as f64);
     let (x, y) = ((iw * fx0).round() as u32, (ih * fy0).round() as u32);
     let w = ((iw * fx1).round() as u32).min(image.width()).saturating_sub(x);
     let h = ((ih * fy1).round() as u32).min(image.height()).saturating_sub(y);
-    (w > 0 && h > 0).then(|| xcap::image::imageops::crop_imm(image, x, y, w, h).to_image())
+    (w > 0 && h > 0).then(|| (xcap::image::imageops::crop_imm(image, x, y, w, h).to_image(), (ox + x as i32, oy + y as i32)))
+}
+
+fn with_origin(mut result: Value, (x, y): Origin) -> Value {
+    if result["ok"] == true {
+        result["origin"] = json!([x, y]);
+    }
+    result
 }
 
 fn update_auto_scan() {
-    let should_run = get_auto().enabled && PLACE_ID.lock().unwrap().as_deref() == Some(TRADING_PLACE_ID);
+    let should_run = OVERLAY_OPEN.load(Ordering::SeqCst)
+        || (get_auto().enabled && PLACE_ID.lock().unwrap().as_deref() == Some(TRADING_PLACE_ID));
     if should_run == AUTO_RUNNING.swap(should_run, Ordering::SeqCst) {
         return;
     }
@@ -610,7 +649,7 @@ fn update_auto_scan() {
             }
             let started = Instant::now();
             let Some(window) = tauri::async_runtime::spawn_blocking(capture_roblox).await.ok().flatten() else { continue };
-            let Some(image) = (match lock {
+            let Some(captured) = (match lock {
                 Some(extent) => crop_extent(&window, extent),
                 None => Some(window),
             }) else {
@@ -618,16 +657,16 @@ fn update_auto_scan() {
                 continue;
             };
             let took = started.elapsed();
-            let print = fingerprint(&image);
+            let print = fingerprint(&captured.0);
             let result = match &last {
                 Some((prev, result)) if same_frame(prev, &print) => result.clone(),
                 _ if lock.is_none() => {
                     searched_at = Some(Instant::now());
-                    let mut result = with_capture_ms(run_ocr(image.clone()).await, took);
+                    let mut result = with_origin(with_capture_ms(run_ocr(captured.0.clone()).await, took), captured.1);
                     lock = trade_menu_extent(&result);
                     misses = 0;
-                    if let Some(trade) = lock.and_then(|extent| crop_extent(&image, extent)) {
-                        result = with_capture_ms(run_ocr(trade).await, took);
+                    if let Some((trade, origin)) = lock.and_then(|extent| crop_extent(&captured, extent)) {
+                        result = with_origin(with_capture_ms(run_ocr(trade).await, took), origin);
                     }
                     if result["ok"] == true {
                         result["scope"] = json!(if lock.is_some() { "trade" } else { "window" });
@@ -635,7 +674,7 @@ fn update_auto_scan() {
                     result
                 }
                 _ => {
-                    let mut result = with_capture_ms(run_ocr(image).await, took);
+                    let mut result = with_origin(with_capture_ms(run_ocr(captured.0).await, took), captured.1);
                     if result["ok"] == true {
                         result["scope"] = json!("trade");
                     }
@@ -650,7 +689,7 @@ fn update_auto_scan() {
                     result
                 }
             };
-            let _ = app.emit_to("main", "scanner:auto-result", &result);
+            let _ = app.emit("scanner:auto-result", &result);
             last = Some((print, result));
         }
     });
@@ -658,6 +697,11 @@ fn update_auto_scan() {
 
 pub fn init(app: &AppHandle) {
     let _ = APP.set(app.clone());
+    update_auto_scan();
+}
+
+pub fn set_overlay_open(open: bool) {
+    OVERLAY_OPEN.store(open, Ordering::SeqCst);
     update_auto_scan();
 }
 
@@ -692,6 +736,9 @@ mod tests {
         assert!(near(x0 * 1480.0, 335.0) && near(y0 * 942.0, 236.8) && near(x1 * 1480.0, 1479.0) && near(y1 * 942.0, 941.0));
         let lone = json!({ "width": 1480, "height": 942, "detections": [det("READY", 1344.0, 869.0, 1425.0, 904.0)] });
         assert_eq!(trade_menu_extent(&lone).unwrap().0, 0.0);
+        let countdown = json!({ "width": 1840, "height": 1176, "detections": [det("DECLINE", 1364.0, 1094.0, 1517.0, 1144.0), det("WA", 1599.0, 1098.0, 1659.0, 1140.0)] });
+        let (x0, y0, x1, y1) = trade_menu_extent(&countdown).unwrap();
+        assert!(x0 == 0.0 && y0 == 0.0 && x1 == 1.0 && near(y1 * 1176.0, 1176.0));
         let no_menu = json!({ "width": 100, "height": 100, "detections": [det("ACCEPT", 0.0, 0.0, 10.0, 10.0)] });
         assert!(trade_menu_extent(&no_menu).is_none());
     }

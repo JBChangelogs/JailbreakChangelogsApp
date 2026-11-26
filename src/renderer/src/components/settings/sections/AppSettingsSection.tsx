@@ -18,6 +18,12 @@ import {
   type TabType
 } from '@renderer/contexts/TabsContext'
 import type { NavigationMode } from '@renderer/lib/localPreferences'
+import { showToast } from '@renderer/lib/toast'
+import { prettyShortcut } from '@renderer/lib/utils'
+import { getCloseToTaskbar, setCloseToTaskbar } from '@renderer/lib/localPreferences'
+import { Switch } from '@renderer/components/ui/switch'
+import type { AutostartSettings } from '@shared/desktopApi'
+import { useEffect, useState } from 'react'
 
 const NAVIGATION_OPTIONS: readonly { value: NavigationMode; label: string; description: string }[] = [
   { value: 'tabs', label: 'Tabs', description: 'Open pages as tabs in the title bar, as many as you need.' },
@@ -108,6 +114,130 @@ function SelectMenu<T extends string>({
   )
 }
 
+const MODIFIER_KEYS = ['Control', 'Shift', 'Alt', 'Meta']
+
+function OverlayShortcutSetting(): React.JSX.Element {
+  const [shortcut, setShortcut] = useState<string | null>(null)
+  const [recording, setRecording] = useState(false)
+
+  useEffect(() => {
+    void window.api.overlay.getShortcut().then(setShortcut)
+  }, [])
+
+  const save = (next: string | null): void => {
+    window.api.overlay
+      .setShortcut(next)
+      .then(setShortcut)
+      .catch((err: unknown) => showToast("Couldn't use that shortcut", { description: String(err) }))
+  }
+
+  useEffect(() => {
+    if (!recording) return undefined
+    const onKey = (e: KeyboardEvent): void => {
+      e.preventDefault()
+      e.stopPropagation()
+      if (e.key === 'Escape') return setRecording(false)
+      if (MODIFIER_KEYS.includes(e.key)) return
+      const mods = [e.ctrlKey && 'Ctrl', e.altKey && 'Alt', e.shiftKey && 'Shift', e.metaKey && 'Super'].filter(Boolean)
+      if (mods.length === 0 && !/^F\d+$/.test(e.code)) {
+        showToast('Add Ctrl, Alt or Shift', { description: 'A single key would stop working everywhere else.' })
+        return
+      }
+      setRecording(false)
+      save([...mods, e.code].join('+'))
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [recording])
+
+  return (
+    <SettingRow
+      title="Overlay shortcut"
+      description="Opens the overlay on top of Roblox, with live values for your open trade and a dupe check. Works while the app is in the background."
+      action={
+        <div className="flex gap-2">
+          <Button type="button" variant="secondary" className="min-w-36" onClick={() => setRecording(true)}>
+            {recording ? 'Press keys…' : shortcut ? prettyShortcut(shortcut) : 'Set shortcut'}
+          </Button>
+          {shortcut && !recording && (
+            <Button type="button" variant="secondary" onClick={() => save(null)}>
+              Clear
+            </Button>
+          )}
+        </div>
+      }
+    />
+  )
+}
+
+function CloseToTaskbarSetting(): React.JSX.Element {
+  const [enabled, setEnabled] = useState(getCloseToTaskbar)
+  return (
+    <SettingRow
+      title="Close to taskbar"
+      description="The close button minimizes the app instead of quitting, so the overlay shortcut and alerts keep working. Saved on this computer."
+      action={
+        <Switch
+          aria-label="Close to taskbar"
+          checked={enabled}
+          onCheckedChange={(next) => {
+            setEnabled(next)
+            setCloseToTaskbar(next)
+          }}
+        />
+      }
+    />
+  )
+}
+
+function StartupSettings(): React.JSX.Element {
+  const [settings, setSettings] = useState<AutostartSettings | null>(null)
+
+  useEffect(() => {
+    void window.api.autostart.get().then(setSettings)
+  }, [])
+
+  const save = (next: AutostartSettings): void => {
+    setSettings(next)
+    window.api.autostart
+      .set(next)
+      .then(setSettings)
+      .catch((err: unknown) => {
+        showToast("Couldn't change the startup setting", { description: String(err) })
+        void window.api.autostart.get().then(setSettings)
+      })
+  }
+
+  return (
+    <>
+      <SettingRow
+        title="Open on startup"
+        description="Opens the app when you sign in to your computer, so the overlay shortcut and alerts are ready."
+        action={
+          <Switch
+            aria-label="Open on startup"
+            checked={settings?.enabled ?? false}
+            disabled={!settings}
+            onCheckedChange={(enabled) => settings && save({ ...settings, enabled })}
+          />
+        }
+      />
+      <SettingRow
+        title="Start minimized"
+        description="When it opens on startup, keep the app minimized to the taskbar."
+        action={
+          <Switch
+            aria-label="Start minimized"
+            checked={settings?.minimized ?? false}
+            disabled={!settings?.enabled}
+            onCheckedChange={(minimized) => settings && save({ ...settings, minimized })}
+          />
+        }
+      />
+    </>
+  )
+}
+
 export function AppSettingsSection(): React.JSX.Element {
   const { newTabType, startTabType, restoreMode, setNewTabType, setStartTabType, setRestoreMode } = useTabPreferences()
   const { mode: navigationMode, setMode: setNavigationMode } = useNavigationMode()
@@ -163,6 +293,21 @@ export function AppSettingsSection(): React.JSX.Element {
           />
         </div>
       </SettingsCard>
+      {window.api.platform !== 'web' && (
+        <SettingsCard title="Window" icon={AppWindowIcon}>
+          <div className={SETTINGS_LIST}>
+            {window.api.platform !== 'darwin' && <CloseToTaskbarSetting />}
+            <StartupSettings />
+          </div>
+        </SettingsCard>
+      )}
+      {window.api.platform === 'win32' && (
+        <SettingsCard title="Overlay" icon={AppWindowIcon}>
+          <div className={SETTINGS_LIST}>
+            <OverlayShortcutSetting />
+          </div>
+        </SettingsCard>
+      )}
     </SettingsPageLayout>
   )
 }

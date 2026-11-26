@@ -74,6 +74,14 @@ const api: DesktopApi = {
     setAutoEnabled: (enabled) => invoke('scanner_set_auto_enabled', { enabled }),
     onAutoResult: (callback) => subscribe('scanner:auto-result', callback)
   },
+  autostart: {
+    get: () => invoke('autostart_get'),
+    set: ({ enabled, minimized }) => invoke('autostart_set', { enabled, minimized })
+  },
+  overlay: {
+    getShortcut: () => invoke('overlay_get_shortcut'),
+    setShortcut: (shortcut) => invoke('overlay_set_shortcut', { shortcut })
+  },
   analytics: {
     track: (name, props) => fireAndForget('analytics_track', { name, props }),
     isEnabled: () => invoke('analytics_get_enabled'),

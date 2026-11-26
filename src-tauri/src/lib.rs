@@ -5,6 +5,7 @@ mod legacy;
 mod notify;
 #[cfg(not(all(target_os = "macos", target_arch = "x86_64")))]
 mod ocr;
+mod overlay;
 mod roblox;
 mod scanner;
 mod uninstall;
@@ -19,6 +20,7 @@ use std::time::Duration;
 use serde::Deserialize;
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, Manager, RunEvent, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent};
+use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_deep_link::DeepLinkExt;
 use tauri_plugin_opener::OpenerExt;
 
@@ -45,6 +47,7 @@ static USER_AGENT: OnceLock<String> = OnceLock::new();
 static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
 static DEVTOOLS_ACCESS: Mutex<Option<(String, bool)>> = Mutex::new(None);
 static QUITTING: AtomicBool = AtomicBool::new(false);
+static AUTOSTARTED: AtomicBool = AtomicBool::new(false);
 static PENDING_PROTOCOL_URLS: Mutex<Vec<String>> = Mutex::new(Vec::new());
 
 pub fn data_dir() -> &'static Path {
@@ -212,24 +215,58 @@ pub fn before_quit() {
     let _ = discord.join();
 }
 
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+fn with_default_handler(mimeapps: &str, mime: &str, desktop: &str) -> String {
+    let entry = format!("{mime}={desktop}");
+    let mut lines: Vec<String> = mimeapps.lines().map(String::from).collect();
+    match lines.iter().position(|l| l.trim() == "[Default Applications]") {
+        Some(header) => {
+            let end = lines[header + 1..].iter().position(|l| l.trim_start().starts_with('[')).map_or(lines.len(), |i| header + 1 + i);
+            match lines[header + 1..end].iter().position(|l| l.split('=').next().map(str::trim) == Some(mime)) {
+                Some(i) => lines[header + 1 + i] = entry,
+                None => lines.insert(header + 1, entry),
+            }
+        }
+        None => {
+            if lines.last().is_some_and(|l| !l.trim().is_empty()) {
+                lines.push(String::new());
+            }
+            lines.push("[Default Applications]".into());
+            lines.push(entry);
+        }
+    }
+    lines.join("\n") + "\n"
+}
+
 #[cfg(target_os = "linux")]
 fn ensure_linux_protocol_handler(icon_png: &Path) {
     use std::process::{Command, Stdio};
+    const DESKTOP_FILE: &str = "jailbreak-changelogs.desktop";
     let Some(app_image) = std::env::var_os("APPIMAGE") else { return };
     let Some(home) = std::env::var_os("HOME").map(PathBuf::from) else { return };
     let apps_dir = home.join(".local/share/applications");
+    let scheme = format!("x-scheme-handler/{PROTOCOL}");
     let entry = format!(
-        "[Desktop Entry]\nName=Jailbreak Changelogs\nExec=\"{}\" %u\nTerminal=false\nType=Application\nIcon=jailbreak-changelogs\nStartupWMClass=jailbreak-changelogs\nMimeType=x-scheme-handler/{PROTOCOL};\nCategories=Network;\n",
+        "[Desktop Entry]\nName=Jailbreak Changelogs\nExec=\"{}\" %u\nTerminal=false\nType=Application\nIcon=jailbreak-changelogs\nStartupWMClass=jailbreak-changelogs\nMimeType={scheme};\nCategories=Network;\n",
         app_image.to_string_lossy()
     );
-    let quiet = |cmd: &str, args: &[&str]| Command::new(cmd).args(args).stdout(Stdio::null()).stderr(Stdio::null()).status();
-    let registered = std::fs::create_dir_all(&apps_dir)
-        .and_then(|_| std::fs::write(apps_dir.join("jailbreak-changelogs.desktop"), entry))
-        .and_then(|_| quiet("update-desktop-database", &[&apps_dir.to_string_lossy()]))
-        .and_then(|_| quiet("xdg-mime", &["default", "jailbreak-changelogs.desktop", &format!("x-scheme-handler/{PROTOCOL}")]));
-    if let Err(e) = registered {
-        eprintln!("[linux-protocol] failed to register URL scheme handler: {e}");
+    if let Err(e) = std::fs::create_dir_all(&apps_dir).and_then(|_| std::fs::write(apps_dir.join(DESKTOP_FILE), entry)) {
+        eprintln!("[linux-protocol] failed to write the desktop entry: {e}");
+        return;
     }
+    let config = std::env::var_os("XDG_CONFIG_HOME").map(PathBuf::from).filter(|p| p.is_absolute()).unwrap_or_else(|| home.join(".config"));
+    let mimeapps = config.join("mimeapps.list");
+    let current = std::fs::read_to_string(&mimeapps).unwrap_or_default();
+    let next = with_default_handler(&current, &scheme, DESKTOP_FILE);
+    if next != current {
+        if let Err(e) = std::fs::create_dir_all(&config).and_then(|_| std::fs::write(&mimeapps, next)) {
+            eprintln!("[linux-protocol] failed to set the default URL handler: {e}");
+        }
+    }
+    let quiet = |cmd: &str, args: &[&str]| Command::new(cmd).args(args).stdout(Stdio::null()).stderr(Stdio::null()).status();
+    let _ = quiet("update-desktop-database", &[&apps_dir.to_string_lossy()]);
+    let _ = quiet("xdg-mime", &["default", DESKTOP_FILE, &scheme]);
+    let _ = quiet("kbuildsycoca6", &[]).or_else(|_| quiet("kbuildsycoca5", &[]));
     let hicolor = home.join(".local/share/icons/hicolor");
     let icon_dir = hicolor.join("512x512/apps");
     let installed = std::fs::create_dir_all(&icon_dir)
@@ -306,6 +343,9 @@ fn create_main_window(app: &AppHandle) -> tauri::Result<WebviewWindow> {
         .on_page_load(|window, payload| {
             if payload.event() == tauri::webview::PageLoadEvent::Finished {
                 let _ = window.show();
+                if AUTOSTARTED.swap(false, Ordering::SeqCst) && start_minimized() {
+                    let _ = window.minimize();
+                }
             }
         });
 
@@ -484,6 +524,45 @@ fn scanner_pick_done(window: tauri::Window, rect: Option<PickedRect>) {
     }
 }
 
+fn start_minimized() -> bool {
+    std::fs::read(data_dir().join("window.json"))
+        .ok()
+        .and_then(|b| serde_json::from_slice::<Value>(&b).ok())
+        .is_some_and(|v| v["startMinimized"] == true)
+}
+
+#[tauri::command]
+fn autostart_get(app: AppHandle) -> Value {
+    serde_json::json!({ "enabled": app.autolaunch().is_enabled().unwrap_or(false), "minimized": start_minimized() })
+}
+
+#[tauri::command]
+fn autostart_set(app: AppHandle, enabled: bool, minimized: bool) -> Result<Value, String> {
+    let launcher = app.autolaunch();
+    if enabled {
+        launcher.enable().map_err(|e| e.to_string())?;
+    } else if launcher.is_enabled().unwrap_or(false) {
+        launcher.disable().map_err(|e| e.to_string())?;
+    }
+    std::fs::write(data_dir().join("window.json"), serde_json::json!({ "startMinimized": minimized }).to_string()).map_err(|e| e.to_string())?;
+    Ok(autostart_get(app))
+}
+
+#[tauri::command]
+fn overlay_get_shortcut() -> Option<String> {
+    overlay::shortcut()
+}
+
+#[tauri::command]
+fn overlay_set_shortcut(app: AppHandle, shortcut: Option<String>) -> Result<Option<String>, String> {
+    overlay::set_shortcut(&app, shortcut)
+}
+
+#[tauri::command]
+fn overlay_hide(app: AppHandle) {
+    overlay::hide(&app);
+}
+
 #[tauri::command]
 fn analytics_track(name: String, props: Option<Value>) {
     analytics::track(&name, props);
@@ -543,6 +622,7 @@ pub fn run() {
     }
 
     let _ = rustls::crypto::ring::default_provider().install_default();
+    AUTOSTARTED.store(std::env::args().any(|a| a == "--autostart"), Ordering::SeqCst);
 
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
@@ -554,6 +634,16 @@ pub fn run() {
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_opener::Builder::new().open_js_links_on_click(false).build())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_autostart::Builder::new().args(["--autostart"]).build())
+        .plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(|app, _, event| {
+                    if event.state() == tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                        overlay::toggle(app);
+                    }
+                })
+                .build(),
+        )
         .invoke_handler(tauri::generate_handler![
             open_external,
             message_image_bytes,
@@ -573,6 +663,11 @@ pub fn run() {
             scanner_get_auto,
             scanner_set_auto_enabled,
             scanner_pick_done,
+            overlay_get_shortcut,
+            overlay_set_shortcut,
+            overlay_hide,
+            autostart_get,
+            autostart_set,
             analytics_track,
             analytics_get_enabled,
             analytics_set_enabled,
@@ -606,12 +701,16 @@ pub fn run() {
                 remove_velopack_install();
             }
             #[cfg(target_os = "linux")]
-            ensure_linux_protocol_handler(&resources.join("icon.png"));
+            {
+                let icon = resources.join("icon.png");
+                std::thread::spawn(move || ensure_linux_protocol_handler(&icon));
+            }
             let _ = resources;
 
             create_main_window(&handle)?;
             analytics::init(&handle);
             scanner::init(&handle);
+            overlay::init(&handle);
             discord::start();
             updater::start(&handle);
             tauri::async_runtime::spawn(refresh_devtools_access());
@@ -667,7 +766,22 @@ pub fn run() {
 
 #[cfg(test)]
 mod tests {
-    use super::is_allowed_external_url;
+    use super::{is_allowed_external_url, with_default_handler};
+
+    #[test]
+    fn sets_the_default_url_handler() {
+        let mime = "x-scheme-handler/jailbreakchangelogs";
+        assert_eq!(with_default_handler("", mime, "a.desktop"), "[Default Applications]\nx-scheme-handler/jailbreakchangelogs=a.desktop\n");
+        let existing = "[Added Associations]\nx-scheme-handler/jailbreakchangelogs=old.desktop;\n\n[Default Applications]\ntext/html=firefox.desktop\nx-scheme-handler/jailbreakchangelogs=old.desktop\n";
+        assert_eq!(
+            with_default_handler(existing, mime, "a.desktop"),
+            "[Added Associations]\nx-scheme-handler/jailbreakchangelogs=old.desktop;\n\n[Default Applications]\ntext/html=firefox.desktop\nx-scheme-handler/jailbreakchangelogs=a.desktop\n"
+        );
+        let other = "[Default Applications]\ntext/html=firefox.desktop\n";
+        assert_eq!(with_default_handler(other, mime, "a.desktop"), "[Default Applications]\nx-scheme-handler/jailbreakchangelogs=a.desktop\ntext/html=firefox.desktop\n");
+        let done = with_default_handler(other, mime, "a.desktop");
+        assert_eq!(with_default_handler(&done, mime, "a.desktop"), done);
+    }
 
     #[test]
     fn only_web_and_roblox_join_links_open_externally() {

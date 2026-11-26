@@ -3,6 +3,11 @@ import type { RichPresencePreferenceKey } from './richPresence'
 
 export type UpdateSource = 'startup' | 'poll'
 
+export interface AutostartSettings {
+  enabled: boolean
+  minimized: boolean
+}
+
 export type UpdaterStatus =
   | { state: 'checking'; source?: UpdateSource }
   | { state: 'available'; source?: UpdateSource; version?: string; size?: number; notes?: string; manual?: boolean }
@@ -68,6 +73,14 @@ export interface DesktopApi {
     getAuto: () => Promise<AutoScanSettings>
     setAutoEnabled: (enabled: boolean) => Promise<AutoScanSettings>
     onAutoResult: (callback: (result: ScanResponse) => void) => () => void
+  }
+  autostart: {
+    get: () => Promise<AutostartSettings>
+    set: (settings: AutostartSettings) => Promise<AutostartSettings>
+  }
+  overlay: {
+    getShortcut: () => Promise<string | null>
+    setShortcut: (shortcut: string | null) => Promise<string | null>
   }
   analytics: {
     track: (name: string, props?: Record<string, string | number | boolean>) => void

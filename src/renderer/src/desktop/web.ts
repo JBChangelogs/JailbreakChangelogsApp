@@ -98,6 +98,11 @@ function makeApi(nativeFetch: typeof fetch): DesktopApi {
       setAutoEnabled: async () => ({ enabled: false }),
       onAutoResult: none
     },
+    overlay: { getShortcut: async () => null, setShortcut: async () => null },
+    autostart: {
+      get: async () => ({ enabled: false, minimized: false }),
+      set: async () => ({ enabled: false, minimized: false })
+    },
     analytics: { track: noop, isEnabled: async () => false, setEnabled: noop },
     discordRpc: { setPreference: noop },
     uninstall: { supported: async () => false, run: async () => {} }

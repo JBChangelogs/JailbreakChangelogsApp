@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react'
-import { useTabActions } from '@renderer/contexts/TabsContext'
+import { useOptionalTabActions } from '@renderer/contexts/TabsContext'
 import { appTabFor, splitSiteLinks } from '@renderer/lib/siteLinks'
 
 export function useOpenSiteLink(): (href: string) => void {
-  const { open } = useTabActions()
+  const actions = useOptionalTabActions()
   return (href) => {
     const tab = appTabFor(href)
-    if (tab) open(tab)
+    if (tab && actions) actions.open(tab)
     else void window.api.openExternal(href)
   }
 }

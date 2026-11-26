@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data: https://cdn.jsdelivr.net; connect-src 'self' ipc: http://ipc.localhost https://api.jailbreakchangelogs.com https://proof.jailbreakchangelogs.com https://uploads.jailbreakchangelogs.com wss://api.jailbreakchangelogs.com https://inventories.jailbreakchangelogs.com wss://inventories.jailbreakchangelogs.com; img-src 'self' data: blob: https:;" />
+  <title>Overlay</title>
+  <style>
+    html, body { background: transparent !important; overflow: hidden }
+    .overlay-dragging iframe { pointer-events: none }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/overlay.tsx"></script>
+</body>
+</html>

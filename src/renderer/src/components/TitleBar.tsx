@@ -9,6 +9,77 @@ import { useRealtimeLocation } from '@renderer/contexts/RealtimeContext'
 import { useNavigationMode } from '@renderer/contexts/TabsContext'
 import { useSettingsPage } from '@renderer/contexts/SettingsPageContext'
 import { TabBar } from '@renderer/components/TabBar'
+import { Button } from '@renderer/components/ui/button'
+import { prettyShortcut } from '@renderer/lib/utils'
+import { Popover, PopoverAnchor, PopoverContent } from '@renderer/components/ui/popover'
+import {
+  getCloseToTaskbar,
+  getOverlayNoticeVisible,
+  getTabsNoticeVisible,
+  setOverlayNoticeVisible
+} from '@renderer/lib/localPreferences'
+
+function OverlayNotice(): React.JSX.Element {
+  const settings = useSettingsPage()
+  const [open, setOpen] = useState(false)
+  const [shortcut, setShortcut] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (window.api.platform !== 'win32' || !getOverlayNoticeVisible() || getTabsNoticeVisible()) return
+    void window.api.overlay.getShortcut().then((current) => {
+      setShortcut(current)
+      setOpen(true)
+    })
+  }, [])
+
+  const dismiss = (): void => {
+    setOpen(false)
+    setOverlayNoticeVisible(false)
+  }
+
+  return (
+    <Popover open={open} onOpenChange={(next) => !next && dismiss()}>
+      <PopoverAnchor className="pointer-events-none absolute right-28 bottom-0 h-px w-px" />
+      <PopoverContent
+        arrow
+        align="end"
+        className="w-80 p-4"
+        onInteractOutside={(e) => e.preventDefault()}
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        <p className="text-sm font-semibold text-primary-text">Meet the overlay</p>
+        <p className="mt-1 text-xs text-secondary-text">
+          {shortcut ? (
+            <>
+              Press <kbd className="rounded border border-border-primary bg-tertiary-bg px-1 font-sans text-primary-text">{prettyShortcut(shortcut)}</kbd>{' '}
+              while you play
+            </>
+          ) : (
+            'Set a shortcut, then press it while you play,'
+          )}{' '}
+          to see the value of every item in your open trade, check dupes, and use the rest of the app without leaving
+          Roblox.
+        </p>
+        <div className="mt-3 flex justify-end gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            onClick={() => {
+              dismiss()
+              settings.open('app')
+            }}
+          >
+            {shortcut ? 'Change shortcut' : 'Set a shortcut'}
+          </Button>
+          <Button type="button" size="sm" onClick={dismiss}>
+            Got it
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
 
 function MinimizeIcon(): React.JSX.Element {
   return (
@@ -92,7 +163,7 @@ export function TitleBar({
 
   return (
     <div
-      className="flex h-9 shrink-0 select-none items-center border-b border-border-primary bg-secondary-bg"
+      className="relative flex h-9 shrink-0 select-none items-center border-b border-border-primary bg-secondary-bg"
       data-tauri-drag-region="deep"
     >
       <div className={`flex shrink-0 items-center gap-2 px-3 text-xs font-semibold text-secondary-text ${isMac ? 'pl-20' : ''} ${tabsLayout ? 'h-[34px] w-64 self-end' : ''}`}>
@@ -130,6 +201,7 @@ export function TitleBar({
       <div className="flex h-full shrink-0 items-center" data-tauri-drag-region="false">
         {!startupUpdating && (
           <>
+            {canOpenSettings && <OverlayNotice />}
             <NotificationsPopover />
             <AnimatedThemeToggler
               size="sm"
@@ -156,7 +228,7 @@ export function TitleBar({
               {isMaximized ? <RestoreIcon /> : <MaximizeIcon />}
             </button>
             <button
-              onClick={() => window.api.window.close()}
+              onClick={() => (getCloseToTaskbar() ? window.api.window.minimize() : window.api.window.close())}
               className="flex h-full w-11 items-center justify-center text-secondary-text transition-colors hover:bg-status-error hover:text-white"
               aria-label="Close"
             >

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-overlay-get-shortcut"
+description = "Enables the overlay_get_shortcut command without any pre-configured scope."
+commands.allow = ["overlay_get_shortcut"]
+
+[[permission]]
+identifier = "deny-overlay-get-shortcut"
+description = "Denies the overlay_get_shortcut command without any pre-configured scope."
+commands.deny = ["overlay_get_shortcut"]

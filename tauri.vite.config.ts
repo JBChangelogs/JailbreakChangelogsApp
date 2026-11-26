@@ -21,7 +21,8 @@ export default defineConfig({
     rollupOptions: {
       input: {
         index: resolve('src/renderer/index.html'),
-        picker: resolve('src/renderer/picker.html')
+        picker: resolve('src/renderer/picker.html'),
+        overlay: resolve('src/renderer/overlay.html')
       }
     }
   }

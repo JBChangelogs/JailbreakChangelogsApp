@@ -10,7 +10,8 @@ export const SCAN_TUNING = {
   anchorWords: ['accept', 'decline', 'exit', 'ready'],
   anchorMinConf: 0.5,
   // Only shown in the trade menu (not the inventory); auto scan requires one of them.
-  tradeMenuWords: ['exit', 'ready'],
+  // Decline replaces Exit once both sides accept, while the countdown runs.
+  tradeMenuWords: ['exit', 'ready', 'decline'],
   // The game allows at most this many items per side.
   maxItemsPerSide: 8,
   minConf: 0.1,
@@ -74,6 +75,7 @@ export type ScanResponse =
       detections: OcrDetection[]
       timings?: ScanTimings
       scope?: 'window' | 'trade'
+      origin?: [number, number]
     }
   | { ok: false; code: string; message: string }
 
@@ -92,6 +94,7 @@ export interface ScannedItem {
   type: string
   id: number
   score: number
+  box: { x0: number; y0: number; x1: number; y1: number }
 }
 
 export interface TradeScanResult {
@@ -172,18 +175,24 @@ function assignSides(labels: OcrDetection[], imageHeight: number, anchors: OcrDe
   return assignment.map((k) => (k === top ? 'offering' : 'requesting'))
 }
 
-function lookupItem(name: string, catalog: ScanCatalogItem[]): ScannedItem | null {
+// Names repeat across types (Volt is a vehicle and a texture), so a tie goes to the slot's type label.
+function lookupItem(name: string, label: string, catalog: ScanCatalogItem[]): Omit<ScannedItem, 'box'> | null {
   const query = normaliseKey(name)
+  const labelKey = normaliseKey(label)
   const skip = new Set(SCAN_TUNING.skipTypes)
-  let best: ScannedItem | null = null
+  let best: (Omit<ScannedItem, 'box'> & { rank: number }) | null = null
   for (const item of catalog) {
-    if (skip.has(normaliseKey(item.type))) continue
+    const type = normaliseKey(item.type)
+    if (skip.has(type)) continue
     const score = fuzzRatio(query, normaliseKey(item.name))
-    if (score >= SCAN_TUNING.lookupMinRatio && (!best || score > best.score)) {
-      best = { name: item.name, type: item.type, id: item.id, score }
+    const rank = score + (fuzzRatio(labelKey, type) >= SCAN_TUNING.typeLabelRatio ? 0.5 : 0)
+    if (score >= SCAN_TUNING.lookupMinRatio && (!best || rank > best.rank)) {
+      best = { name: item.name, type: item.type, id: item.id, score, rank }
     }
   }
-  return best
+  if (!best) return null
+  const { rank: _rank, ...item } = best
+  return item
 }
 
 export function parseTradeScan(
@@ -192,6 +201,8 @@ export function parseTradeScan(
   catalog: ScanCatalogItem[]
 ): TradeScanResult {
   const t = SCAN_TUNING
+  const catalogNames = new Set(catalog.map((item) => normaliseKey(item.name)))
+  const isCatalogName = (text: string): boolean => catalogNames.has(normaliseKey(text))
 
   // Step 3: split "a | b" into separate detections sharing the box.
   let detections = raw.flatMap((d) =>
@@ -226,7 +237,9 @@ export function parseTradeScan(
     if (d.conf < t.minConf || text.length < t.minTextLength) continue
     const lower = text.toLowerCase()
     const known = bestMatch(lower, t.knownItemWords)
-    if (known.score >= t.knownItemRatio) {
+    if (isCatalogName(text)) {
+      candidates.push({ ...d, text })
+    } else if (known.score >= t.knownItemRatio) {
       candidates.push({ ...d, text: known.choice.toUpperCase() })
     } else if (t.knownItemWords.some((w) => lower.includes(w))) {
       candidates.push({ ...d, text })
@@ -265,7 +278,9 @@ export function parseTradeScan(
       if (used.has(cand)) continue
       const lower = cand.text.toLowerCase()
       if (labelSet.has(lower) || blocklist.has(lower)) continue
-      if (cand.text !== cand.text.toUpperCase() || cand.text.length < 3 || !/[A-Za-z]/.test(cand.text)) continue
+      // Names are drawn in capitals, so other casing is chat, unless the OCR misread the case of an exact name.
+      const capitals = cand.text === cand.text.toUpperCase() || isCatalogName(cand.text)
+      if (!capitals || cand.text.length < 3 || !/[A-Za-z]/.test(cand.text)) continue
       const hDiff = Math.abs(cx(cand) - cx(label))
       const vDiff = cy(cand) - cy(label)
       if (hDiff > width * t.maxHorizontalLabelWidths) continue
@@ -276,8 +291,9 @@ export function parseTradeScan(
     if (!best) return
     used.add(best.cand)
     // Step 10: unmatched names drop out, as on the server.
-    const item = lookupItem(best.cand.text, catalog)
-    if (item) result[sides[i]].push(item)
+    const item = lookupItem(best.cand.text, label.text, catalog)
+    const { x0, y0, x1, y1 } = best.cand
+    if (item) result[sides[i]].push({ ...item, box: { x0, y0, x1, y1 } })
   })
 
   return result

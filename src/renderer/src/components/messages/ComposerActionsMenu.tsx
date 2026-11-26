@@ -116,7 +116,7 @@ interface VipServerFlyoutContentProps {
 function VipServerFlyoutContent({ servers, error, onConfirm }: VipServerFlyoutContentProps): React.JSX.Element {
   return (
     <div className="max-h-72 overflow-y-auto">
-      <p className="px-2.5 py-1.5 text-xs font-bold tracking-wide text-quaternary-text uppercase">Your VIP Servers</p>
+      <p className="px-2.5 py-1.5 text-xs font-bold text-quaternary-text">Your VIP servers</p>
       {error && <p className="px-2.5 py-1.5 text-xs text-form-error">{error}</p>}
       {!error && servers === null && <p className="px-2.5 py-1.5 text-xs text-quaternary-text">Loading…</p>}
       {servers?.length === 0 && (
@@ -186,7 +186,7 @@ function GiftFlyoutContent({ gifts, error: loadError, onSend, onGiftUsed }: Gift
 
   return (
     <div className="max-h-72 overflow-y-auto">
-      <p className="px-2.5 py-1.5 text-xs font-bold tracking-wide text-quaternary-text uppercase">Your Gifts</p>
+      <p className="px-2.5 py-1.5 text-xs font-bold text-quaternary-text">Your gifts</p>
       {error && <p className="px-2.5 py-1.5 text-xs text-form-error">{error}</p>}
       {!loadError && gifts === null && <p className="px-2.5 py-1.5 text-xs text-quaternary-text">Loading…</p>}
       {groups.length === 0 && gifts !== null && (

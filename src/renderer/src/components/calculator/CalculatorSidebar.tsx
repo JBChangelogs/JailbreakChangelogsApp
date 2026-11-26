@@ -82,7 +82,7 @@ export function CalculatorSidebar(): React.JSX.Element {
             setClearShortcutsExpanded(!shortcutsOpen)
             setShortcutsOpen(!shortcutsOpen)
           }}
-          className="flex w-full items-center justify-between text-[11px] font-bold tracking-wide text-quaternary-text uppercase transition-colors hover:text-secondary-text"
+          className="flex w-full items-center justify-between text-[11px] font-bold text-quaternary-text transition-colors hover:text-secondary-text"
         >
           Clear shortcuts
           <svg

@@ -10,7 +10,7 @@ export function MakeOfferSidebar(): React.JSX.Element {
     <div className="flex h-full min-h-0 flex-1 flex-col">
       <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2">
         <TradeSideList
-          title="You Offer"
+          title="You offer"
           side="offering"
           items={composer.offering}
           onRemove={(key, amount) => composer.removeAmount('offering', key, amount)}
@@ -18,7 +18,7 @@ export function MakeOfferSidebar(): React.JSX.Element {
           onMove={(key) => composer.moveToOtherSide('offering', key)}
         />
         <TradeSideList
-          title="You Request"
+          title="You request"
           side="requesting"
           items={composer.requesting}
           onRemove={(key, amount) => composer.removeAmount('requesting', key, amount)}
@@ -27,7 +27,7 @@ export function MakeOfferSidebar(): React.JSX.Element {
         />
 
         <div>
-          <label className="mb-1 block text-xs font-bold tracking-wide text-quaternary-text uppercase">Note</label>
+          <label className="mb-1 block text-xs font-bold text-quaternary-text">Note</label>
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}

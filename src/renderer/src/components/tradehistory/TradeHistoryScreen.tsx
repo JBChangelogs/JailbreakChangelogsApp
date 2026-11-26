@@ -146,7 +146,7 @@ function TradeSide({
   return (
     <div className="min-w-0 flex-1">
       <div className="mb-2 flex items-baseline justify-between gap-2">
-        <p className="truncate text-xs font-bold uppercase tracking-wide text-quaternary-text">{label}</p>
+        <p className="truncate text-xs font-bold text-quaternary-text">{label}</p>
         {items.length > 0 && (
           <p className="shrink-0 text-xs text-secondary-text tabular-nums">
             {missing > 0 && '~'}
@@ -309,7 +309,7 @@ export function TradeHistoryScreen(): React.JSX.Element {
         {lookup.status === 'idle' && (
           <EmptyState
             status={{
-              icon: 'search',
+              icon: 'history',
               tone: 'neutral',
               title: 'Look up a trade history',
               description: 'Search a Roblox username or ID in the sidebar. Link your Roblox account to open on your own trades.'

@@ -50,7 +50,7 @@ function Section({
   if (users.length === 0) return null
   return (
     <div>
-      <p className="px-2 pt-3 pb-1 text-xs font-bold tracking-wide text-quaternary-text uppercase">
+      <p className="px-2 pt-3 pb-1 text-xs font-bold text-quaternary-text">
         {label} — {users.length}
       </p>
       {users.map((user) => (

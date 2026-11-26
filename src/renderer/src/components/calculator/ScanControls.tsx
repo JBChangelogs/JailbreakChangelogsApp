@@ -108,7 +108,7 @@ export function ScanControls(): React.JSX.Element {
     )
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex shrink-0 items-center gap-3 whitespace-nowrap">
       <Tooltip>
         <TooltipTrigger asChild>
           <label className={`flex items-center gap-2 text-xs text-secondary-text ${disabled ? 'opacity-50' : 'cursor-pointer'}`}>

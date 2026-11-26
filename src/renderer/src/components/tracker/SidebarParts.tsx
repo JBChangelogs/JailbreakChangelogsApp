@@ -9,7 +9,7 @@ export function SectionHeader({
 }): React.JSX.Element {
   return (
     <div className="mb-1.5 flex h-4 items-center justify-between gap-2 px-1">
-      <span className="text-[10px] font-bold tracking-wide text-quaternary-text uppercase">{label}</span>
+      <span className="text-[11px] font-bold text-quaternary-text">{label}</span>
       <span className="flex items-center gap-2">
         {hint && <span className="text-[10px] text-tertiary-text">{hint}</span>}
         {onClear && (

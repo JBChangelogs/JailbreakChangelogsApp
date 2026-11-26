@@ -63,7 +63,7 @@ export function CreateTradeAdSidebar(): React.JSX.Element {
         />
 
         <div>
-          <label className="mb-1 block text-xs font-bold tracking-wide text-quaternary-text uppercase">Trade Note</label>
+          <label className="mb-1 block text-xs font-bold text-quaternary-text">Trade note</label>
           <textarea
             value={createNote}
             onChange={(e) => setCreateNote(e.target.value)}
@@ -85,7 +85,7 @@ export function CreateTradeAdSidebar(): React.JSX.Element {
               </Button>
             </PopoverTrigger>
             <PopoverContent side="top" align="start" className="w-44 p-1">
-              <p className="px-2.5 pt-1.5 pb-1 text-[11px] font-bold tracking-wide text-quaternary-text uppercase">Expires in</p>
+              <p className="px-2.5 pt-1.5 pb-1 text-[11px] font-bold text-quaternary-text">Expires in</p>
               {ALL_EXPIRATION_HOURS.map((hours) => {
                 const unlocked = unlockedExpirationHours.has(hours)
                 return (

@@ -85,7 +85,7 @@ export function DupeFinderScreen(): React.JSX.Element {
         {state.status === 'idle' && (
           <EmptyState
             status={{
-              icon: 'search',
+              icon: mode === 'og' ? 'star' : 'copies',
               tone: 'neutral',
               title: copy.idleTitle,
               description: copy.idleDescription

@@ -150,7 +150,7 @@ function Overview({ item }: { item: Item }): React.JSX.Element {
 
       {hasNotes && (
         <div className="rounded-xl border border-button-info/30 bg-button-info/10 px-4 py-3">
-          <h4 className="text-[11px] font-semibold tracking-wide text-secondary-text uppercase">Item Notes</h4>
+          <h4 className="text-[11px] font-semibold text-secondary-text">Item notes</h4>
           <p className="mt-1 text-sm font-medium text-primary-text">{item.notes}</p>
         </div>
       )}
@@ -158,7 +158,7 @@ function Overview({ item }: { item: Item }): React.JSX.Element {
       {metrics.length > 0 && (
         <div className="rounded-xl border border-border-card bg-secondary-bg p-4">
           <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-            <h3 className="text-[11px] font-semibold tracking-wide text-primary-text uppercase">Official Trading Metrics</h3>
+            <h3 className="text-[11px] font-semibold text-primary-text">Official trading metrics</h3>
             <span className="text-xs text-secondary-text">
               by Badimo{metadata?.LastUpdated ? ` · updated ${formatCustomDate(metadata.LastUpdated)}` : ''}
             </span>

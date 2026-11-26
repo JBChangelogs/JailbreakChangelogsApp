@@ -108,7 +108,7 @@ export function RichPresenceSettingsSection(): React.JSX.Element {
         </label>
       </div>
 
-      <h2 className="mt-6 text-xs font-bold tracking-wide text-quaternary-text uppercase">
+      <h2 className="mt-6 text-xs font-bold text-quaternary-text">
         What to show
       </h2>
       <div className={`mt-3 space-y-0.5 ${masterEnabled ? '' : 'pointer-events-none opacity-40'}`}>
@@ -130,7 +130,7 @@ export function RichPresenceSettingsSection(): React.JSX.Element {
         ))}
       </div>
 
-      <h2 className="mt-6 text-xs font-bold tracking-wide text-quaternary-text uppercase">
+      <h2 className="mt-6 text-xs font-bold text-quaternary-text">
         Roblox activity
       </h2>
       {loadingSetting && <p className="mt-3 text-sm text-quaternary-text">Loading…</p>}

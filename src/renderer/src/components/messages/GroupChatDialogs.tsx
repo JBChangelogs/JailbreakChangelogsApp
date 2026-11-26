@@ -653,7 +653,7 @@ export function GroupMembersSidebar({
 
   return (
     <aside className="flex w-60 shrink-0 flex-col border-l border-border-primary bg-secondary-bg">
-      <p className="px-4 pt-4 pb-2 text-xs font-bold tracking-wide text-quaternary-text uppercase">
+      <p className="px-4 pt-4 pb-2 text-xs font-bold text-quaternary-text">
         Members — {group.member_ids.length}
       </p>
       {error && <p className="px-4 pb-2 text-xs text-form-error">{error}</p>}

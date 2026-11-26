@@ -17,7 +17,7 @@ function ChangeChip({ difference }: { difference: number }): React.JSX.Element {
 function Tile({ label, children, className }: { label: string; children: React.ReactNode; className?: string }): React.JSX.Element {
   return (
     <div className={`min-w-0 rounded-xl border border-border-card bg-secondary-bg px-3.5 py-3 ${className ?? ''}`}>
-      <h4 className="mb-1.5 text-[11px] font-semibold tracking-wide text-secondary-text uppercase">{label}</h4>
+      <h4 className="mb-1.5 text-[11px] font-semibold text-secondary-text">{label}</h4>
       {children}
     </div>
   )
@@ -53,22 +53,22 @@ export function ItemValuesPanel({ item }: { item: Item }): React.JSX.Element {
 
   return (
     <div className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-2.5">
-      <ValueTile label="Cash Value" value={formatFullValue(item.cash_value)} change={cashChange?.difference ?? null} />
-      <ValueTile label="Duped Value" value={formatFullValue(item.duped_value)} change={dupedChange?.difference ?? null} />
-      <Tile label="Original Price">
+      <ValueTile label="Cash value" value={formatFullValue(item.cash_value)} change={cashChange?.difference ?? null} />
+      <ValueTile label="Duped value" value={formatFullValue(item.duped_value)} change={dupedChange?.difference ?? null} />
+      <Tile label="Original price">
         <p className="truncate text-xl font-bold text-primary-text">{item.price === 'N/A' ? 'N/A' : formatPrice(item.price)}</p>
       </Tile>
       <Tile label="Demand">
         <Pill label={demandLabel} color={getDemandColor(demandLabel)} />
       </Tile>
-      <Tile label="Duped Demand">
+      <Tile label="Duped demand">
         <Pill label={dupedDemandLabel} color={getDemandColor(dupedDemandLabel)} />
       </Tile>
       <Tile label="Trend">
         <Pill label={trendLabel} color={getTrendColor(trendLabel)} />
       </Tile>
       {item.type.toLowerCase() === 'vehicle' && (
-        <Tile label="Vehicle Health">
+        <Tile label="Vehicle health">
           <p className="text-xl font-bold text-primary-text">{item.health || '???'}</p>
         </Tile>
       )}

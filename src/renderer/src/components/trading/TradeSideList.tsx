@@ -84,7 +84,7 @@ export function TradeSideList({
   return (
     <div className="flex min-h-0 flex-1 flex-col rounded-2xl border border-border-card bg-secondary-bg">
       <div className="flex shrink-0 items-center justify-between border-b border-border-primary px-3 py-2">
-        <h3 className="text-xs font-bold tracking-wide text-quaternary-text uppercase">{title}</h3>
+        <h3 className="text-xs font-bold text-quaternary-text">{title}</h3>
         <div className="flex items-center gap-2">
           <span className="text-[11px] text-tertiary-text">
             {Number.isFinite(max) ? `${count}/${max}` : count}

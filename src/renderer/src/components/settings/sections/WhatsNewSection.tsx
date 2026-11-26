@@ -215,7 +215,7 @@ export function WhatsNewSection(): React.JSX.Element {
                   if (!items || items.length === 0) return null
                   return (
                     <div key={group}>
-                      <h4 className={`text-xs font-bold tracking-wide uppercase ${GROUP_COLORS[group]}`}>
+                      <h4 className={`text-xs font-bold ${GROUP_COLORS[group]}`}>
                         {GROUP_LABELS[group]}
                       </h4>
                       <ul className="mt-1.5 space-y-1.5">

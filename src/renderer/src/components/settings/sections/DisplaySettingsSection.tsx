@@ -91,7 +91,7 @@ function ThemeCard({
       <span className="relative block">
         <ThemePreview theme={theme} />
         {badge && (
-          <span className="absolute top-1.5 left-1.5 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] leading-none font-semibold tracking-wide text-white uppercase">
+          <span className="absolute top-1.5 left-1.5 rounded-full bg-black/60 px-1.5 py-0.5 text-[11px] leading-none font-semibold text-white">
             {badge}
           </span>
         )}
@@ -241,7 +241,7 @@ export function SharedThemePreview({
 }
 
 function SectionHeading({ children }: { children: React.ReactNode }): React.JSX.Element {
-  return <h3 className="mb-2 text-xs font-semibold tracking-wide text-secondary-text uppercase">{children}</h3>
+  return <h3 className="mb-2 text-xs font-semibold text-secondary-text">{children}</h3>
 }
 
 function MonitorIcon({ className }: { className?: string }): React.JSX.Element {

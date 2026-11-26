@@ -142,7 +142,7 @@ export function ConversationList({
         <UserSearch onSelect={(user) => onSelect(user.id)} />
       </SidebarHeader>
       <div className="flex items-center justify-between p-3">
-        <h1 className="text-xs font-bold uppercase tracking-wide text-quaternary-text">Messages</h1>
+        <h1 className="text-xs font-bold text-quaternary-text">Messages</h1>
         <Tooltip>
           <TooltipTrigger asChild>
             <button

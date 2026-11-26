@@ -50,7 +50,7 @@ function VariantColumn({
       )}
 
       <div className="flex flex-col items-center gap-2 border-t border-border-card pt-3 text-center">
-        <p className="text-[10px] font-bold uppercase tracking-wide text-secondary-text">Current Owner</p>
+        <p className="text-[11px] font-bold text-secondary-text">Current owner</p>
         <a
           href={ownerId ? `https://www.roblox.com/users/${ownerId}/profile` : undefined}
           target="_blank"
@@ -65,12 +65,12 @@ function VariantColumn({
         </a>
       </div>
 
-      <p className="mt-3 border-t border-border-card pt-3 text-center text-[10px] text-secondary-text uppercase">Logged On</p>
+      <p className="mt-3 border-t border-border-card pt-3 text-center text-[11px] text-secondary-text">Logged on</p>
       <p className="text-center text-sm font-bold text-primary-text">{formatDate(item.logged_at)}</p>
 
       <div className="mt-3 border-t border-border-card pt-3">
-        <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-secondary-text">
-          Ownership History ({item.history?.length ?? 0})
+        <p className="mb-2 text-[11px] font-bold text-secondary-text">
+          Ownership history ({item.history?.length ?? 0})
         </p>
         <DupeHistoryList history={item.history ?? []} ownerProfiles={ownerProfiles} />
       </div>

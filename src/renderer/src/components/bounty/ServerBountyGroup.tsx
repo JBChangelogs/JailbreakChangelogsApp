@@ -72,8 +72,8 @@ export function ServerBountyGroup({ group }: { group: BountyServerGroupData }): 
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
             <div className="flex flex-col">
-              <span className="text-xs font-medium uppercase tracking-wider text-secondary-text">
-                Total Server Bounty
+              <span className="text-xs font-medium text-secondary-text">
+                Total server bounty
               </span>
               <div className="flex items-center gap-1.5">
                 <DollarIcon className="h-6 w-6 text-status-warning" />

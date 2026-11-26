@@ -83,7 +83,7 @@ export function ItemSimilarSheet({ item }: { item: Item }): React.JSX.Element {
 
   return (
     <aside className="flex h-full w-64 shrink-0 flex-col border-l border-border-primary bg-secondary-bg">
-      <p className="px-4 pt-4 pb-2 text-xs font-bold tracking-wide text-quaternary-text uppercase">Similar Items</p>
+      <p className="px-4 pt-4 pb-2 text-xs font-bold text-quaternary-text">Similar items</p>
       {sorts && sorts.length > 0 && sort && (
         <div className="px-2 pb-2">
           <FilterMenu label="Sort" value={sort} options={sorts} onChange={setSort} />

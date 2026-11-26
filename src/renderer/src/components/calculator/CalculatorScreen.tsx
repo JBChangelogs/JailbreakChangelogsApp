@@ -104,8 +104,8 @@ function SummaryBar(): React.JSX.Element {
         <div className="flex items-center gap-3">
           <div className="min-w-0 flex-1">
             <Collapsible hidden={stuck}>
-              <p className="text-[10px] font-medium tracking-wide text-status-success uppercase">
-                Offering <span className="text-secondary-text normal-case">({offeringCount})</span>
+              <p className="text-[11px] font-medium text-status-success">
+                Offering <span className="text-secondary-text">({offeringCount})</span>
               </p>
             </Collapsible>
             <p className="truncate text-base font-bold text-primary-text tabular-nums">{format(offeringTotal)}</p>
@@ -117,8 +117,8 @@ function SummaryBar(): React.JSX.Element {
           </span>
           <div className="min-w-0 flex-1 text-right">
             <Collapsible hidden={stuck}>
-              <p className="text-[10px] font-medium tracking-wide text-status-error uppercase">
-                Requesting <span className="text-secondary-text normal-case">({requestingCount})</span>
+              <p className="text-[11px] font-medium text-status-error">
+                Requesting <span className="text-secondary-text">({requestingCount})</span>
               </p>
             </Collapsible>
             <p className="truncate text-base font-bold text-primary-text tabular-nums">{format(requestingTotal)}</p>
@@ -329,13 +329,13 @@ export function CalculatorScreen(): React.JSX.Element {
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null)
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <div className="flex h-[57px] shrink-0 items-center justify-between border-b border-border-primary px-5">
-        <h2 className="text-sm font-semibold text-primary-text">Value Calculator</h2>
+    <div className="@container flex min-h-0 min-w-0 flex-1 flex-col">
+      <div className="flex h-[57px] shrink-0 items-center justify-between gap-3 border-b border-border-primary px-5">
+        <h2 className="min-w-0 truncate text-sm font-semibold text-primary-text">Value Calculator</h2>
         <ScanControls />
       </div>
       <div ref={setScrollElement} className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5 [scrollbar-gutter:stable]">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid gap-4 @xl:grid-cols-2">
           <SidePanel side="offering" items={items} />
           <SidePanel side="requesting" items={items} />
         </div>

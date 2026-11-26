@@ -73,7 +73,7 @@ export function BountySidebarFilters(): React.JSX.Element {
 
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
         <SectionHeader
-          label="Total Server Bounty"
+          label="Total server bounty"
           onClear={rangeActive ? () => setBountyRange([0, BOUNTY_RANGE_MAX]) : undefined}
         />
         <div className="px-1">

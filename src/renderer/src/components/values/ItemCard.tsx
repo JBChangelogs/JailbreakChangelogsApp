@@ -74,7 +74,7 @@ export function ItemCard({ item }: { item: Item }): React.JSX.Element {
     <button
       type="button"
       onClick={() => selectItem(item.id)}
-      className="group flex w-full cursor-pointer flex-col overflow-hidden rounded-2xl border-2 border-border-card bg-secondary-bg text-left transition-shadow duration-300 hover:shadow-lg hover:shadow-card-shadow"
+      className="group @container flex w-full cursor-pointer flex-col overflow-hidden rounded-2xl border-2 border-border-card bg-secondary-bg text-left transition-shadow duration-300 hover:shadow-lg hover:shadow-card-shadow"
     >
       <div className="relative w-full overflow-hidden bg-tertiary-bg" style={{ aspectRatio: '854 / 480' }}>
         <div className="absolute top-2 right-2 z-10">
@@ -136,7 +136,7 @@ export function ItemCard({ item }: { item: Item }): React.JSX.Element {
           )}
         </div>
 
-        <div className="grid grid-cols-2 rounded-lg border border-border-card bg-tertiary-bg">
+        <div className="grid rounded-lg border border-border-card bg-tertiary-bg @[14rem]:grid-cols-2">
           <div className="flex flex-col gap-1 p-2">
             <span className="text-xs font-semibold text-primary-text">Clean</span>
             <div className="flex flex-col gap-0.5">
@@ -152,7 +152,7 @@ export function ItemCard({ item }: { item: Item }): React.JSX.Element {
               </span>
             </div>
           </div>
-          <div className="flex flex-col gap-1 border-l border-border-card p-2">
+          <div className="flex flex-col gap-1 border-t border-border-card p-2 @[14rem]:border-t-0 @[14rem]:border-l">
             <span className="text-xs font-semibold text-primary-text">Duped</span>
             <div className="flex flex-col gap-0.5">
               <span className="text-[10px] font-medium text-secondary-text">Value</span>

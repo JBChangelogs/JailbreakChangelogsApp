@@ -197,7 +197,7 @@ export function PityCalculatorSidebar(): React.JSX.Element {
         </div>
       ) : (
         <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2">
-          <h1 className="px-2 pt-1 pb-1 text-xs font-bold tracking-wide text-quaternary-text uppercase">Your HyperChromes</h1>
+          <h1 className="px-2 pt-1 pb-1 text-xs font-bold text-quaternary-text">Your HyperChromes</h1>
           {COLORS.map((color) => {
             const entry = progress[color.name]
             const isSelected = color.name === selectedColor
@@ -445,7 +445,7 @@ function Results(): React.JSX.Element | null {
               capped >= 66 ? 'var(--color-status-success)' : capped >= 33 ? 'var(--color-status-warning)' : 'var(--color-status-error)'
             return (
               <div key={other} className="rounded-xl border border-border-card bg-secondary-bg p-3">
-                <p className="text-[11px] font-semibold tracking-wide text-secondary-text uppercase">Level {other}</p>
+                <p className="text-[11px] font-semibold text-secondary-text">Level {other}</p>
                 <p className="mt-0.5 text-xl font-black tabular-nums" style={{ color }}>
                   {pct >= 100 ? '100%' : formatPct(pct)}
                 </p>
@@ -513,7 +513,7 @@ export function PityCalculatorScreen(): React.JSX.Element {
       <div className="flex h-[57px] shrink-0 items-center gap-2.5 border-b border-border-primary px-5">
         <Jar name={selected.jar} className="h-6 w-6" />
         <h2 className="text-sm font-semibold text-primary-text">{selected.label}</h2>
-        {selected.robbery && <span className="text-xs text-tertiary-text">· {selected.robbery}</span>}
+        {selected.robbery && <span className="text-xs text-tertiary-text">from {selected.robbery}</span>}
       </div>
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
         <Controls key={selected.key} />

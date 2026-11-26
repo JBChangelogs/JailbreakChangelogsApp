@@ -177,7 +177,7 @@ export function BountyAlertsSection(): React.JSX.Element {
   return (
     <div className="mt-4 border-t border-border-primary pt-3">
       <div className="mb-1.5 flex h-4 items-center justify-between gap-2 px-1">
-        <span className="text-[10px] font-bold tracking-wide text-quaternary-text uppercase">Alerts</span>
+        <span className="text-[11px] font-bold text-quaternary-text">Alerts</span>
         <span className="text-[10px] text-tertiary-text">{activeCount > 0 ? `${activeCount} on` : 'Off'}</span>
       </div>
       <div className="space-y-2 px-1">

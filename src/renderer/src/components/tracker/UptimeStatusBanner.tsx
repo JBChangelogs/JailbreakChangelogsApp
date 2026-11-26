@@ -107,7 +107,7 @@ export function UptimeStatusBanner(): React.JSX.Element {
   const showSkeleton = loading && heartbeats.length === 0
 
   return (
-    <div className="flex min-w-0 flex-1 items-center gap-3">
+    <div className="@container flex min-w-0 flex-1 items-center gap-3">
       <div className="flex shrink-0 items-center gap-2">
         {showSkeleton ? (
           <span className="h-4 w-10 animate-pulse rounded-full bg-quaternary-bg" />
@@ -119,7 +119,7 @@ export function UptimeStatusBanner(): React.JSX.Element {
           </span>
         )}
       </div>
-      <div className="min-w-0 flex-1">
+      <div className="hidden min-w-0 flex-1 @[8rem]:block">
         {showSkeleton ? (
           <div className="h-2 w-full animate-pulse rounded-full bg-quaternary-bg" />
         ) : (

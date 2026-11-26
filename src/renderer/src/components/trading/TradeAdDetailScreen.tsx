@@ -40,7 +40,7 @@ function InboxIcon({ className }: { className?: string }): React.JSX.Element {
 export function ItemSide({ items, label }: { items: TradeItemWire[]; label: string }): React.JSX.Element {
   return (
     <div className="min-w-0">
-      <p className="mb-1.5 flex items-center justify-between text-[10px] font-bold tracking-wide text-quaternary-text uppercase">
+      <p className="mb-1.5 flex items-center justify-between text-[11px] font-bold text-quaternary-text">
         <span>{label}</span>
         {sideTotalValue(items) > 0 && (
           <span className="text-primary-text">{formatFullValue(String(sideTotalValue(items)))}</span>

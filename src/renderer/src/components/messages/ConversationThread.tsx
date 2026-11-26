@@ -1472,7 +1472,7 @@ function MessageRow({
                 <div
                   className={`absolute right-0 bottom-full left-0 mb-2 z-30 overflow-hidden ${FLOATING_PANEL_SURFACE}`}
                 >
-                  <div className="border-b border-border-primary px-3 py-2 text-[10px] font-bold tracking-wide text-tertiary-text uppercase">
+                  <div className="border-b border-border-primary px-3 py-2 text-[11px] font-bold text-tertiary-text">
                     {editQuery.trigger === "@" ? "Members" : "Emojis"} matching{" "}
                     {editQuery.trigger}
                     {editQuery.text}
@@ -2455,7 +2455,7 @@ export function ConversationThread({
             <p className="text-base font-semibold text-primary-text">
               Your Messages
             </p>
-            <p className="mt-1 max-w-xs text-sm text-quaternary-text">
+            <p className="mt-1 max-w-xs text-sm text-secondary-text">
               Select a conversation from the sidebar, or search for someone
               there to start a new one.
             </p>
@@ -2843,7 +2843,7 @@ export function ConversationThread({
                     <div
                       className={`absolute right-0 bottom-full left-0 mb-2 overflow-hidden ${FLOATING_PANEL_SURFACE}`}
                     >
-                      <div className="border-b border-border-primary px-3 py-2 text-[10px] font-bold tracking-wide text-tertiary-text uppercase">
+                      <div className="border-b border-border-primary px-3 py-2 text-[11px] font-bold text-tertiary-text">
                         {composerQuery.trigger === "@" ? "Members" : "Emojis"}{" "}
                         matching {composerQuery.trigger}
                         {composerQuery.text}

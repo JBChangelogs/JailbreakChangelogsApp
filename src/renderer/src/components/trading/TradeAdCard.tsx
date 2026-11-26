@@ -362,7 +362,7 @@ export function TradeAdCard({
       <div className="p-3">
         {note && (
           <div className="mb-4 min-w-0">
-            <p className="mb-1 text-[10px] tracking-wide text-secondary-text uppercase">Trade Note</p>
+            <p className="mb-1 text-[11px] text-secondary-text">Trade note</p>
             <p
               className={`text-sm break-words whitespace-pre-wrap text-primary-text ${noteIsLong && !noteExpanded ? 'line-clamp-3' : ''}`}
             >

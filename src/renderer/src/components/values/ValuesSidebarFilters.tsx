@@ -63,7 +63,7 @@ export function SortMenu({
           {groups.map((group, i) => (
             <Fragment key={group.label}>
               {i > 0 && <DropdownMenuSeparator />}
-              <DropdownMenuLabel className="text-[10px] font-bold tracking-wide text-quaternary-text uppercase">
+              <DropdownMenuLabel className="text-[11px] font-bold text-quaternary-text">
                 {group.label}
               </DropdownMenuLabel>
               {group.options.map((option) => (
@@ -90,7 +90,7 @@ export function SectionHeader({
 }): React.JSX.Element {
   return (
     <div className="mb-1.5 flex h-4 items-center justify-between px-1">
-      <span className="text-[10px] font-bold tracking-wide text-quaternary-text uppercase">
+      <span className="text-[11px] font-bold text-quaternary-text">
         {label}
         {count > 0 && <span className="ml-1 text-link">({count})</span>}
       </span>
@@ -233,10 +233,10 @@ export function ValuesSidebarFilters(): React.JSX.Element {
           type="button"
           onClick={() => setShowAdvanced((v) => !v)}
           aria-expanded={showAdvanced}
-          className="mt-3 flex w-full items-center justify-between rounded-md px-1 py-1.5 text-[10px] font-bold tracking-wide text-quaternary-text uppercase hover:text-secondary-text"
+          className="mt-3 flex w-full items-center justify-between rounded-md px-1 py-1.5 text-[11px] font-bold text-quaternary-text hover:text-secondary-text"
         >
           <span>
-            Demand & Trend
+            Demand & trend
             {!showAdvanced && advancedCount > 0 && <span className="ml-1 text-link">({advancedCount})</span>}
           </span>
           <ChevronDownIcon className={`h-3.5 w-3.5 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />

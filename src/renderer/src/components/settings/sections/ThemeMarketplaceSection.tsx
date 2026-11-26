@@ -228,7 +228,7 @@ export function ThemeMarketplaceSection(): React.JSX.Element {
                   <ThemeIcon icon={theme.icon ?? 'lucide:palette'} className="size-4 shrink-0" />
                   <span className="truncate">{theme.label}</span>
                   {inUse === theme.share_code && (
-                    <span className="ml-auto shrink-0 text-[10px] font-semibold text-button-info uppercase">In use</span>
+                    <span className="ml-auto shrink-0 text-[11px] font-semibold text-button-info">In use</span>
                   )}
                 </span>
                 {theme.description && <span className="mt-1 line-clamp-3 block text-xs text-secondary-text">{theme.description}</span>}

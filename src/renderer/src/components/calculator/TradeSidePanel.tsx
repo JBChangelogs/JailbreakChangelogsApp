@@ -261,8 +261,10 @@ function TradeSideHeading({ side, count, total, label }: { side: TradeSide; coun
       >
         <Icon d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" className={`h-4 w-4 ${giving ? '' : 'rotate-180'}`} />
       </span>
-      <h3 className="text-xs font-semibold tracking-wide text-primary-text uppercase">{label}</h3>
-      <span className="text-xs text-secondary-text">{`· ${count} ${count === 1 ? 'item' : 'items'}`}</span>
+      <h3 className="text-xs font-semibold text-primary-text">{label}</h3>
+      <span className="rounded-full bg-tertiary-bg px-2 py-0.5 text-[11px] whitespace-nowrap text-secondary-text tabular-nums">
+        {count} {count === 1 ? 'item' : 'items'}
+      </span>
       {total > 0 && <span className="text-sm font-bold text-primary-text tabular-nums">{total.toLocaleString()}</span>}
     </div>
   )

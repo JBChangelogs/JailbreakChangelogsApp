@@ -56,7 +56,7 @@ export function DupeFinderSidebar(): React.JSX.Element {
           >
             <BackIcon className="h-4 w-4" />
           </button>
-          <h1 className="truncate text-xs font-bold uppercase tracking-wide text-quaternary-text">{selectedItem.title}</h1>
+          <h1 className="truncate text-xs font-bold text-quaternary-text">{selectedItem.title}</h1>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-2">
@@ -66,9 +66,9 @@ export function DupeFinderSidebar(): React.JSX.Element {
             </Button>
           )}
 
-          <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-quaternary-text">
+          <div className="mb-2 flex items-center gap-1.5 text-[11px] font-bold text-quaternary-text">
             <HistoryIcon className="h-3 w-3" />
-            Ownership History ({selectedItem.history?.length ?? 0})
+            Ownership history ({selectedItem.history?.length ?? 0})
           </div>
 
           <DupeHistoryList history={selectedItem.history ?? []} ownerProfiles={ownerProfiles} />

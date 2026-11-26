@@ -276,7 +276,7 @@ export function DupeItemCard({
         <div className="flex min-w-0 items-center gap-2">
           <RobloxAvatar userId={ownerId} label={ownerName} className="h-8 w-8 border border-border-card" />
           <div className="min-w-0 flex-1">
-            <p className="text-xs text-secondary-text uppercase">{ownerLabel}</p>
+            <p className="text-xs text-secondary-text">{ownerLabel}</p>
             <Tooltip>
               <TooltipTrigger asChild>
                 <button

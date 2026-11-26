@@ -57,6 +57,14 @@ export function notesSince(notes: string, currentVersion: string | undefined): s
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.10.2',
+    date: '2026-11-26',
+    changed: [
+      "Close to taskbar is now Close to tray on Windows. Closing the app keeps it running in the hidden icons on your taskbar, so the overlay shortcut and alerts keep working. Click the icon to open the app, or right-click it to quit",
+      'With Start minimized and Close to tray both on, the app starts in the tray when your computer starts'
+    ]
+  },
+  {
     version: '0.10.1',
     date: '2026-11-26',
     changed: [

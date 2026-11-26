@@ -74,6 +74,10 @@ const api: DesktopApi = {
     setAutoEnabled: (enabled) => invoke('scanner_set_auto_enabled', { enabled }),
     onAutoResult: (callback) => subscribe('scanner:auto-result', callback)
   },
+  closeToTray: {
+    get: () => invoke('close_to_tray_get'),
+    set: (enabled) => invoke('close_to_tray_set', { enabled })
+  },
   autostart: {
     get: () => invoke('autostart_get'),
     set: ({ enabled, minimized }) => invoke('autostart_set', { enabled, minimized })
@@ -129,6 +133,15 @@ function handleShortcuts(): void {
   )
 }
 
+function migrateCloseToTaskbar(): void {
+  try {
+    if (localStorage.getItem('jbcl:close-to-taskbar') === 'true') fireAndForget('close_to_tray_set', { enabled: true })
+    localStorage.removeItem('jbcl:close-to-taskbar')
+  } catch {
+    // Storage blocked: nothing to carry over.
+  }
+}
+
 async function importElectronLocalStorage(): Promise<void> {
   try {
     const entries = await invoke<Record<string, string> | null>('legacy_local_storage')
@@ -147,4 +160,5 @@ export async function install(): Promise<void> {
   addApplicationHeader()
   handleShortcuts()
   await importElectronLocalStorage()
+  migrateCloseToTaskbar()
 }

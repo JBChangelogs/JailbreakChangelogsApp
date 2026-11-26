@@ -74,6 +74,10 @@ export interface DesktopApi {
     setAutoEnabled: (enabled: boolean) => Promise<AutoScanSettings>
     onAutoResult: (callback: (result: ScanResponse) => void) => () => void
   }
+  closeToTray: {
+    get: () => Promise<boolean>
+    set: (enabled: boolean) => Promise<boolean>
+  }
   autostart: {
     get: () => Promise<AutostartSettings>
     set: (settings: AutostartSettings) => Promise<AutostartSettings>

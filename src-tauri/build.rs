@@ -22,6 +22,8 @@ const COMMANDS: &[&str] = &[
     "overlay_hide",
     "autostart_get",
     "autostart_set",
+    "close_to_tray_get",
+    "close_to_tray_set",
     "analytics_track",
     "analytics_get_enabled",
     "analytics_set_enabled",

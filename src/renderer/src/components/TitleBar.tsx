@@ -13,7 +13,6 @@ import { Button } from '@renderer/components/ui/button'
 import { prettyShortcut } from '@renderer/lib/utils'
 import { Popover, PopoverAnchor, PopoverContent } from '@renderer/components/ui/popover'
 import {
-  getCloseToTaskbar,
   getOverlayNoticeVisible,
   getTabsNoticeVisible,
   setOverlayNoticeVisible
@@ -228,7 +227,7 @@ export function TitleBar({
               {isMaximized ? <RestoreIcon /> : <MaximizeIcon />}
             </button>
             <button
-              onClick={() => (getCloseToTaskbar() ? window.api.window.minimize() : window.api.window.close())}
+              onClick={() => window.api.window.close()}
               className="flex h-full w-11 items-center justify-center text-secondary-text transition-colors hover:bg-status-error hover:text-white"
               aria-label="Close"
             >

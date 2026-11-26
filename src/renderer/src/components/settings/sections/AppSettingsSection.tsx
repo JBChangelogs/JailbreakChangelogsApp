@@ -20,7 +20,6 @@ import {
 import type { NavigationMode } from '@renderer/lib/localPreferences'
 import { showToast } from '@renderer/lib/toast'
 import { prettyShortcut } from '@renderer/lib/utils'
-import { getCloseToTaskbar, setCloseToTaskbar } from '@renderer/lib/localPreferences'
 import { Switch } from '@renderer/components/ui/switch'
 import type { AutostartSettings } from '@shared/desktopApi'
 import { useEffect, useState } from 'react'
@@ -170,19 +169,31 @@ function OverlayShortcutSetting(): React.JSX.Element {
   )
 }
 
-function CloseToTaskbarSetting(): React.JSX.Element {
-  const [enabled, setEnabled] = useState(getCloseToTaskbar)
+function CloseToTraySetting(): React.JSX.Element {
+  const [enabled, setEnabled] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    void window.api.closeToTray.get().then(setEnabled)
+  }, [])
+
   return (
     <SettingRow
-      title="Close to taskbar"
-      description="The close button minimizes the app instead of quitting, so the overlay shortcut and alerts keep working. Saved on this computer."
+      title="Close to tray"
+      description="Closing the app keeps it running in the hidden icons on your taskbar, so the overlay shortcut and alerts keep working. Right-click the icon to quit."
       action={
         <Switch
-          aria-label="Close to taskbar"
-          checked={enabled}
+          aria-label="Close to tray"
+          checked={enabled ?? false}
+          disabled={enabled === null}
           onCheckedChange={(next) => {
             setEnabled(next)
-            setCloseToTaskbar(next)
+            window.api.closeToTray
+              .set(next)
+              .then(setEnabled)
+              .catch((err: unknown) => {
+                setEnabled(!next)
+                showToast("Couldn't change the close setting", { description: String(err) })
+              })
           }}
         />
       }
@@ -224,7 +235,7 @@ function StartupSettings(): React.JSX.Element {
       />
       <SettingRow
         title="Start minimized"
-        description="When it opens on startup, keep the app minimized to the taskbar."
+        description="When it opens on startup, keep it out of the way: in the tray if Close to tray is on, otherwise minimized."
         action={
           <Switch
             aria-label="Start minimized"
@@ -296,7 +307,7 @@ export function AppSettingsSection(): React.JSX.Element {
       {window.api.platform !== 'web' && (
         <SettingsCard title="Window" icon={AppWindowIcon}>
           <div className={SETTINGS_LIST}>
-            {window.api.platform !== 'darwin' && <CloseToTaskbarSetting />}
+            {window.api.platform === 'win32' && <CloseToTraySetting />}
             <StartupSettings />
           </div>
         </SettingsCard>

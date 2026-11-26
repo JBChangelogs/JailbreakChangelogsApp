@@ -342,8 +342,12 @@ fn create_main_window(app: &AppHandle) -> tauri::Result<WebviewWindow> {
         })
         .on_page_load(|window, payload| {
             if payload.event() == tauri::webview::PageLoadEvent::Finished {
+                let quiet_start = AUTOSTARTED.swap(false, Ordering::SeqCst) && start_minimized();
+                if quiet_start && close_to_tray() {
+                    return;
+                }
                 let _ = window.show();
-                if AUTOSTARTED.swap(false, Ordering::SeqCst) && start_minimized() {
+                if quiet_start {
                     let _ = window.minimize();
                 }
             }
@@ -524,11 +528,79 @@ fn scanner_pick_done(window: tauri::Window, rect: Option<PickedRect>) {
     }
 }
 
-fn start_minimized() -> bool {
+fn window_settings() -> Value {
     std::fs::read(data_dir().join("window.json"))
         .ok()
         .and_then(|b| serde_json::from_slice::<Value>(&b).ok())
-        .is_some_and(|v| v["startMinimized"] == true)
+        .filter(Value::is_object)
+        .unwrap_or_else(|| serde_json::json!({}))
+}
+
+fn save_window_setting(key: &str, value: bool) -> Result<(), String> {
+    let mut settings = window_settings();
+    settings[key] = Value::Bool(value);
+    std::fs::write(data_dir().join("window.json"), settings.to_string()).map_err(|e| e.to_string())
+}
+
+fn start_minimized() -> bool {
+    window_settings()["startMinimized"] == true
+}
+
+fn close_to_tray() -> bool {
+    cfg!(windows) && window_settings()["closeToTray"] == true
+}
+
+#[cfg(windows)]
+fn sync_tray(app: &AppHandle) -> tauri::Result<()> {
+    use tauri::menu::{Menu, MenuItem};
+    use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+    const TRAY_ID: &str = "main";
+    if !close_to_tray() {
+        app.remove_tray_by_id(TRAY_ID);
+        return Ok(());
+    }
+    if app.tray_by_id(TRAY_ID).is_some() {
+        return Ok(());
+    }
+    let open = MenuItem::with_id(app, "open", "Open Jailbreak Changelogs", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+    let menu = Menu::with_items(app, &[&open, &quit])?;
+    let mut tray = TrayIconBuilder::with_id(TRAY_ID)
+        .tooltip("Jailbreak Changelogs")
+        .menu(&menu)
+        .show_menu_on_left_click(false)
+        .on_menu_event(|app, event| match event.id.as_ref() {
+            "open" => focus_main(app),
+            "quit" => app.exit(0),
+            _ => {}
+        })
+        .on_tray_icon_event(|tray, event| {
+            if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = event {
+                focus_main(tray.app_handle());
+            }
+        });
+    if let Some(icon) = app.default_window_icon() {
+        tray = tray.icon(icon.clone());
+    }
+    tray.build(app)?;
+    Ok(())
+}
+
+#[cfg(not(windows))]
+fn sync_tray(_: &AppHandle) -> tauri::Result<()> {
+    Ok(())
+}
+
+#[tauri::command]
+fn close_to_tray_get() -> bool {
+    close_to_tray()
+}
+
+#[tauri::command]
+fn close_to_tray_set(app: AppHandle, enabled: bool) -> Result<bool, String> {
+    save_window_setting("closeToTray", enabled)?;
+    sync_tray(&app).map_err(|e| e.to_string())?;
+    Ok(close_to_tray())
 }
 
 #[tauri::command]
@@ -544,7 +616,7 @@ fn autostart_set(app: AppHandle, enabled: bool, minimized: bool) -> Result<Value
     } else if launcher.is_enabled().unwrap_or(false) {
         launcher.disable().map_err(|e| e.to_string())?;
     }
-    std::fs::write(data_dir().join("window.json"), serde_json::json!({ "startMinimized": minimized }).to_string()).map_err(|e| e.to_string())?;
+    save_window_setting("startMinimized", minimized)?;
     Ok(autostart_get(app))
 }
 
@@ -668,6 +740,8 @@ pub fn run() {
             overlay_hide,
             autostart_get,
             autostart_set,
+            close_to_tray_get,
+            close_to_tray_set,
             analytics_track,
             analytics_get_enabled,
             analytics_set_enabled,
@@ -708,6 +782,9 @@ pub fn run() {
             let _ = resources;
 
             create_main_window(&handle)?;
+            if let Err(e) = sync_tray(&handle) {
+                eprintln!("[tray] failed to create the tray icon: {e}");
+            }
             analytics::init(&handle);
             scanner::init(&handle);
             overlay::init(&handle);
@@ -739,6 +816,13 @@ pub fn run() {
         .expect("error while building the app");
 
     app.run(|app, event| match event {
+        #[cfg(windows)]
+        RunEvent::WindowEvent { label, event: WindowEvent::CloseRequested { api, .. }, .. } if label == "main" && close_to_tray() => {
+            api.prevent_close();
+            if let Some(w) = main_window(app) {
+                let _ = w.hide();
+            }
+        }
         #[cfg(target_os = "macos")]
         RunEvent::WindowEvent { label, event: WindowEvent::CloseRequested { api, .. }, .. } if label == "main" => {
             api.prevent_close();

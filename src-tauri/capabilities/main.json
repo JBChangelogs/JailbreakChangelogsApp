@@ -35,6 +35,8 @@
     "allow-overlay-set-shortcut",
     "allow-autostart-get",
     "allow-autostart-set",
+    "allow-close-to-tray-get",
+    "allow-close-to-tray-set",
     "allow-analytics-track",
     "allow-analytics-get-enabled",
     "allow-analytics-set-enabled",

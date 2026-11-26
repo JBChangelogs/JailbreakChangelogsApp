@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-close-to-tray-set"
+description = "Enables the close_to_tray_set command without any pre-configured scope."
+commands.allow = ["close_to_tray_set"]
+
+[[permission]]
+identifier = "deny-close-to-tray-set"
+description = "Denies the close_to_tray_set command without any pre-configured scope."
+commands.deny = ["close_to_tray_set"]

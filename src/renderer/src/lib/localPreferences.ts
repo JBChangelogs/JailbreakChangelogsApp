@@ -10,7 +10,6 @@ const CLEAR_SHORTCUTS_EXPANDED_KEY = 'jbcl:clear-shortcuts-expanded'
 const NAVIGATION_MODE_KEY = 'jbcl:navigation-mode'
 const TABS_NOTICE_KEY = 'jbcl:tabs-notice'
 const OVERLAY_NOTICE_KEY = 'jbcl:overlay-notice'
-const CLOSE_TO_TASKBAR_KEY = 'jbcl:close-to-taskbar'
 
 function getFlag(key: string): boolean {
   try {
@@ -82,18 +81,6 @@ export function getOverlayNoticeVisible(): boolean {
 
 export function setOverlayNoticeVisible(visible: boolean): void {
   setFlag(OVERLAY_NOTICE_KEY, visible)
-}
-
-export function getCloseToTaskbar(): boolean {
-  try {
-    return localStorage.getItem(CLOSE_TO_TASKBAR_KEY) === 'true'
-  } catch {
-    return false
-  }
-}
-
-export function setCloseToTaskbar(enabled: boolean): void {
-  setFlag(CLOSE_TO_TASKBAR_KEY, enabled)
 }
 
 export type NavigationMode = 'tabs' | 'simple'

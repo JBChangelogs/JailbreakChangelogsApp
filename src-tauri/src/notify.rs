@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter};
 
 #[cfg(windows)]
 pub fn register_windows_toast_identity(aumid: &str, icon: &Path) {
@@ -39,11 +39,7 @@ pub fn show(app: &AppHandle, id: String, title: &str, body: Option<&str>, icon: 
                 if action == "__closed" {
                     return;
                 }
-                if let Some(window) = app.get_webview_window("main") {
-                    let _ = window.unminimize();
-                    let _ = window.show();
-                    let _ = window.set_focus();
-                }
+                crate::focus_main(&app);
                 let _ = app.emit_to("main", "notifications:clicked", &id);
             }),
             Err(e) => eprintln!("[notifications] failed to show: {e}"),

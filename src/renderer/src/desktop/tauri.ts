@@ -74,6 +74,7 @@ const api: DesktopApi = {
     setAutoEnabled: (enabled) => invoke('scanner_set_auto_enabled', { enabled }),
     onAutoResult: (callback) => subscribe('scanner:auto-result', callback)
   },
+  setUnread: (kind, count) => fireAndForget('app_set_unread', { kind, count }),
   closeToTray: {
     get: () => invoke('close_to_tray_get'),
     set: (enabled) => invoke('close_to_tray_set', { enabled })

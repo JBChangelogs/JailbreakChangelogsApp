@@ -46,6 +46,7 @@
     "allow-devtools-open",
     "allow-app-reload",
     "allow-app-can-uninstall",
-    "allow-app-uninstall"
+    "allow-app-uninstall",
+    "allow-app-set-unread"
   ]
 }

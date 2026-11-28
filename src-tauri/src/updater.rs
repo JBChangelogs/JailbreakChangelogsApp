@@ -31,16 +31,17 @@ fn installed_by_other_package_manager() -> bool {
     false
 }
 
-pub async fn check(app: AppHandle, source: &'static str) {
+pub async fn check(app: AppHandle, source: &'static str) -> bool {
     if !crate::is_packaged() {
-        return;
+        return false;
     }
     let manual = installed_by_other_package_manager();
     if let Some((update, bytes)) = PENDING.lock().unwrap().as_ref() {
         let status = json!({ "state": "downloaded", "source": source, "version": update.version, "size": bytes.len(), "notes": update.body });
-        return send(&app, status);
+        send(&app, status);
+        return true;
     }
-    let Ok(_checking) = CHECKING.try_lock() else { return };
+    let Ok(_checking) = CHECKING.try_lock() else { return false };
     send(&app, json!({ "state": "checking", "source": source }));
     let update = match app.updater() {
         Ok(updater) => updater.check().await,
@@ -48,14 +49,19 @@ pub async fn check(app: AppHandle, source: &'static str) {
     };
     let update = match update {
         Ok(Some(update)) => update,
-        Ok(None) => return send(&app, json!({ "state": "not-available", "source": source })),
+        Ok(None) => {
+            send(&app, json!({ "state": "not-available", "source": source }));
+            return false;
+        }
         Err(e) => {
             eprintln!("[updater] check failed: {e}");
-            return send(&app, json!({ "state": "not-available", "source": source }));
+            send(&app, json!({ "state": "not-available", "source": source }));
+            return false;
         }
     };
     if manual {
-        return send(&app, json!({ "state": "available", "source": source, "version": update.version, "notes": update.body, "manual": true }));
+        send(&app, json!({ "state": "available", "source": source, "version": update.version, "notes": update.body, "manual": true }));
+        return true;
     }
     send(&app, json!({ "state": "available", "source": source, "version": update.version, "notes": update.body }));
     if source == "startup" {
@@ -63,6 +69,7 @@ pub async fn check(app: AppHandle, source: &'static str) {
     } else {
         *AVAILABLE.lock().unwrap() = Some(update);
     }
+    true
 }
 
 pub async fn download(app: AppHandle) {

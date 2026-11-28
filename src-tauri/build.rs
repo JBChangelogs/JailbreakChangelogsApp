@@ -34,6 +34,7 @@ const COMMANDS: &[&str] = &[
     "app_reload",
     "app_can_uninstall",
     "app_uninstall",
+    "app_set_unread",
 ];
 
 fn main() {

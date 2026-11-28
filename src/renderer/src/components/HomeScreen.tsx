@@ -141,6 +141,8 @@ export function HomeScreen(): React.JSX.Element {
     if (messagesTabId) setMeta(messagesTabId, { badge: unread })
   }, [messagesTabId, unread, setMeta])
 
+  useEffect(() => window.api.setUnread('messages', unread), [unread])
+
   useMessageToasts((recipientId) => {
     open('messages')
     setSelectedId(recipientId)

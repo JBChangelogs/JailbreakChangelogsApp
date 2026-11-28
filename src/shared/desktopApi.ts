@@ -74,6 +74,7 @@ export interface DesktopApi {
     setAutoEnabled: (enabled: boolean) => Promise<AutoScanSettings>
     onAutoResult: (callback: (result: ScanResponse) => void) => () => void
   }
+  setUnread: (kind: 'messages' | 'notifications', count: number) => void
   closeToTray: {
     get: () => Promise<boolean>
     set: (enabled: boolean) => Promise<boolean>

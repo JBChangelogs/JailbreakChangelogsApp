@@ -99,6 +99,7 @@ function makeApi(nativeFetch: typeof fetch): DesktopApi {
       onAutoResult: none
     },
     overlay: { getShortcut: async () => null, setShortcut: async () => null },
+    setUnread: noop,
     closeToTray: { get: async () => false, set: async () => false },
     autostart: {
       get: async () => ({ enabled: false, minimized: false }),

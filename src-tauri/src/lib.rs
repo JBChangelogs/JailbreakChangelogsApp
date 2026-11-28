@@ -49,6 +49,7 @@ static DEVTOOLS_ACCESS: Mutex<Option<(String, bool)>> = Mutex::new(None);
 static QUITTING: AtomicBool = AtomicBool::new(false);
 static AUTOSTARTED: AtomicBool = AtomicBool::new(false);
 static PENDING_PROTOCOL_URLS: Mutex<Vec<String>> = Mutex::new(Vec::new());
+static UNREAD: Mutex<[u32; 2]> = Mutex::new([0, 0]);
 
 pub fn data_dir() -> &'static Path {
     DATA_DIR.get().expect("data dir is set in setup")
@@ -96,11 +97,114 @@ fn main_window(app: &AppHandle) -> Option<WebviewWindow> {
     app.get_webview_window("main")
 }
 
-fn focus_main(app: &AppHandle) {
+pub fn focus_main(app: &AppHandle) {
     if let Some(w) = main_window(app) {
         let _ = w.unminimize();
         let _ = w.show();
         let _ = w.set_focus();
+        discord::set_visible(true);
+    }
+}
+
+fn hide_main(app: &AppHandle) {
+    if let Some(w) = main_window(app) {
+        let _ = w.hide();
+        discord::set_visible(false);
+    }
+}
+
+fn scaled_icon(icon: &tauri::image::Image, size: u32) -> tauri::image::Image<'static> {
+    let (w, h, src) = (icon.width(), icon.height(), icon.rgba());
+    let mut out = vec![0u8; (size * size * 4) as usize];
+    for y in 0..size {
+        for x in 0..size {
+            let (x0, x1) = (x * w / size, ((x + 1) * w / size).max(x * w / size + 1));
+            let (y0, y1) = (y * h / size, ((y + 1) * h / size).max(y * h / size + 1));
+            let mut sum = [0u32; 4];
+            for sy in y0..y1 {
+                for sx in x0..x1 {
+                    let i = ((sy * w + sx) * 4) as usize;
+                    let a = src[i + 3] as u32;
+                    for c in 0..3 {
+                        sum[c] += src[i + c] as u32 * a;
+                    }
+                    sum[3] += a;
+                }
+            }
+            let n = (x1 - x0) * (y1 - y0);
+            let o = ((y * size + x) * 4) as usize;
+            if sum[3] > 0 {
+                for c in 0..3 {
+                    out[o + c] = (sum[c] / sum[3]) as u8;
+                }
+            }
+            out[o + 3] = (sum[3] / n) as u8;
+        }
+    }
+    tauri::image::Image::new_owned(out, size, size)
+}
+
+fn with_unread_dot(mut rgba: Vec<u8>, size: u32) -> tauri::image::Image<'static> {
+    let r = size as f32 * 0.22;
+    let ring = r + size as f32 * 0.06;
+    let (cx, cy) = (size as f32 - ring, size as f32 - ring);
+    for y in 0..size {
+        for x in 0..size {
+            let d = ((x as f32 + 0.5 - cx).powi(2) + (y as f32 + 0.5 - cy).powi(2)).sqrt();
+            let i = ((y * size + x) * 4) as usize;
+            if d <= r {
+                rgba[i..i + 4].copy_from_slice(&[0xf2, 0x3f, 0x43, 0xff]);
+            } else if d <= ring {
+                rgba[i + 3] = 0;
+            }
+        }
+    }
+    tauri::image::Image::new_owned(rgba, size, size)
+}
+
+fn unread_total() -> u32 {
+    UNREAD.lock().unwrap().iter().sum()
+}
+
+#[cfg_attr(not(all(windows, feature = "tray")), allow(dead_code))]
+fn unread_tooltip() -> String {
+    let [messages, notifications] = *UNREAD.lock().unwrap();
+    let plural = |n: u32, word: &str| format!("{n} {word}{}", if n == 1 { "" } else { "s" });
+    let mut parts = Vec::new();
+    if messages > 0 {
+        parts.push(plural(messages, "unread message"));
+    }
+    if notifications > 0 {
+        parts.push(plural(notifications, "notification"));
+    }
+    if parts.is_empty() {
+        "Jailbreak Changelogs".into()
+    } else {
+        format!("Jailbreak Changelogs\n{}", parts.join(", "))
+    }
+}
+
+#[cfg_attr(not(all(windows, feature = "tray")), allow(dead_code))]
+fn tray_icon(app: &AppHandle) -> Option<tauri::image::Image<'static>> {
+    let icon = scaled_icon(app.default_window_icon()?, 64);
+    Some(if unread_total() > 0 { with_unread_dot(icon.rgba().to_vec(), 64) } else { icon })
+}
+
+fn sync_unread_badge(app: &AppHandle) {
+    let total = unread_total();
+    #[cfg(windows)]
+    if let Some(w) = main_window(app) {
+        let dot = (total > 0).then(|| with_unread_dot(vec![0; 32 * 32 * 4], 32));
+        let _ = w.set_overlay_icon(dot);
+    }
+    #[cfg(not(windows))]
+    if let Some(w) = main_window(app) {
+        let _ = w.set_badge_count((total > 0).then_some(total as i64));
+    }
+    #[cfg(all(windows, feature = "tray"))]
+    if let Some(tray) = app.tray_by_id("main") {
+        let _ = tray.set_icon(tray_icon(app));
+        let _ = tray.set_tooltip(Some(unread_tooltip()));
     }
 }
 
@@ -347,6 +451,7 @@ fn create_main_window(app: &AppHandle) -> tauri::Result<WebviewWindow> {
                     return;
                 }
                 let _ = window.show();
+                discord::set_visible(true);
                 if quiet_start {
                     let _ = window.minimize();
                 }
@@ -551,8 +656,21 @@ fn close_to_tray() -> bool {
 }
 
 #[cfg(all(windows, feature = "tray"))]
+fn tray_check_for_updates(app: &AppHandle) {
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        if updater::check(app.clone(), "poll").await {
+            focus_main(&app);
+        } else if let Ok(dir) = app.path().resource_dir() {
+            let body = Some("Jailbreak Changelogs is on the latest version.");
+            notify::show(&app, "updater:up-to-date".into(), "You're up to date", body, &dir.join("icon.png"));
+        }
+    });
+}
+
+#[cfg(all(windows, feature = "tray"))]
 fn sync_tray(app: &AppHandle) -> tauri::Result<()> {
-    use tauri::menu::{Menu, MenuItem};
+    use tauri::menu::{IconMenuItem, Menu, MenuItem, PredefinedMenuItem};
     use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
     const TRAY_ID: &str = "main";
     if !close_to_tray() {
@@ -562,15 +680,33 @@ fn sync_tray(app: &AppHandle) -> tauri::Result<()> {
     if app.tray_by_id(TRAY_ID).is_some() {
         return Ok(());
     }
-    let open = MenuItem::with_id(app, "open", "Open Jailbreak Changelogs", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&open, &quit])?;
+    let header_icon = app.default_window_icon().map(|i| scaled_icon(i, 16));
+    let header = IconMenuItem::with_id(app, "header", "Jailbreak Changelogs", false, header_icon, None::<&str>)?;
+    let open = MenuItem::with_id(app, "open", "Open App", true, None::<&str>)?;
+    let website = MenuItem::with_id(app, "website", "Visit Website", true, None::<&str>)?;
+    let updates = MenuItem::with_id(app, "updates", "Check for Updates…", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "Quit Jailbreak Changelogs", true, None::<&str>)?;
+    let menu = Menu::with_items(
+        app,
+        &[
+            &header,
+            &PredefinedMenuItem::separator(app)?,
+            &open,
+            &website,
+            &PredefinedMenuItem::separator(app)?,
+            &updates,
+            &PredefinedMenuItem::separator(app)?,
+            &quit,
+        ],
+    )?;
     let mut tray = TrayIconBuilder::with_id(TRAY_ID)
-        .tooltip("Jailbreak Changelogs")
+        .tooltip(unread_tooltip())
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id.as_ref() {
             "open" => focus_main(app),
+            "website" => open_url(app, "https://jailbreakchangelogs.com"),
+            "updates" => tray_check_for_updates(app),
             "quit" => app.exit(0),
             _ => {}
         })
@@ -579,8 +715,8 @@ fn sync_tray(app: &AppHandle) -> tauri::Result<()> {
                 focus_main(tray.app_handle());
             }
         });
-    if let Some(icon) = app.default_window_icon() {
-        tray = tray.icon(icon.clone());
+    if let Some(icon) = tray_icon(app) {
+        tray = tray.icon(icon);
     }
     tray.build(app)?;
     Ok(())
@@ -601,6 +737,18 @@ fn close_to_tray_set(app: AppHandle, enabled: bool) -> Result<bool, String> {
     save_window_setting("closeToTray", enabled)?;
     sync_tray(&app).map_err(|e| e.to_string())?;
     Ok(close_to_tray())
+}
+
+#[tauri::command]
+fn app_set_unread(app: AppHandle, kind: String, count: u32) {
+    let slot = match kind.as_str() {
+        "messages" => 0,
+        "notifications" => 1,
+        _ => return,
+    };
+    if std::mem::replace(&mut UNREAD.lock().unwrap()[slot], count) != count {
+        sync_unread_badge(&app);
+    }
 }
 
 #[tauri::command]
@@ -752,6 +900,7 @@ pub fn run() {
             app_reload,
             app_can_uninstall,
             app_uninstall,
+            app_set_unread,
         ])
         .setup(|app| {
             let handle = app.handle().clone();
@@ -819,16 +968,12 @@ pub fn run() {
         #[cfg(windows)]
         RunEvent::WindowEvent { label, event: WindowEvent::CloseRequested { api, .. }, .. } if label == "main" && close_to_tray() => {
             api.prevent_close();
-            if let Some(w) = main_window(app) {
-                let _ = w.hide();
-            }
+            hide_main(app);
         }
         #[cfg(target_os = "macos")]
         RunEvent::WindowEvent { label, event: WindowEvent::CloseRequested { api, .. }, .. } if label == "main" => {
             api.prevent_close();
-            if let Some(w) = main_window(app) {
-                let _ = w.hide();
-            }
+            hide_main(app);
         }
         #[cfg(target_os = "macos")]
         RunEvent::Reopen { .. } => focus_main(app),
@@ -850,7 +995,19 @@ pub fn run() {
 
 #[cfg(test)]
 mod tests {
-    use super::{is_allowed_external_url, with_default_handler};
+    use super::{is_allowed_external_url, scaled_icon, with_default_handler, with_unread_dot};
+
+    #[test]
+    fn scales_icons_and_draws_the_unread_dot() {
+        let big = tauri::image::Image::new_owned([10u8, 20, 30, 255].repeat(64 * 64), 64, 64);
+        let small = scaled_icon(&big, 16);
+        assert_eq!((small.width(), small.height()), (16, 16));
+        assert!(small.rgba().chunks(4).all(|p| p == [10, 20, 30, 255]));
+        let dotted = with_unread_dot(small.rgba().to_vec(), 16);
+        let px = |x: u32, y: u32| dotted.rgba()[((y * 16 + x) * 4) as usize..][..4].to_vec();
+        assert_eq!(px(12, 12), [0xf2, 0x3f, 0x43, 0xff]);
+        assert_eq!(px(0, 0), [10, 20, 30, 255]);
+    }
 
     #[test]
     fn sets_the_default_url_handler() {

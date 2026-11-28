@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { useAuth } from '@renderer/contexts/AuthContext'
 import { useSettingsPage } from '@renderer/contexts/SettingsPageContext'
 import { useNotificationCount } from '@renderer/hooks/useNotificationCount'
@@ -58,7 +58,7 @@ function pageItems(page: number, count: number): (number | 'gap-start' | 'gap-en
   ]
 }
 
-function Pagination({
+export function Pagination({
   page,
   count,
   onChange
@@ -143,6 +143,7 @@ type Tab = 'unread' | 'history'
 export function NotificationsPopover(): React.JSX.Element {
   const { token } = useAuth()
   const { count, setCount } = useNotificationCount()
+  useEffect(() => window.api.setUnread('notifications', count), [count])
   const { open: openSettings } = useSettingsPage()
   const [open, setOpen] = useState(false)
   const [tab, setTab] = useState<Tab>('unread')

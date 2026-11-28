@@ -40,7 +40,7 @@ export function getCategoryColor(type: string): string {
   }
 }
 
-function CarIcon({ className, style }: IconProps): React.JSX.Element {
+export function CarIcon({ className, style }: IconProps): React.JSX.Element {
   return (
     <svg className={className} style={style} viewBox="0 0 24 24" fill="currentColor">
       <path d="M5 11l1.5-4.5A2 2 0 0 1 8.4 5h7.2a2 2 0 0 1 1.9 1.5L19 11m-14 0h14m-14 0a2 2 0 0 0-2 2v4h2m14-6a2 2 0 0 1 2 2v4h-2m-14 0v1a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1m10 0v1a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1m-14 0h14" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />

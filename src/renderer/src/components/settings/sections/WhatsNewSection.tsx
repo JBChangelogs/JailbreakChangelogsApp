@@ -7,13 +7,15 @@ import { SETTINGS_LIST, SettingRow, SettingsCard, SettingsPageLayout } from '@re
 import { Switch } from '@renderer/components/ui/switch'
 import { Pagination } from '@renderer/components/notifications/NotificationsPopover'
 import { useTheme } from '@renderer/contexts/ThemeContext'
+import { useAuth } from '@renderer/contexts/AuthContext'
+import { CarIcon } from '@renderer/lib/categoryIcons'
 import { useCurrentUser } from '@renderer/hooks/useCurrentUser'
 import { onUpdatePreview, runUpdatePreview } from '@renderer/lib/updatePreview'
 import type { UpdaterStatus } from '@shared/desktopApi'
 
 const CHANGELOG_PAGE_SIZE = 3
-const RUNNER_CLICKS = 7
-const RUNNER_URL = 'https://runner.jailbreakchangelogs.com/iframe'
+const RUNNER_ORIGIN = 'https://runner.jailbreakchangelogs.com'
+const RUNNER_URL = `${RUNNER_ORIGIN}/iframe`
 
 const GROUP_LABELS = {
   added: 'Added',
@@ -40,6 +42,7 @@ function formatDate(iso: string): string {
 
 function RunnerGame(): React.JSX.Element {
   const { theme, customTheme } = useTheme()
+  const { token } = useAuth()
   const frameRef = useRef<HTMLIFrameElement>(null)
   const [src] = useState(() => `${RUNNER_URL}?theme=${encodeURIComponent(customTheme?.share_code ?? theme)}`)
 
@@ -47,7 +50,12 @@ function RunnerGame(): React.JSX.Element {
     frameRef.current?.contentWindow?.postMessage({ type: 'jbcl-theme', theme, customTheme }, '*')
   }, [theme, customTheme])
 
+  const sendAuth = useCallback(() => {
+    frameRef.current?.contentWindow?.postMessage({ type: 'jbcl-auth', token: token ?? null }, RUNNER_ORIGIN)
+  }, [token])
+
   useEffect(sendTheme, [sendTheme])
+  useEffect(sendAuth, [sendAuth])
 
   return (
     <div className="mt-3">
@@ -55,17 +63,17 @@ function RunnerGame(): React.JSX.Element {
         ref={frameRef}
         src={src}
         title="Jailbreak Runner"
-        onLoad={sendTheme}
+        onLoad={() => {
+          sendTheme()
+          sendAuth()
+        }}
         className="h-[220px] w-full rounded-lg border-0"
       />
-      <p className="mt-2 text-sm text-secondary-text">
-        Bored? Play while you&apos;re here. Click the game, then press Space or ↑ to jump and ↓ to duck.
-      </p>
     </div>
   )
 }
 
-function CheckForUpdatesRow({ onVersionClick }: { onVersionClick: () => void }): React.JSX.Element {
+function CheckForUpdatesRow({ runnerOpen, onToggleRunner }: { runnerOpen: boolean; onToggleRunner: () => void }): React.JSX.Element {
   const [checking, setChecking] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
@@ -108,7 +116,19 @@ function CheckForUpdatesRow({ onVersionClick }: { onVersionClick: () => void }):
 
   return (
     <SettingRow
-      title={<span onClick={onVersionClick}>{currentVersion ? `Version ${currentVersion}` : 'Jailbreak Changelogs'}</span>}
+      title={
+        <span className="inline-flex items-center gap-1.5">
+          {currentVersion ? `Version ${currentVersion}` : 'Jailbreak Changelogs'}
+          <button
+            type="button"
+            aria-label={runnerOpen ? 'Hide Jailbreak Runner' : 'Play Jailbreak Runner'}
+            onClick={onToggleRunner}
+            className="rounded p-0.5 text-tertiary-text opacity-25 transition-opacity hover:opacity-80"
+          >
+            <CarIcon className="size-4" />
+          </button>
+        </span>
+      }
       description={feedback ?? 'Updates install automatically. Check now to get the latest version right away.'}
       action={
         <>
@@ -219,7 +239,7 @@ function UsageDataRow(): React.JSX.Element {
 }
 
 export function WhatsNewSection(): React.JSX.Element {
-  const [versionClicks, setVersionClicks] = useState(0)
+  const [runnerOpen, setRunnerOpen] = useState(false)
   const [page, setPage] = useState(1)
   const pageCount = Math.ceil(APP_CHANGELOG.length / CHANGELOG_PAGE_SIZE)
   const entries = APP_CHANGELOG.slice((page - 1) * CHANGELOG_PAGE_SIZE, page * CHANGELOG_PAGE_SIZE)
@@ -228,11 +248,11 @@ export function WhatsNewSection(): React.JSX.Element {
     <SettingsPageLayout>
       <SettingsCard title="About" icon={InfoIcon}>
         <div className={SETTINGS_LIST}>
-          <CheckForUpdatesRow onVersionClick={() => setVersionClicks((n) => n + 1)} />
+          <CheckForUpdatesRow runnerOpen={runnerOpen} onToggleRunner={() => setRunnerOpen((open) => !open)} />
           <UsageDataRow />
           <UninstallRow />
         </div>
-        {versionClicks >= RUNNER_CLICKS && <RunnerGame />}
+        {runnerOpen && <RunnerGame />}
       </SettingsCard>
 
       <SettingsCard

@@ -1,5 +1,6 @@
 use std::collections::HashMap;
-use std::sync::mpsc::{self, RecvTimeoutError, Sender};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -15,6 +16,7 @@ const JAILBREAK_PLACE_ID: &str = "606849621";
 const ROBLOX_SMALL_IMAGE_KEY: &str = "controller2";
 const RECONNECT_BASE: Duration = Duration::from_secs(2);
 const RECONNECT_MAX: Duration = Duration::from_secs(30);
+const NUDGE_DEBOUNCE: Duration = Duration::from_millis(300);
 
 pub const PREFERENCE_KEYS: [&str; 6] = [
     "rich_presence_enabled",
@@ -33,6 +35,7 @@ enum Msg {
 static TX: OnceLock<Sender<Msg>> = OnceLock::new();
 static PREFS: Mutex<Option<HashMap<&'static str, bool>>> = Mutex::new(None);
 static ROBLOX: Mutex<Option<(String, Option<String>)>> = Mutex::new(None);
+static VISIBLE: AtomicBool = AtomicBool::new(false);
 
 fn pref(key: &str) -> bool {
     PREFS.lock().unwrap().as_ref().and_then(|p| p.get(key).copied()).unwrap_or(true)
@@ -52,6 +55,12 @@ pub fn set_preference(key: &str, value: bool) {
 
 pub fn refresh() {
     nudge();
+}
+
+pub fn set_visible(visible: bool) {
+    if VISIBLE.swap(visible, Ordering::SeqCst) != visible {
+        nudge();
+    }
 }
 
 pub fn set_roblox_activity(activity: &RobloxActivity) {
@@ -210,7 +219,7 @@ struct Presence {
 }
 
 async fn compute() -> Option<Presence> {
-    if !pref("rich_presence_enabled") {
+    if !VISIBLE.load(Ordering::SeqCst) || !pref("rich_presence_enabled") {
         return None;
     }
     let roblox = ROBLOX.lock().unwrap().clone();
@@ -232,7 +241,8 @@ async fn compute() -> Option<Presence> {
         _ => None,
     };
     let mut presence = Presence { details: None, state: None, badge, buttons };
-    let Some(token) = crate::auth::load_token() else { return Some(presence) };
+    let wants_location = pref("rich_presence_show_details") || pref("rich_presence_show_state");
+    let Some(token) = crate::auth::load_token().filter(|_| wants_location) else { return Some(presence) };
     let (location, identity) = tokio::join!(get_json("/v2/users/me/location", &token), own_identity(&token));
     if pref("rich_presence_show_details") {
         presence.details = format_location(location.as_ref().and_then(|l| l["location"].as_str()), &identity);
@@ -245,11 +255,15 @@ async fn compute() -> Option<Presence> {
     Some(presence)
 }
 
-fn apply(client: &mut DiscordIpcClient, session_start: i64) -> Result<(), discord_rich_presence::error::Error> {
+fn apply(client: &mut DiscordIpcClient, session_start: &mut Option<i64>) -> Result<(), discord_rich_presence::error::Error> {
     match tauri::async_runtime::block_on(compute()) {
-        None => client.clear_activity(),
+        None => {
+            *session_start = None;
+            client.clear_activity()
+        }
         Some(Presence { details, state, badge, buttons }) => {
-            let mut activity = Activity::new().timestamps(Timestamps::new().start(session_start));
+            let start = *session_start.get_or_insert_with(now_ms);
+            let mut activity = Activity::new().timestamps(Timestamps::new().start(start));
             if let Some(d) = details.as_deref() {
                 activity = activity.details(d);
             }
@@ -263,6 +277,16 @@ fn apply(client: &mut DiscordIpcClient, session_start: i64) -> Result<(), discor
                 activity = activity.buttons(buttons.iter().map(|(l, u)| Button::new(l.as_str(), u.as_str())).collect());
             }
             client.set_activity(activity)
+        }
+    }
+}
+
+fn settle(rx: &Receiver<Msg>) -> Option<Sender<()>> {
+    loop {
+        match rx.recv_timeout(NUDGE_DEBOUNCE) {
+            Ok(Msg::Update) => {}
+            Ok(Msg::Stop(done)) => return Some(done),
+            Err(_) => return None,
         }
     }
 }
@@ -288,21 +312,23 @@ pub fn start() {
                 }
                 if connected.is_ok() {
                     delay = RECONNECT_BASE;
-                    let session_start = now_ms();
+                    let mut session_start = None;
                     loop {
-                        if let Err(e) = apply(&mut client, session_start) {
+                        if let Err(e) = apply(&mut client, &mut session_start) {
                             eprintln!("[discord-rpc] failed to set activity: {e}");
                             break;
                         }
-                        match rx.recv_timeout(LOCATION_REFRESH) {
-                            Ok(Msg::Update) | Err(RecvTimeoutError::Timeout) => {}
-                            Ok(Msg::Stop(done)) => {
-                                let _ = client.clear_activity();
-                                let _ = client.close();
-                                let _ = done.send(());
-                                return;
-                            }
+                        let stop = match rx.recv_timeout(LOCATION_REFRESH) {
+                            Ok(Msg::Update) => settle(&rx),
+                            Err(RecvTimeoutError::Timeout) => None,
+                            Ok(Msg::Stop(done)) => Some(done),
                             Err(RecvTimeoutError::Disconnected) => return,
+                        };
+                        if let Some(done) = stop {
+                            let _ = client.clear_activity();
+                            let _ = client.close();
+                            let _ = done.send(());
+                            return;
                         }
                     }
                     let _ = client.close();

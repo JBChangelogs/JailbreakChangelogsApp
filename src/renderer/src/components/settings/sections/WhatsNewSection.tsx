@@ -1,13 +1,19 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { APP_CHANGELOG } from '@shared/appChangelog'
 import { Button } from '@renderer/components/ui/button'
 import { Popover, PopoverAnchor, PopoverContent } from '@renderer/components/ui/popover'
 import { InfoIcon, SparklesIcon, UninstallDialog } from '@renderer/components/settings/SettingsSidebar'
 import { SETTINGS_LIST, SettingRow, SettingsCard, SettingsPageLayout } from '@renderer/components/settings/SettingsCard'
 import { Switch } from '@renderer/components/ui/switch'
+import { Pagination } from '@renderer/components/notifications/NotificationsPopover'
+import { useTheme } from '@renderer/contexts/ThemeContext'
 import { useCurrentUser } from '@renderer/hooks/useCurrentUser'
 import { onUpdatePreview, runUpdatePreview } from '@renderer/lib/updatePreview'
 import type { UpdaterStatus } from '@shared/desktopApi'
+
+const CHANGELOG_PAGE_SIZE = 3
+const RUNNER_CLICKS = 7
+const RUNNER_URL = 'https://runner.jailbreakchangelogs.com/iframe'
 
 const GROUP_LABELS = {
   added: 'Added',
@@ -32,7 +38,34 @@ function formatDate(iso: string): string {
   })
 }
 
-function CheckForUpdatesRow(): React.JSX.Element {
+function RunnerGame(): React.JSX.Element {
+  const { theme, customTheme } = useTheme()
+  const frameRef = useRef<HTMLIFrameElement>(null)
+  const [src] = useState(() => `${RUNNER_URL}?theme=${encodeURIComponent(customTheme?.share_code ?? theme)}`)
+
+  const sendTheme = useCallback(() => {
+    frameRef.current?.contentWindow?.postMessage({ type: 'jbcl-theme', theme, customTheme }, '*')
+  }, [theme, customTheme])
+
+  useEffect(sendTheme, [sendTheme])
+
+  return (
+    <div className="mt-3">
+      <iframe
+        ref={frameRef}
+        src={src}
+        title="Jailbreak Runner"
+        onLoad={sendTheme}
+        className="h-[220px] w-full rounded-lg border-0"
+      />
+      <p className="mt-2 text-sm text-secondary-text">
+        Bored? Play while you&apos;re here. Click the game, then press Space or ↑ to jump and ↓ to duck.
+      </p>
+    </div>
+  )
+}
+
+function CheckForUpdatesRow({ onVersionClick }: { onVersionClick: () => void }): React.JSX.Element {
   const [checking, setChecking] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
@@ -75,7 +108,7 @@ function CheckForUpdatesRow(): React.JSX.Element {
 
   return (
     <SettingRow
-      title={currentVersion ? `Version ${currentVersion}` : 'Jailbreak Changelogs'}
+      title={<span onClick={onVersionClick}>{currentVersion ? `Version ${currentVersion}` : 'Jailbreak Changelogs'}</span>}
       description={feedback ?? 'Updates install automatically. Check now to get the latest version right away.'}
       action={
         <>
@@ -186,14 +219,20 @@ function UsageDataRow(): React.JSX.Element {
 }
 
 export function WhatsNewSection(): React.JSX.Element {
+  const [versionClicks, setVersionClicks] = useState(0)
+  const [page, setPage] = useState(1)
+  const pageCount = Math.ceil(APP_CHANGELOG.length / CHANGELOG_PAGE_SIZE)
+  const entries = APP_CHANGELOG.slice((page - 1) * CHANGELOG_PAGE_SIZE, page * CHANGELOG_PAGE_SIZE)
+
   return (
     <SettingsPageLayout>
       <SettingsCard title="About" icon={InfoIcon}>
         <div className={SETTINGS_LIST}>
-          <CheckForUpdatesRow />
+          <CheckForUpdatesRow onVersionClick={() => setVersionClicks((n) => n + 1)} />
           <UsageDataRow />
           <UninstallRow />
         </div>
+        {versionClicks >= RUNNER_CLICKS && <RunnerGame />}
       </SettingsCard>
 
       <SettingsCard
@@ -202,7 +241,7 @@ export function WhatsNewSection(): React.JSX.Element {
         description={<p>What&apos;s changed in each version of this app.</p>}
       >
         <div className="space-y-3">
-          {APP_CHANGELOG.map((entry) => (
+          {entries.map((entry) => (
             <div key={entry.version} className="rounded-lg border border-border-card bg-tertiary-bg p-4">
               <div className="flex items-baseline justify-between gap-3">
                 <h3 className="text-base font-semibold text-primary-text">Version {entry.version}</h3>
@@ -233,6 +272,11 @@ export function WhatsNewSection(): React.JSX.Element {
             </div>
           ))}
         </div>
+        {pageCount > 1 && (
+          <div className="mt-4 flex justify-center">
+            <Pagination page={page} count={pageCount} onChange={setPage} />
+          </div>
+        )}
       </SettingsCard>
     </SettingsPageLayout>
   )

@@ -57,6 +57,19 @@ export function notesSince(notes: string, currentVersion: string | undefined): s
 
 export const APP_CHANGELOG: AppChangelogEntry[] = [
   {
+    version: '0.10.3',
+    date: '2026-11-28',
+    added: [
+      'The tray menu has Visit Website and Check for Updates, and a new look',
+      'A red dot on the taskbar and tray icon when you have unread messages or notifications, with the counts when you hover the tray icon'
+    ],
+    changed: [
+      "Discord Rich Presence hides while the app is closed to the tray, and comes back when you open it",
+      "What's New in Settings shows a few versions at a time, with pages"
+    ],
+    fixed: ['The app checks your location for Rich Presence less often']
+  },
+  {
     version: '0.10.2',
     date: '2026-11-26',
     changed: [
